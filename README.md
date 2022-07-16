@@ -14,5 +14,5 @@ Or simply said: **No Impersonating**.
 Or simply said: **you can use a edited version of the code**.
 4. If you use the code and where you use has a credit page or information shown, add "**MoonBlueLegendRemake.js by agold404**" to credit. If where you use does not have a credit page or information shown, you can skip this step. However, you shall not violate rule 1: **You shall not claim the on efforts which are not done by you**.  
 Or simply said: **credit it if there are other credits**.
-5. No fee, and so is the edited version of the code by you.
-6. **agold404** has all rights to use no matter what.
+5. No fee, and so is the edited versions of the code by you.
+6. **agold404** has all rights to use the code no matter what.
