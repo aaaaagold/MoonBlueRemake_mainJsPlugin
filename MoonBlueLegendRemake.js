@@ -18,7 +18,8 @@ tuneFunc(Window_Options.prototype,'volumeOffset',function f(){
 
 })();
 
-const cf=(p,k,f,tbl,is_putDeepest)=>{
+const _isDebug=!!($plugins&&$plugins.filter&&$plugins.filter(p=>p.name.indexOf("debug")>=0&&p.status).length);
+const cf=(p,k,f,tbl,is_putDeepest,is_notUsingOri)=>{
 	if(is_putDeepest && p[k] && p[k].ori){
 		let fp=p[k],fc=p[k].ori;
 		do{
@@ -31,7 +32,7 @@ const cf=(p,k,f,tbl,is_putDeepest)=>{
 	}else{
 		const r=p[k];
 		p[k]=f;
-		f.ori=r;
+		f.ori=is_notUsingOri?undefined:r;
 	}
 	f.tbl=tbl;
 	return p;
@@ -123,7 +124,7 @@ p.scale=function(r){
 	return src.ptcp(0,0,this.width,this.height,{w:w*r||1,h:h*r||1});
 };
 }
-const copyToClipboard=window.copyToClipboard=s=>{
+const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	const txtin=d.ce("input").sa("class","outofscreen");
 	d.body.ac(txtin);
 	txtin.value=""+s;
@@ -131,9 +132,15 @@ const copyToClipboard=window.copyToClipboard=s=>{
 	txtin.setSelectionRange(0,txtin.value.length);
 	d.execCommand("copy");
 	txtin.parentNode.removeChild(txtin);
-	if($gameMessage) $gameMessage.popup("已複製: "+s.replace(/\\/g,"\\\\"),1);
+	if(typeof $gameMessage!=='undefined' && $gameMessage.popup) $gameMessage.popup("已複製: "+s.replace(/\\/g,"\\\\"),1);
 };
 
+Game_Interpreter.NOP={code:0,indent:0,parameters:[],};
+cf(Game_System.prototype,'initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._rndId=LZString.compressToBase64(''+Date.now()+Math.random()+Math.random()).slice(11);
+	return rtv;
+});
 Game_Timer.prototype.onExpire=()=>{}; // not abort battle
 PIXI.ObservablePoint.prototype.resize=function(n){ return this.set(n,n); };
 PIXI.Rectangle.prototype.equals=function(rect){ return this.x===rect.x&&this.y===rect.y&&this.width===rect.width&&this.height===rect.height; };
@@ -441,6 +448,28 @@ window.jurl=(url, method, header, data, resType, callback, callback_all_h, timeo
 
 
 
+﻿"use strict";
+/*:
+ * @plugindesc 誰都別想讓debug變更難，誰都別想。
+ * @author agold404
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+cf(Game_Interpreter.prototype,'command111',function f(){
+	// interpreter branch
+	if(this._params[0]===12){
+		this._branch[this._indent]=!!eval(this._params[1]);
+		if(!this._branch[this._indent]) this.skipBranch();
+		return true;
+	}else return f.ori.apply(this,arguments);
+});
+
+})();
+
+
 "use strict";
 /*:
  * @plugindesc 寫YEP的人到底之不知道javascript的assign(=)的shallow copy的特性啊？
@@ -564,19 +593,19 @@ r=p[k]; (p[k]=function f(){
 { const p=Game_Battler.prototype;
 k='checkATBEndInstantCast';
 r=p[k]; (p[k]=function f(){
-	if (!Imported.YEP_InstantCast) return false;
-	var action = this.currentAction();
-	if (!action) return false;
-	var item = action.item();
-	if (!item) return false;
-	if (!this.isInstantCast(item)) return false;
+	if(typeof Imported!=='undefined' && !Imported.YEP_InstantCast) return false;
+	const action=this.currentAction();
+	if(!action) return false;
+	const item=action.item();
+	if(!item) return false;
+	if(!this.isInstantCast(item)) return false;
 	for(let i=0,arr=BattleManager.allBattleMembers(),sz=arr.length;i!==sz;++i){
 		const member=arr[i]; if(!member) continue;
-		const max = member.atbSpeed() + member.atbCharge();
-		this._atbSpeed = Math.max(this._atbSpeed, max);
+		const max=member.atbSpeed()+member.atbCharge();
+		this._atbSpeed=Math.max(this._atbSpeed,max);
 	}
-	this._atbSpeed = Math.max(this._atbSpeed, BattleManager.atbTarget());
-	this._atbSpeed += 1e-11;
+	this._atbSpeed=Math.max(this._atbSpeed,BattleManager.atbTarget());
+	this._atbSpeed+=1e-11;
 	return true;
 }).ori=r;
 }
@@ -617,7 +646,7 @@ r=p[k]; (p[k]=function f(){
 		set.forEach(f.tbl[0]);
 		set.clear();
 		sc._needRefreshes=set2;
-	}else this._scene._needRefreshes=undefined;
+	}
 	return f.ori.apply(this,arguments);
 }).ori=r;
 p[k].tbl=[
@@ -801,6 +830,30 @@ r.tbl=t;
 
 t=undefined;
 } // 多1幀來讀其他東西
+
+
+{ // 確保下個場景要預讀的東西好了 // ImageManager.isReady()
+cf(SceneManager,'changeScene',function(){
+	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
+		if(this._scene){
+			this._scene.terminate();
+			this._scene.detachReservation();
+			this._previousClass = this._scene.constructor;
+		}
+		this._scene = this._nextScene;
+		if(this._scene){
+			this._scene.attachReservation();
+			this._scene.create();
+			this._nextScene = null;
+			this._sceneStarted = false;
+			this.onSceneCreate();
+		}
+		if(this._exiting){
+			this.terminate();
+		}
+	}
+},undefined,true,true);
+} // 確保下個場景要預讀的東西好了
 
 
 { // 處理傷害數字lag
@@ -1252,6 +1305,199 @@ r=p[k]; (p[k]=function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 修 MOG_Weather_EX.js 太卡ㄉ問題
+ * @author agold404
+ * @help 再不讀演算法及了解語言特性試試看?
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{ const p=SpriteWeatherEX.prototype;
+
+k='createSprites';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._sprites.length>999) this._sprites.forEach(f.tbl,f.tbl); // reduce compute
+	return rtv;
+}).ori=r;
+(p[k].tbl=function f(sp){
+	if(sp.children.length) return;
+	sp.update=f.tbl[0];
+	sp.renderCanvas=f.tbl[1];
+}).tbl=[
+()=>{},
+function(renderer){
+	// if not visible or the alpha is 0 then no need to render this
+	if(!this.visible || this.worldAlpha <= 0 || !this.renderable){
+		return;
+	}
+	const x=this.x,y=this.y,w=this.width,h=this.height;
+	if(x>=Graphics._boxWidth||x+w<0||y>=Graphics._boxHeight||y+h<0) return;
+	
+	this._renderCanvas(renderer);
+},
+];
+
+k='updateEffects';
+r=p[k]; (p[k]=function f(sprite){
+	const func=f.tbl[this.mode()]||f.tbl._undef;
+	func.call(this,sprite);
+	sprite._wait = this.data().wait;
+}).ori=r;
+p[k].tbl=t=[
+p.updateWind,
+p.updateWind,
+p.updateWind3,
+p.updateSpark,
+p.updateSpark2,
+p.updateSpark3,
+p.updateFire,
+p.updateFire,
+p.updateFire3,
+p.updateSnow,
+p.updateSnow,
+p.updateSnow3,
+p.updateRain1,
+p.updateRain2,
+p.updateRain3,
+p.updateCloud1,
+p.updateCloud2,
+p.updateCloud3,
+p.updateRandom1,
+p.updateRandom2,
+p.updateRandom3,
+p.updateSunLight,
+p.updateFog1,
+p.updateFog1,
+p.updateFog1,
+p.updateStar1,
+p.updateStar2,
+p.updateShinning,
+p.updateBounce,
+p.updateSpark4,
+p.updateBubble,
+p.updateStandStill,
+p.updateScroll,
+p.updateScroll,
+p.updateParallax1,
+p.updateParallax2,
+];
+t._undef=p.updateRandom1;
+
+k='refreshWeather';
+r=p[k]; (p[k]=function f(sprite,initial){
+	const func=f.tbl[this.mode()]||f.tbl._undef;
+	func.call(this,sprite,initial);
+	if(initial){
+		if($gameParty.inBattle()){
+			if(window.Imported && Imported.MOG_BattleCameraFrontal) this.setFrontalCamera();
+			if(window.Imported && Imported.MOG_BattleCamera) this.setCamScreen();
+		}
+		sprite._ani[6] = 5;
+		if(this.needInitialRandomPos()) this.setPosRandom(sprite);
+		this.updateEffects(sprite);
+	}else{
+		if(sprite._ani[6] > 0) sprite._ani[7] = Math.random()*120;
+	}
+}).ori=r;
+p[k].tbl=t=[
+p.setupWind1,
+p.setupWind2,
+p.setupWind3,
+p.setupSpark1,
+p.setupSpark2,
+p.setupSpark3,
+p.setupFire1,
+p.setupFire2,
+p.setupFire3,
+p.setupSnow1,
+p.setupSnow2,
+p.setupSnow3,
+p.setupRain1,
+p.setupRain2,
+p.setupRain3,
+p.setupCloud1,
+p.setupCloud2,
+p.setupCloud3,
+p.setupRandom1,
+p.setupRandom2,
+p.setupRandom3,
+p.setupSunLight1,
+p.setupFog1,
+p.setupFog2,
+p.setupFog3,
+p.setupStar1,
+p.setupStar2,
+p.setupShinning,
+p.setupBounce,
+p.setupSpark4,
+p.setupBubble,
+p.setupStandStill,
+p.setupFogXP1,
+p.setupFogXP2,
+p.setupParallax1,
+p.setupParallax2,
+];
+t._undef=p.setupRandom3;
+
+k='needUpdatePosition';
+r=p[k]; (p[k]=function f(){
+	return !f.tbl.has(this.mode());
+}).ori=r;
+p[k].tbl=new Set([28,31,32,33,34,35,]);
+
+k='setFrontalCamera';
+r=p[k]; (p[k]=function f(){
+	this._cam[3] = this._cam[0] = Graphics.boxWidth  >>1;
+	this._cam[4] = this._cam[1] = Graphics.boxHeight >>1;
+}).ori=r;
+
+}
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 修 MOG_Weather_EX.js randomPosX, randomPosY 值域非常奇怪ㄉ問題
+ * @author agold404
+ * @help ㄇㄉ87
+ *
+ * note: _cam[]: see setFrontalCamera
+ * 0,3 = Graphics.boxWidth/2
+ * 1,4 = Graphics.boxHeight/2
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[];
+t._initFunc=function(){
+	const g=Graphics;
+	this.push(Math.max(g.boxWidth,g.boxHeight));
+	this.push(this[0]>>1,this[0]<<1);
+};
+
+cf(cf(SpriteWeatherEX.prototype,'randomPosX',function f(sp){
+	if(!f.tbl.length) t._initFunc();
+	sp._realX=-f.tbl[1]+Math.random()*f.tbl[2]+this.screenX();
+	// sp._realX=Math.random()*f.tbl[0]+this.screenX(); // debug
+	// window._isMyFunc=true; // debug
+},t),'randomPosY',function f(sp){
+	if(!f.tbl.length) t._initFunc();
+	sp._realY=-f.tbl[1]+Math.random()*f.tbl[2]+this.screenY();
+	// sp._realY=Math.random()*f.tbl[0]+this.screenY(); // debug
+	// window._isMyFunc=true; // debug
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 自訂選單中道具清單排序依據的數字，而非使用id。預設是使用id。
  * @author agold404
  * @help <sortingKey:數字>
@@ -1336,9 +1582,10 @@ if(typeof Window_ItemListM!=='undefined'){ const p=Window_ItemListM.prototype; p
  * weighted sum:
  * sum of all values of attribute*weight + script
  * 
- * value of attribute*weight:
+ * value of attributes*weights:
  * will be cap to between 0 (included) and Infinity
- * when the weighted sum is 0, do uniformly random
+ * When the weighted sum is 0, do uniformly random
+ * If attribute returns a function, the called return value is used to multiply the weight.
  * 
  * 
  * 
@@ -1377,7 +1624,9 @@ p.evalSelWeight=function(setting,options){
 		rtv+=eval(setting.script);
 	}
 	for(let x=0,arr=setting.attrs;x!==arr.length;++x){
-		rtv+=this[arr[x][0]]*arr[x][1];
+		let v=this[arr[x][0]];
+		if(v && v.constructor===Function) v=v.call(this);
+		rtv+=v*arr[x][1];
 	}
 	return rtv;
 };
@@ -1440,7 +1689,7 @@ r=p[k]; (p[k]=function f(options){
 	case 1:
 		return this.opponentsUnit().randomTarget(this,options);
 	case 2:
-		return (!Math.randomInt(2)?this.opponentsUnit():this.friendsUnit()).randomTarget(this,options);
+		return (Math.random()<0.5?this.opponentsUnit():this.friendsUnit()).randomTarget(this,options);
 	default:
 		return this.friendsUnit().randomTarget(this,options);
 	}
@@ -4041,7 +4290,7 @@ r=p[k]; (p[k]=function(actionList, ratingZero){
 	}
 	if(actionList.length){
 		let ch=0;
-		for(let i=0,val=Math.randomInt(sum);i!==actionList.length;++i){
+		for(let i=0,val=Math.random()*sum;i!==actionList.length;++i){
 			val -= weights[i];
 			if(val < 0){ ch=i; break; }
 		}
@@ -8210,6 +8459,8 @@ r=p[k]; (p[k]=function f(){
  * @author agold404
  * @help MV會被說爛ㄅ4沒有原因ㄉ
  * 
+ * $gameTemp.varShop = [作為金幣的變數id,iconId金幣圖];
+ * 
  * This plugin can be renamed as you want.
  */
 
@@ -9108,7 +9359,7 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 };
 }
 
-{ const p=Game_Battler.prototype;
+{ const p=Game_BattlerBase.prototype;
 p.tpRecycleRate=function(){
 	return this.traitsSum(Game_BattlerBase[kwt],1);
 };
@@ -10695,124 +10946,173 @@ k='commandSetupWeather';
 r=p[k]; (p[k]=function f(args){
 	const dir=args[0]&&args[0].slice(0,3)==="dir"&&Number(args[0].slice(3))||undefined;
 	
-	const id = args[1] != null ? Number(args[1]) : 0;
-	const mode = args[3] != null ? Number(args[3]) : 0;
-	const power = args[5] != null ? Number(args[5]) : 1;
-	const speed = args[7] != null ? Number(args[7]) : 100;
-	const blendType = args[9] != null ? Number(args[9]) : 0;
-	const fileName = args[11] != null ? String(args[11]) : "";
-	const z = args[13] != null ? Number(args[13]) : 1;
-	const scale = args[15] != null ? Number(args[15]) : 100;
-	const frame = args[17] != null ? Number(args[17]) : 1;
-	const frameSpeed = args[19] != null ? Number(args[19]) : 10;
+	const id         = args[1]-0||0;
+	const mode       = args[3]-0||0;
+	const power      = isNaN(args[ 5])?1   :args[5]-0;
+	const speed      = isNaN(args[ 7])?100 :args[7]-0;
+	const blendType  = args[9]-0||0;
+	const fileName   = String(args[11]||"");
+	const z          = isNaN(args[13])?1:args[13]-0;
+	const scale      = isNaN(args[15])?100 :args[15]-0;
+	const frame      = isNaN(args[17])?1   :args[17]-0;
+	const frameSpeed = isNaN(args[19])?10   :args[19]-0;
 	
-	const id_Real =  Math.min(Math.max(id, 0),$gameSystem._weatherEX_Data.length - 1);
+	const id_Real =  id;
 	const mode_Real = Math.min(Math.max(mode, 0),35);
 	const power_Real = Math.max(power, 1);
 	const z_Real = Math.min(Math.max(z, 0),2); 
 	const blendType_Real = Math.min(Math.max(blendType, 0),2);
-	const scale_Real = Math.min(Math.max(scale, 0),800);
-	const speed_Real = Math.min(Math.max(speed, 0),1000);
+	const scale_Real = scale;
+	const speed_Real = speed;
 	const frame_Real = Math.min(Math.max(frame, 1),100);
 	const frame_Speed = Math.min(Math.max(frameSpeed, 0),1000);
 	
-	this._weatherEX_Data[id_Real].mode = mode_Real;
-	this._weatherEX_Data[id_Real].power = power_Real;
-	this._weatherEX_Data[id_Real].z = z_Real;
-	this._weatherEX_Data[id_Real].blendMode = blendType_Real;
-	this._weatherEX_Data[id_Real].fileName = fileName;
-	this._weatherEX_Data[id_Real].speed = speed_Real;
-	this._weatherEX_Data[id_Real].scale = scale_Real;
-	this._weatherEX_Data[id_Real].frames = frame_Real;
-	this._weatherEX_Data[id_Real].frameSpeed = frame_Speed;
-	this._weatherEX_Data[id_Real].needRefresh = true;
+	let arr=this._weatherEX_Data; if(!arr) arr=this._weatherEX_Data=[];
+	if(!arr[id_Real]) arr[id_Real]={};
+	arr[id_Real]._dir=dir;
+	arr[id_Real].mode = mode_Real;
+	arr[id_Real].power = power_Real;
+	arr[id_Real].z = z_Real;
+	arr[id_Real].blendMode = blendType_Real;
+	arr[id_Real].fileName = fileName;
+	arr[id_Real].speed = speed_Real;
+	arr[id_Real].scale = scale_Real;
+	arr[id_Real].frames = frame_Real;
+	arr[id_Real].frameSpeed = frame_Speed;
+	arr[id_Real].needRefresh = true;
 	this._needRefreshWeatherEX = true;
 	
-	this._weatherEX_Data[id_Real]._dir=dir;
-	
-	return this._weatherEX_Data[id_Real];
+	return arr[id_Real];
 }).ori=r;
 }
 
 { const p=SpriteWeatherEX.prototype;
-k='updatePosition';
-r=p[k]; (p[k]=function f(sprite){
-	const func=f.tbl[this._dir]||f.tbl[6];
-	return func.call(this,sprite);
+k='createSprites';
+r=p[k]; (p[k]=function f(sp){
+	this._globalSpeed={x:0,y:0,};
+	return f.ori.apply(this,arguments);
+}).ori=r;
+k='refreshWeather';
+r=p[k]; (p[k]=function f(sp){
+	sp._sy=sp._sx=0;
+	
+//	window._isMyFunc=false; // debug
+	
+	const rtv=f.ori.apply(this,arguments);
+	
+if(0){	 // debug
+	if(!window.log_new) window.log_new={minX:Infinity,minY:Infinity, maxX:Infinity,maxY:-Infinity,cntX:[],cntY:[]};
+	if(window._isMyFunc){ const obj=window.log_new,x=sp._realX,y=sp._realY;
+	{const i=(x+128)>>6; obj.cntX[i]|=0; ++obj.cntX[i]; }
+	{const i=(y+128)>>6; obj.cntY[i]|=0; ++obj.cntY[i]; }
+	obj.minX=Math.min(obj.minX,x);
+	obj.minY=Math.min(obj.minY,y);
+	obj.maxX=Math.max(obj.maxX,x);
+	obj.maxY=Math.max(obj.maxY,y);
+	}
+	window._isMyFunc=false;
+}	 // debug
+	
+	const data=$gameSystem._weatherEX_Data&&$gameSystem._weatherEX_Data[this._id];
+	const dir=data&&data._dir;
+	const func=f.tbl[this._dir=dir]||f.tbl[6];
+	func.call(this,sp);
+	const gs=this._globalSpeed;
+	sp._sx+=gs.x;
+	sp._sy+=gs.y;
+	return rtv;
 }).ori=r;
 (p[k].tbl=t=[
-function rot(x,y,rad,cx,cy){
-	cx=cx||0;
-	cy=cy||0;
-	const c=Math.cos(rad),s=Math.sin(rad);
+function rot(sp,rad,x,y,cx,cy){
+	if(sp){
+		const ox=this.screenX(),oy=this.screenY();
+		const sxy=rot(0,rad,sp._sx,sp._sy),xy=rot(0,rad,sp._realX,sp._realY, ox+(Graphics.boxWidth  >>1) , oy+(Graphics.boxHeight >>1) );
+		sp.x=(sp._realX=xy[0])-ox;
+		sp.y=(sp._realY=xy[1])-oy;
+		sp._sx=sxy[0];
+		sp._sy=sxy[1];
+		return;
+	}
+	cx=cx-0||0;
+	cy=cy-0||0;
 	x-=cx;
 	y-=cy;
+	const tblc=rot.tbl[0].c.get(rad),tbls=rot.tbl[0].s.get(rad);
+	const c=tblc===undefined?Math.cos(rad):tblc,s=tbls===undefined?Math.sin(rad):tbls;
 	return [x*c-y*s+cx,x*s+y*c+cy];
 },
 0,
-function f(sprite){
-	sprite._realX += sprite._sx * this.speed() / 100;
-	sprite._realY += sprite._sy * this.speed() / 100;
-	const xy=f.tbl(
-		sprite._realX - this.screenX(),
-		sprite._realY - this.screenY(),
-		Math.PI/2,
-		Graphics.width>>1,
-		Graphics.height>>1,
-	);
-	sprite.x = xy[0];
-	sprite.y = xy[1];
+function f(sp){
+	// d2
+	const rad=Math.PI/2;
+	return f.tbl.call(this,sp,rad);
 },
 0,
 function f(sprite){
 	// d4
-	sprite._realX += sprite._sx * this.speed() / 100;
-	sprite._realY += sprite._sy * this.speed() / 100;
-	const xy=f.tbl(
-		sprite._realX - this.screenX(),
-		sprite._realY - this.screenY(),
-		Math.PI,
-		Graphics.width>>1,
-		Graphics.height>>1,
-	);
-	sprite.x = xy[0];
-	sprite.y = xy[1];
+	const rad=Math.PI;
+	return f.tbl.call(this,sp,rad);
 },
 0,
-function f(sprite){
+function f(sp){
 	// d6
 	// default
-	sprite._realX += sprite._sx * this.speed() / 100;
-	sprite._realY += sprite._sy * this.speed() / 100;
-	sprite.x = sprite._realX - this.screenX();
-	sprite.y = sprite._realY - this.screenY();
 },
 0,
 function f(sprite){
 	// d8
-	sprite._realX += sprite._sx * this.speed() / 100;
-	sprite._realY += sprite._sy * this.speed() / 100;
-	const xy=f.tbl(
-		sprite._realX - this.screenX(),
-		sprite._realY - this.screenY(),
-		Math.PI*3/2,
-		Graphics.width>>1,
-		Graphics.height>>1,
-	);
-	sprite.x = xy[0];
-	sprite.y = xy[1];
+	const rad=Math.PI*3/2;
+	return f.tbl.call(this,sp,rad);
 },
-]).map((f,i,a)=>i&&f&&(f.tbl=a[0]));
-t[undefined]=undefined;
-}
-
-{ const p=Spriteset_Base.prototype;
-k='createWeatherEX';
-r=p[k]; (p[k]=function f(id){
-	const rtv=f.ori.apply(this,arguments);
-	this._weatherEXSprites[id]._dir=$gameSystem._weatherEX_Data[id]._dir;
-	return rtv;
+]).map((f,i,a)=>i&&f&&(f.tbl=f.ori=a[0]));
+t[0].ori=t[null]=t[undefined]=undefined;
+t[0].tbl=[
+{
+c:new Map([
+[Math.PI/2,0],
+[Math.PI,-1],
+[Math.PI*3/2,0],
+]),s:new Map([
+[Math.PI/2,1],
+[Math.PI,0],
+[Math.PI*3/2,-1],
+]),
+},
+];
+t=undefined;
+k='needRefreshWeather';
+r=p[k]; (p[k]=function f(sp){
+	if(this.needFixScreenMode()) return false;
+	if(!f.tbl){ f.tbl={
+		cM:Math.max(Graphics.boxWidth,Graphics.boxHeight),
+		cx:Graphics.boxWidth>>1,
+		cy:Graphics.boxHeight>>1,
+	}; }
+	const absdx=Math.abs((f.tbl.cx-~~sp.x)/f.tbl.cM),absdy=Math.abs((f.tbl.cy-~~sp.y)/f.tbl.cM);
+	return 1<absdx||1<absdy;
 }).ori=r;
+k='setPosLeft';
+r=p[k]; (p[k]=function f(sp){
+	const pos=Math.random(),canUpper=!f.tbl.nU.call(this);
+	if(!f.tbl.pos0){ const g=Graphics; f.tbl.pos0=(Math.max(g.boxWidth,g.boxHeight)>>2)||64; }
+	if(this.needRefrehLeft()) this.leftPos(sp,f.tbl.pos0);
+	else if(this.needRefrehRight()){
+		if(pos<0.3) this.rightPos(sp,-f.tbl.pos0);
+		else this.leftPos(sp,40);
+	}else if(this.needRefrehBottom()){
+		if(pos<0.6)this.bottomPos(sp,-f.tbl.pos0);
+		else this.leftPos(sp,f.tbl.pos0);
+	}else{
+		if(canUpper && pos<0.6) this.upperPos(sp,f.tbl.pos0);
+		else this.leftPos(sp,f.tbl.pos0);
+	}
+}).ori=r;
+p[k].tbl=t={
+nU:function f(){ return f.tbl.has(this.mode()); },
+};
+t.nU.ori=undefined;
+t.nU.tbl=new Set([1,2,22,]);
+t=undefined;
 }
 
 })();
@@ -11450,7 +11750,7 @@ r=p[k]; (p[k]=function f(){
 		this._parData[1] = this._parImg.height;
 		if(!this._faceSprite) this.createFaceSprite();
 		this.refreshFaceSprite();
-		this.drawActorName(this._actor, this.textPadding(), 0);
+		this.drawActorName(this._actor, f.tbl.pos_name.x+this.textPadding(), f.tbl.pos_name.y);
 		let lh=this.standardFontSize(); lh+=lh>>3;
 		for(let i=0;i!==f.tbl.idEnd;++i) this.drawItem(0, f.tbl.yb+lh*(i+1),i);
 	}
@@ -11458,6 +11758,7 @@ r=p[k]; (p[k]=function f(){
 p[k].tbl={
 	idEnd:8,
 	yb:53,
+	pos_name:{x:0,y:39,},
 };
 k='createFaceSprite';
 r=p[k]; (p[k]=function f(){
@@ -11864,7 +12165,31 @@ r=p[k]; (p[k]=function f(item, x, y, width){
 
 (()=>{ let k,r,t;
 
+const posTxtPath="BLR_custom/ExpBar/pos.txt";
+
 { const p=Scene_Status.prototype;
+t={
+dw:8,
+path:posTxtPath,
+re:{
+r:/\r/g,
+x:/(^|\n)[ \t]*x[ \t]*=([^\n]+)/,
+y:/(^|\n)[ \t]*y[ \t]*=([^\n]+)/,
+},
+defaults:{
+x:252,
+y:7,
+},
+x:undefined,
+y:undefined,
+};
+k='initialize';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	ImageManager.otherFiles_addLoad(f.tbl.path);
+	return rtv;
+}).ori=r;
+p[k].tbl=t;
 (p.createExpBar=function f(){
 	const sp=this._expBar_sprite=new Sprite();
 	sp .bitmap=ImageManager.loadNormalBitmap("BLR_custom/ExpBar/ExpBar.png");
@@ -11872,14 +12197,23 @@ r=p[k]; (p[k]=function f(item, x, y, width){
 	sp2.bitmap=ImageManager.loadNormalBitmap("BLR_custom/ExpBar/ExpBar_bg.png");
 	this._field.addChildAt(sp2,this._field.getChildIndex(this._layout));
 	this._field.addChildAt(sp ,this._field.getChildIndex(this._layout));
+	if(f.tbl.x===undefined){
+		const t=f.tbl,re=f.tbl.re;
+		t.raw=ImageManager.otherFiles_getData(t.path);
+		if(t.raw && t.raw.match){
+			t.cleanedRaw=t.raw.replace(re.r,"");
+			const mx=t.cleanedRaw.match(re.x),my=t.cleanedRaw.match(re.y);
+			t.x=Number(mx&&mx[2]);
+			t.y=Number(my&&my[2]);
+		}else console.warn("file:\n",t.path,"\n","not loaded or is empty");
+		if(isNaN(t.x)){ t.x=t.defaults.x; console.warn("set x =",t.x); }
+		if(isNaN(t.y)){ t.y=t.defaults.y; console.warn("set y =",t.y); }
+	}
 	sp.dx=sp2.x=sp.x=f.tbl.x;
 	sp.dy=sp2.y=sp.y=f.tbl.y;
 	
 	sp.bitmap.addLoadListener(this.updateExpBar.bind(this,true));
-}).tbl={
-x:252,
-y:7,
-};
+}).tbl=t;
 k='createLayout';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -11902,15 +12236,14 @@ r=p[k]; (p[k]=function f(){
 	fg.y=bg.y=ref.y+fg.dy;
 	const w=Math.min(fg.width+f.tbl.dw,this._expBar_width);
 	if(fg.width!==w) fg.width=w;
-}).tbl={
-dw:8,
-};
+}).tbl=t;
 k='updateSlide';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.updateExpBar();
 	return rtv;
 }).ori=r;
+t=undefined;
 }
 
 })();
@@ -12158,13 +12491,14 @@ p.animationRequested_clear=function(){ this._animations.length=0; };
 k='setupAnimation';
 r=p[k]; (p[k]=function(){
 	const prelen=this._animationSprites.length;
-	for(let x=0,xs=this._battler.animationRequested_length(),data,ani,mir,dly,r;x!==xs;++x){
+	for(let x=0,xs=this._battler.animationRequested_length(),data,ani,mir,dly,r,opt;x!==xs;++x){
 		data=this._battler.animationRequested_getn(x);
 		ani = $dataAnimations[data.animationId];
 		mir = data.mirror;
 		dly = ani.position === 3 ? 0 : data.delay;
 		r = data.rate;
-		this.startAnimation(ani, mir, dly, r);
+		opt = data.opt;
+		this.startAnimation(ani, mir, dly, r, opt);
 	}
 	this._battler.animationRequested_clear();
 	for(let z=prelen,zs=this._animationSprites.length,sp;z!==zs;++z){
@@ -12176,8 +12510,8 @@ r=p[k]; (p[k]=function(){
 
 { const p=Sprite_Base.prototype;
 k='startAnimation';
-r=p[k]; (p[k]=function(animation, mirror, delay, rate) {
-	const sp = new Sprite_Animation();
+r=p[k]; (p[k]=function(animation, mirror, delay, rate, opt){
+	const sp=new Sprite_Animation();
 	sp.setup(this._effectTarget, animation, mirror, delay, rate);
 	this.parent.addChild(sp);
 	this._animationSprites.push(sp);
@@ -12742,156 +13076,6 @@ k='applyVariance';
 r=p[k]; (p[k]=function f(dmg,v_,trgt){
 	return isNaN(this.fixedDamaged_usingValue(trgt))?f.ori.apply(this,arguments):dmg;
 }).ori=r;
-}
-
-})();
-
-
-﻿"use strict";
-/*:
- * @plugindesc 修 MOG_Weather_EX.js 太卡ㄉ問題
- * @author agold404
- * @help 再不讀演算法及了解語言特性試試看?
- * 
- * This plugin can be renamed as you want.
- */
-
-(()=>{ let k,r,t;
-
-{ const p=SpriteWeatherEX.prototype;
-
-k='createSprites';
-r=p[k]; (p[k]=function f(){
-	const rtv=f.ori.apply(this,arguments);
-	if(this._sprites.length>999) this._sprites.forEach(f.tbl,f.tbl); // reduce compute
-	return rtv;
-}).ori=r;
-(p[k].tbl=function f(sp){
-	if(sp.children.length) return;
-	sp.update=f.tbl[0];
-	sp.renderCanvas=f.tbl[1];
-}).tbl=[
-()=>{},
-function(renderer){
-	// if not visible or the alpha is 0 then no need to render this
-	if(!this.visible || this.worldAlpha <= 0 || !this.renderable){
-		return;
-	}
-	const x=this.x,y=this.y,w=this.width,h=this.height;
-	if(x>=Graphics._boxWidth||x+w<0||y>=Graphics._boxHeight||y+h<0) return;
-	
-	this._renderCanvas(renderer);
-},
-];
-
-k='updateEffects';
-r=p[k]; (p[k]=function f(sprite){
-	const func=f.tbl[this.mode()]||f.tbl._undef;
-	func.call(this,sprite);
-	sprite._wait = this.data().wait;
-}).ori=r;
-p[k].tbl=t=[
-p.updateWind,
-p.updateWind,
-p.updateWind3,
-p.updateSpark,
-p.updateSpark2,
-p.updateSpark3,
-p.updateFire,
-p.updateFire,
-p.updateFire3,
-p.updateSnow,
-p.updateSnow,
-p.updateSnow3,
-p.updateRain1,
-p.updateRain2,
-p.updateRain3,
-p.updateCloud1,
-p.updateCloud2,
-p.updateCloud3,
-p.updateRandom1,
-p.updateRandom2,
-p.updateRandom3,
-p.updateSunLight,
-p.updateFog1,
-p.updateFog1,
-p.updateFog1,
-p.updateStar1,
-p.updateStar2,
-p.updateShinning,
-p.updateBounce,
-p.updateSpark4,
-p.updateBubble,
-p.updateStandStill,
-p.updateScroll,
-p.updateScroll,
-p.updateParallax1,
-p.updateParallax2,
-];
-t._undef=p.updateRandom1;
-
-k='refreshWeather';
-r=p[k]; (p[k]=function f(sprite,initial){
-	const func=f.tbl[this.mode()]||f.tbl._undef;
-	func.call(this,sprite,initial);
-	if(initial){
-		if($gameParty.inBattle()){
-			if(Imported.MOG_BattleCameraFrontal) this.setFrontalCamera();
-			if(Imported.MOG_BattleCamera) this.setCamScreen();
-		}
-		sprite._ani[6] = 5;
-		if(this.needInitialRandomPos()) {this.setPosRandom(sprite)};
-		this.updateEffects(sprite)
-	}else{
-		if(sprite._ani[6] > 0) sprite._ani[7] = Math.randomInt(120);
-	}
-}).ori=r;
-p[k].tbl=t=[
-p.setupWind1,
-p.setupWind2,
-p.setupWind3,
-p.setupSpark1,
-p.setupSpark2,
-p.setupSpark3,
-p.setupFire1,
-p.setupFire2,
-p.setupFire3,
-p.setupSnow1,
-p.setupSnow2,
-p.setupSnow3,
-p.setupRain1,
-p.setupRain2,
-p.setupRain3,
-p.setupCloud1,
-p.setupCloud2,
-p.setupCloud3,
-p.setupRandom1,
-p.setupRandom2,
-p.setupRandom3,
-p.setupSunLight1,
-p.setupFog1,
-p.setupFog2,
-p.setupFog3,
-p.setupStar1,
-p.setupStar2,
-p.setupShinning,
-p.setupBounce,
-p.setupSpark4,
-p.setupBubble,
-p.setupStandStill,
-p.setupFogXP1,
-p.setupFogXP2,
-p.setupParallax1,
-p.setupParallax2,
-];
-t._undef=p.setupRandom3;
-
-k='needUpdatePosition';
-r=p[k]; (p[k]=function f(){
-	return !f.tbl.has(this.mode());
-}).ori=r;
-p[k].tbl=new Set([28,31,32,33,34,35,]);
-
 }
 
 })();
@@ -13974,6 +14158,14 @@ r=p[k]; (p[k]=function f(path){
 	const m=this.otherFiles_getDataMap();
 	return m.get(path);
 }).ori=r;
+k='otherFiles_delData';
+r=p[k]; (p[k]=function f(path){
+	const m=this.otherFiles_getDataMap(),s=this.otherFiles_getPendedSet();
+	const rtv=m.get(path);
+	m.delete(path);
+	s.delete(path);
+	return rtv;
+}).ori=r;
 k='otherFiles_addLoad';
 r=p[k]; (p[k]=function f(path){
 	const m=this.otherFiles_getDataMap();
@@ -13982,8 +14174,10 @@ r=p[k]; (p[k]=function f(path){
 	if(s.has(path)) return;
 	s.add(path);
 	window.jurl(path,"GET",0,0,0,(resp)=>{
-		m.set(path,resp);
-		s.delete(path);
+		if(s.has(path)){
+			m.set(path,resp);
+			s.delete(path);
+		}else console.warn("canceled: "+path);
 	},xhr=>{ if(!(xhr.readyState>=4)) return;
 		const stat=xhr.status.toString();
 		if(stat==='0' || (stat.length===3 && stat[0]==='4')) s.delete(path); // nw.js: 0 ; web: 404
@@ -14111,8 +14305,9 @@ r=p[k]; (p[k]=function f(){
 { const p=JsonEx;
 k='makeDeepCopy';
 r=p[k]; (p[k]=function f(){
+	if(1>=arguments.length && arguments[0]===undefined) return;
 	const rtv=f.ori.apply(this,arguments);
-	if( rtv.constructor===Game_Actor && $gameTemp && SceneManager.getScConstructor()===Scene_Equip ) $gameTemp.get_isClonedActors_scEquip().add(rtv);
+	if( rtv && rtv.constructor===Game_Actor && $gameTemp && SceneManager.getScConstructor()===Scene_Equip ) $gameTemp.get_isClonedActors_scEquip().add(rtv);
 	return rtv;
 }).ori=r;
 }
@@ -15102,7 +15297,621 @@ cf(Scene_Title.prototype,'create',function f(){
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc [for月藍]menu scene (some)
+ * @author agold404
+ * @help 旋轉魔法陣
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+cf(cf(Scene_MenuBase.prototype,'_createBackground_common_after',function f(imgMgrLoaderFunc){
+	this.addChild(this._magicCircle=new Sprite(imgMgrLoaderFunc.call(ImageManager,"MagicCircle")));
+	this.addChild(this._title=new Sprite(imgMgrLoaderFunc.call(ImageManager,"Title")));
+	this._magicCircle.bitmap.addLoadListener(f.tbl[1].bind(this));
+	this._magicCircle_rotSpeed=f.tbl[0][0]; // >=0
+},[
+[1.0/(1<<11),],
+function(bm){
+	const sp=this._magicCircle,sp2=this._title;
+	{ const w=bm.width,h=bm.height; sp.x+=w>>1; sp.y+=h>>1; }
+	{ const a=sp.anchor; a.y=a.x=0.5; }
+	{ sp2.x=sp.x; sp2.y=sp.y; }
+	{ const a=sp2.anchor; a.y=a.x=0.5; }
+},
+]),'update',function f(){
+	{ const sp=this._magicCircle; if(sp){
+		sp.rotation+=this._magicCircle_rotSpeed;
+		if(sp.rotation>=360) sp.rotation-=360;
+	} }
+	return f.ori.apply(this,arguments);
+});
+
+t=[Scene_Skill,Scene_Item,Scene_Equip,Scene_Status,].map(sc=>[sc.prototype]);
+r=ImageManager;
+t[0].push(r.loadMenusskill);
+t[1].push(r.loadMenusitem);
+t[2].push(r.loadMenusequip);
+t[3].push(r.loadMenusstatus);
+t.forEach(info=>cf(cf(info[0],'createBackground',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._createBackground_common_after(info[1]);
+	return rtv;
+}),'update',function f(){
+	{ const sp=this._magicCircle; if(sp){
+		sp.rotation+=this._magicCircle_rotSpeed;
+		if(sp.rotation>=360) sp.rotation-=360;
+	} }
+	return f.ori.apply(this,arguments);
+}));
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 正向buff免疫(調整獲得機率)
+ * @author agold404
+ * @help 有traits的note區
+ * <buffRates:[[id,獲得機率倍率],[id,獲得機率倍率],...]>
+ * e.g.
+ * <buffRates:[[1,0.25],[0,0.5]]>
+ * // ^ mhp獲得機率倍率 * 0.5 , mmp獲得機率倍率 * 0.25
+ * <buffRates:[["def",0.25],["atk",0.5]]>
+ * // ^ atk獲得機率倍率 * 0.5 , def獲得機率倍率 * 0.25
+ * <buffRates:[["atk",0.25],["atk",0.5]]>
+ * // ^ atk獲得機率倍率 * 0.125
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kw='buffRates';
+const kw_main='get_'+kw;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+gbb.addEnum(kw);
+gbb.addEnum('__END__');
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].tbl=[
+function f(dataobj){ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits; if(!ts||!meta[kw]) return;
+	const arr=JSON.parse(meta[kw]);
+	for(let x=0;x!==arr.length;++x) dataobj.traits.push({code:gbb[kw],dataId:f.tbl[arr[x][0]],value:arr[x][1]});
+},
+];
+t=p[k].tbl[0];
+t.ori=undefined;
+t=t.tbl={};
+for(let x=0,arr=['mhp','mmp','atk','def','mat','def','agi','luk',];x!==arr.length;++x) t[arr[x]]=t[x]=x;
+}
+
+cf(Game_BattlerBase.prototype,kw_main,function f(id){
+	return this.traitsPi(f.tbl[1],id);
+},t=[kw_main,gbb[kw],]);
+
+cf(Game_Action.prototype,'itemEffectAddBuff',function f(trgt, eff){
+	return Math.random()<trgt[f.tbl[0]](eff.dataId) && f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 狀態：技能後追加技能 (技能接技能)
+ * @author agold404
+ * @help 有traits的note區
+ * <技能後追加技能:{"使用的技能id":[追加的技能id,追加的技能id, ... ], ... }>
+ * 普攻用"普攻"，不要打1，請想想武器普攻技能。
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kw='技能後追加技能';
+const kw_main='get_'+kw;
+const kw_action='is_'+kw;
+const kw_action_bit="_"+kw_action;
+const kw_pend='pend_'+kw;
+const kw_push='push_'+kw;
+const kw_getQ='getQ_'+kw;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+gbb.addEnum(kw);
+gbb.addEnum('__END__');
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].tbl=[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=meta[kw]&&dataobj.traits; if(!ts) return;
+	const m=JSON.parse(meta[kw]);
+	for(let i in m) if(i) for(let x=0,arr=m[i];x!==arr.length;++x) if(arr[x]) ts.push({code:gbb[kw],dataId:i,value:arr[x]});
+},
+];
+}
+
+cf(cf(cf(Game_BattlerBase.prototype,kw_main,function f(id){
+	if(id===this.attackSkillId()) id="普攻";
+	return this.traitsWithId(f.tbl[1],id).map(f.tbl[4]);
+},t=[kw_main,gbb[kw],kw_action_bit,kw_action,t=>{
+	return t.value;
+},kw_pend,kw_push,function f(btlr){
+	const q=btlr[f.tbl[8]](); if(q) q.clear();
+},kw_getQ,]),kw_push,function f(fromSkill,lastAct){
+	if(!fromSkill) return;
+	const s=this,id=fromSkill.id;
+	const additionalSkills=s[f.tbl[0]](id);
+	const acts=s[f.tbl[8]](true);
+	if(lastAct){
+		const lastIsForFriend=lastAct.isForFriend();
+		if(!lastAct[f.tbl[3]]()){ for(let x=0,arr=additionalSkills;x!==arr.length;++x){
+			const id=arr[x]==="普攻"?this.attackSkillId():arr[x];
+			if(!$dataSkills[arr[x]]) continue;
+			const act=new Game_Action(s);
+			act[f.tbl[2]]=true;
+			act.setSkill(arr[x]);
+			if(lastIsForFriend===act.isForFriend()) act._targetIndex=lastAct._targetIndex;
+			acts.push(act);
+		} }
+	}
+	if(acts.length && !s._actions.length){
+		s._actions.push(acts[0]);
+		acts.pop();
+		return true;
+	}
+},t),kw_getQ,function f(newItIfUndef){
+	if(this[f.tbl[5]]){
+		if(this[f.tbl[5]].constructor!==Queue) this[f.tbl[5]]=Object.assign(new Queue(),this[f.tbl[5]]);
+	}else if(newItIfUndef) this[f.tbl[5]]=new Queue();
+	return this[f.tbl[5]];
+},t);
+for(let x=0;x!==t.length;++x){ if(typeof t[x]==='function'){
+	t[x].ori=undefined;
+	t[x].tbl=t;
+} }
+
+cf(Game_Battler.prototype,'makeActions',function f(){
+	this[f.tbl[8]](true);
+	return f.ori.apply(this,arguments);
+},t);
+
+cf(cf(Game_Action.prototype,kw_action,function f(){
+	return false; // always add
+	return !!this[f.tbl[2]];
+},t),'initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[2]]=false;
+	return rtv;
+},t);
+
+cf(cf(BattleManager,'endAction',function f(){
+	const a=this._action;
+	const s=a&&a.subject();
+	const skill=s&&a.isSkill()&&a.item();
+	const rtv=f.ori.apply(this,arguments);
+	if(s && s[f.tbl[6]](skill,a)) this.startAction();
+	return rtv;
+},t),'endBattle',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	$gameParty.members().forEach(f.tbl[7]);
+	return rtv;
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc [for月藍]equip scene
+ * @author agold404
+ * @help 說明欄z層
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+cf(Scene_Equip.prototype,'create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const hw=this._layoutHelp;
+	const p=hw&&hw.parent; if(!p) return rtv;
+	p.removeChild(hw);
+	p.addChild(hw);
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 升級獲得的技能不在可用技能類別中則不顯示獲得提示
+ * @author agold404
+ * @help 還有把 findNewSkills 改成 O((n+m)*lg(n)) ; n>=m>=0
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+cf(cf(Game_Actor.prototype,'displayLevelUp',function f(){
+	const skillTypes=new Set(this.addedSkillTypes());
+	arguments[0]=arguments[0].filter(f.tbl[0],skillTypes);
+	return f.ori.apply(this,arguments);
+},[ function(dataSkill){
+	return this.has(dataSkill.stypeId);
+}, ]),'findNewSkills',function f(lastSkills){
+	return this.skills().filter(f.tbl[0],new Set(lastSkills));
+},[ function(dataSkill){
+	return !this.has(dataSkill);
+}, ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 新增選項：開選單的時候bgm降x%，預設=25%
+ * @author agold404
+ * @help 只有 [Scene_Title,Scene_Map,Scene_Battle,Scene_Gameover,] 不會降
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const optionTitle="選單內降低bgm音量",defaultDecPercent=25;
+const optionSymbol="Volume-"+optionTitle;
+const optionSymbolKey="_"+optionSymbol;
+const optionSymbolKeyRate="rate_"+optionSymbolKey;
+const updateBgmVol="updateBgmVol";
+
+cf(Window_Options.prototype,'addVolumeOptions',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.addCommand(f.tbl[0], f.tbl[2]);
+	return rtv;
+},t=[optionTitle,defaultDecPercent,optionSymbol,updateBgmVol,]);
+
+k='defineProperty';
+r=ConfigManager;
+cf(cf(cf(r,'makeData',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	rtv[f.tbl[2]]=this[f.tbl[2]]||0;
+	return rtv;
+},t),'applyData',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const val=arguments[0][f.tbl[2]];
+	this[f.tbl[2]]=isNaN(val)?f.tbl[1]:Number(val);
+	return rtv;
+},t),t[3],function f(){
+	AudioManager.bgmVolume=this.bgmVolume*this[optionSymbolKeyRate];
+	return f.ori&&f.ori.apply(this,arguments);
+});
+
+Object[k](r, 'bgmVolume', {
+	set:function(rhs){
+		const rtv=this._bgmVol=rhs;
+		this.updateBgmVol();
+		return rtv;
+	},get:function(){
+		return this._bgmVol;
+	},
+	configurable: true
+});
+Object[k](r, optionSymbol, {
+	set:function(rhs){
+		const rtv=this[optionSymbolKey]=rhs;
+		this.updateBgmVol();
+		return rtv;
+	},get:function(){
+		return this[optionSymbolKey];
+	},
+	configurable: true
+});
+Object[k](r, optionSymbolKeyRate, { // 變成幾倍
+	get:function(){
+		let rtv=SceneManager[optionSymbol]?this[optionSymbol]:0;
+		if(isNaN(rtv)) rtv=defaultDecPercent;
+		return (100-rtv)/100;
+	},
+	configurable: false
+});
+
+cf(cf(cf(SceneManager,'changeScene',function f(){
+	const nc=this._nextScene;
+	const rtv=f.ori.apply(this,arguments);
+	if(this._scene && this._scene===nc) this.onSceneChange();
+	return rtv;
+}),'onSceneChange',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	this[f.tbl[0]]();
+	return rtv;
+},t),t[0],function f(){
+	const sc=this._scene; if(!sc) return;
+	if(f.tbl.inited){
+		const func=f.tbl.funcs[ f.tbl.scs.has(sc.constructor)|(f.tbl.scs.has(this._previousClass)<<1) ];
+		if(func) func.call(this,f.tbl.tbl); // Scene_Options will overwrite it @terminate
+	}else if(sc.constructor===Scene_Title){
+		// init
+		f.tbl.inited=true;
+		f.tbl.scs=f.tbl._initScs();
+	}
+},{
+_initScs:()=>new Set([Scene_Title,Scene_Map,Scene_Battle,Scene_Gameover,]),
+funcs:[
+undefined,
+function(tbl){ // restore
+	this[tbl[2]]=false;
+	ConfigManager[tbl[3]]();
+},
+function(tbl){ // decrease
+	this[tbl[2]]=true;
+	ConfigManager[tbl[3]]();
+},
+undefined,
+],
+inited:false,
+scs:undefined, // scenes use 100% volume from setting
+tbl:t,
+})[t[2]]=false;
+
+cf(Scene_Options.prototype,'terminate',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments),sm=SceneManager;
+	const b=AudioManager._bgmBuffer;
+	sm._lastBgmVol=b&&b.volume;
+	sm._lastBgmVolDecPercent=ConfigManager[f.tbl[0]];
+	return rtv;
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 使全螢幕動畫位於圖片上層
+ * @author agold404
+ * @help SceneManager.screenAniOnTopOfPic_set, SceneManager.screenAniOnTopOfPic_clear, SceneManager.screenAniOnTopOfPic_get, 
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+k='screenAniOnTopOfPic';
+
+cf(cf(cf(SceneManager,k+'_get',function f(){
+	return this._screenAniOnTopOfPic;
+}),k+'_set',function f(){
+	this._screenAniOnTopOfPic=true;
+}),k+'_clear',function f(){
+	this._screenAniOnTopOfPic=false;
+})._aniOnTopOfPic=false;
+
+cf(Game_CharacterBase.prototype,'requestAnimation',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[0]]=SceneManager[f.tbl[1]]();
+	return rtv;
+},t=["_"+k,k+"_get"]);
+
+cf(Game_Battler.prototype,'startAnimation',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const aniInfo=this._animations.back;
+	if(!aniInfo.opt) aniInfo.opt={};
+	aniInfo.opt[f.tbl[0]]=SceneManager[f.tbl[1]]();
+	return rtv;
+},t);
+
+cf(Sprite_Base.prototype,'startAnimation',function f(ani,mir,dly,r,opt){
+	const rtv=f.ori.apply(this,arguments),sm=SceneManager;
+	if(opt && opt[f.tbl[0]] && ani.position===3){ const sps=sm._scene._spriteset; if(sps){ const pc=sps._pictureContainer; if(pc){
+		const pp=pc.parent;
+		let op=pp._anisOnTopOfPics; if(!op){
+			op=pp._anisOnTopOfPics=new Sprite();
+			op.width  =pp.width  ;
+			op.height =pp.height ;
+			const pcp=pc.parent; pcp.addChildAt(op,pcp.getChildIndex(pc)+1);
+		}
+		op.addChild(this._animationSprites.back);
+	} } }
+	return rtv;
+},t);
+
+cf(Sprite_Character.prototype,'setupAnimation',function f(){
+	const chr=this._character;
+	if(chr.animationId()>0){
+		const animation=$dataAnimations[chr.animationId()];
+		const opt={}; opt[f.tbl[0]]=chr[f.tbl[0]];
+		this.startAnimation(animation,false,0,undefined,opt);
+		chr.startAnimation();
+	}
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 受擊後執行javascript
+ * @author agold404
+ * @help 有trait的東西的note <onDamaged_javascript:["js function code that does not include '>'",number_priority_default_0]>
+ * 
+ * or not using an array and priority is 0
+ * <onDamaged_javascript:"js function code that does not include '>'">
+ * 
+ * e.g.
+ * <onDamaged_javascript:"(function(value){this.gainHp(123);})">
+ * <onDamaged_javascript:["(function(value){this.gainHp(123);})",321]>
+ * 
+ * same priority should be treated as an unstable order.
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kw='onDamaged_javascript';
+const kw_main='get_'+kw;
+const kw_action='is_'+kw;
+const kw_action_bit="_"+kw_action;
+const kw_pend='pend_'+kw;
+const kw_push='push_'+kw;
+const kw_getQ='getQ_'+kw;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+gbb.addEnum(kw);
+gbb.addEnum('__END__');
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].tbl=[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=meta[kw]&&dataobj.traits; if(!ts) return;
+	const v=JSON.parse(meta[kw]);
+	const o=v.constructor===Array?v[0]-0||0:0;
+	const f=v.constructor===Array?v[0]:v;
+	ts.push({code:gbb[kw],dataId:o,value:f,func:undefined,});
+},
+];
+}
+
+t=[kw_main,gbb[kw],(a,b)=>a.dataId-b.dataId,t=>t.func=t.func||eval(t.value),];
+cf(cf(Game_Battler.prototype,kw_main,function f(){
+	return this.traits(f.tbl[1]).sort(f.tbl[2]).map(f.tbl[3]);
+},t),'onDamage',function f(val){
+	const rtv=f.ori.apply(this,arguments);
+	for(let x=0,arr=this[f.tbl[0]]();x!==arr.length;++x) arr[x].call(this,val);
+	return rtv;
+},t);
+t=undefined;
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 怪物呼吸若隱若現，使用 Math.cos 。
+ * @author agold404
+ * @help 怪物的note <呼吸_若隱若現:{"minAlpha":0到1的數字,"maxAlpha":0到1的數字,"週期":幀數}>
+ * 
+ * 從 minAlpha 開始。
+ * minAlpha 沒填當 0 。
+ * maxAlpha 沒填當 1 。
+ * 週期沒填當 120 ；填 0 會整個無效。
+ * 都沒打算填可以寫這樣就好:
+ * <呼吸_若隱若現>
+ * 
+ * e.g.
+ * <呼吸_若隱若現:{"minAlpha":0.125,"maxAlpha":1,"週期":120}>
+ * 
+ * same priority should be treated as an unstable order.
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw='呼吸_若隱若現';
+const kw_main='update_'+kw;
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataEnemies .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].tbl=[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=meta[kw]&&dataobj.traits; if(!ts) return;
+	let info=JSON.parse(meta[kw]); if(info===true) info={};
+	info.minAlpha-=0; if(isNaN(info.minAlpha)) info.minAlpha=0;
+	info.maxAlpha-=0; if(isNaN(info.maxAlpha)) info.maxAlpha=1;
+	info.週期-=0;     if(isNaN(info.週期))     info.週期=120;
+	dataobj[kw]=info;
+},
+];
+}
+
+t=[kw_main,kw,];
+cf(Sprite_Battler.prototype,kw_main,function f(){
+	const btlr=this._battler;
+	const info=btlr.getData()[f.tbl[1]]; if(!info || !info.週期 || btlr.isDead()) return;
+	const m=(info.maxAlpha+info.minAlpha)/2.0,r=(info.maxAlpha-info.minAlpha)/2.0;
+	this[f.tbl[1]]|=0;
+	this.alpha=m-Math.cos(this[f.tbl[1]]/info.週期*2*Math.PI)*r;
+	++this[f.tbl[1]]; this[f.tbl[1]]%=info.週期;
+},t);
+cf(Sprite_Enemy.prototype,'update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[0]]();
+	return rtv;
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 禁用有呼叫公共事件的道具API
  * @author agold404
  * @help 詳細說明
  * 第二行
@@ -15112,8 +15921,790 @@ cf(Scene_Title.prototype,'create',function f(){
 
 (()=>{ let k,r,t;
 
-{
+k='commonEventItems';
+t=[
+"canUse_"+k,
+"isItem_"+k,
+"_"+k+"Disabled",
+eff=>Game_Action.EFFECT_COMMON_EVENT===eff.code,
+];
+cf(cf(cf(cf(Game_System.prototype,t[0],function f(){
+	return !this[f.tbl[2]];
+},t),t[1],function f(item){
+	if(!item) return false;
+	return item.effects.some(f.tbl[3]);
+},t),"enable_"+k,function f(){
+	this[f.tbl[2]]=false;
+},t),"disable_"+k,function f(){
+	this[f.tbl[2]]=true;
+},t);
+
+cf(Game_Party.prototype,'canUse',function f(item){
+	if(item && !$gameSystem[f.tbl[0]]() && $gameSystem[f.tbl[1]](item)) return false;
+	return f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+"use strict";
+/*:
+ * @plugindesc Scene_Battle per-frame events
+ * @author agold404
+ * @help this plugin makes a troop event page become per-frame updating,
+ * which means: Even during a player input (action selection), the corresponding event page will be running.
+ * 
+ * use:
+ * in troop event page, comment first line: (at-sign)PERFRAME
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{ const p=Scene_Battle.prototype;
+t=['updatePerframeEvents','isPerframeEventList',];
+
+k=t[1];
+r=p[k]; (p[k]=function f(cmds){
+	// shouldn't return 'undefined'
+	let rtv=false;
+	for(let c=0;c!==cmds.length;++c){
+		if(cmds[c].code===108 && cmds[c].parameters[0]==="@PERFRAME"){
+			rtv=true;
+			break;
+		}
+	}
+	return rtv;
+}).ori=r;
+k=t[0];
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	if(!this._perframe){
+		this._perframe=[];
+		this._perframeIds=[];
+		for(let p=0,pgs=$gameTroop.troop().pages;p!==pgs.length;++p){
+			let perframe=false;
+			if(pgs[p].perframe===undefined) pgs[p].perframe=this[f.tbl[1]](pgs[p].list);
+			if(pgs[p].perframe) this._perframeIds.push(p);
+		}
+		for(let x=0,arr=this._perframeIds;x!==arr.length;++x) this._perframe.push(new Game_Interpreter);
+	}
+	for(let x=0,arr=this._perframe;x!==arr.length;++x){
+		if(arr[x].isRunning()) arr[x].update();
+		else if(BattleManager._perframeEnabled) arr[x].setup($gameTroop.troop().pages[arr[x]._pageId=this._perframeIds[x]].list);
+	}
+	return rtv;
+}).ori=r;
+p[k].tbl=t;
+
+k='update';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[0]]();
+	return rtv;
+}).ori=r;
+p[k].tbl=t;
+
+t=undefined;
 }
+
+{ const p=BattleManager;
+k='startBattle';
+r=p[k]; (p[k]=function f(){
+	this._result=undefined;
+	const rtv=f.ori.apply(this,arguments);
+	this._perframeEnabled=true;
+	return rtv;
+}).ori=r;
+k='endBattle';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._perframeEnabled=false;
+	this._result=arguments[0];
+	if(this._perframe){ let someRunning=false; do{ for(let x=0,arr=this._perframe;x!==arr.length;++x){
+		if(arr[x].isRunning()){ arr[x].update(); someRunning=true; }
+	} }while(someRunning); }
+	return rtv;
+}).ori=r;
+}
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc traits: let one must substitute the incoming action to friendUnit members (except certain hit) .
+ * @author agold404
+ * @help note: <手塚區>
+ * the one must be alive.
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kw='手塚區';
+const kw_main='apply_'+kw;
+const kw_get='get_'+kw;
+const kw_can='can_'+kw;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+gbb.addEnum(kw);
+gbb.addEnum('__END__');
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].tbl=[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=meta[kw]&&dataobj.traits; if(!ts) return;
+	if(meta[kw]) ts.push({code:gbb[kw],dataId:1,value:meta[kw],});
+},
+];
+}
+
+t=[kw_can,kw_get,gbb[kw],];
+cf(cf(Game_BattlerBase.prototype,kw_can,function f(){
+	return this.isAlive() && this[f.tbl[1]]();
+},t),kw_get,function f(){
+	return !!this.traits(f.tbl[2]).length;
+},t);
+
+k=kw_main;
+cf(cf(BattleManager,k,function f(trgt){
+	let rtv=trgt;
+	if(!this._action.isCertainHit()){ for(let x=0,arr=rtv.friendsUnit().members();x!==arr.length;++x) if(arr[x][f.tbl[0]]()){ rtv=arr[x]; break; } }
+	return rtv;
+},t),'applySubstitute',function f(){
+	return this[f.tbl[0]](f.ori.apply(this,arguments));
+},[k,]);
+t=undefined;
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 技能、道具作用次數倍率
+ * @author agold404
+ * @help note: <addRepeatSkill:數字> <addRepeatItem:數字> <addRepeatSkillCrtn:[[技能id,數字],...]> <addRepeatItemCrtn:[[道具id,數字],...]> 
+ * 數字未 >=0 者，會被忽略
+ * 原次數乘上總倍率後無條件捨去到個位數，最低不會低於0。
+ * 有修改普攻的情況，技能id請填 "普攻" 。
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kwB='addRepeat';
+const kwTbl={
+skill:[kwB+'Skill'],
+item:[kwB+'Item'],
+},kts=[];
+for(let i in kwTbl){
+	kwTbl[i].push(kwTbl[i][0]+'Crtn');
+	kts.push(i);
+}
+
+t=new Map();
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+for(let i in kwTbl){ kwTbl[i].forEach(s=>{
+	const tr="TRAIT_"+s;
+	t.set(s,tr);
+	gbb.addEnum(tr);
+}); }
+kwTbl._s2t=t;
+t=undefined;
+
+kwTbl._kts=kts;
+kwTbl._normalAtkId="普攻";
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].tbl=[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits; if(!ts) return;
+	for(let i=0;i!==kts.length;++i){
+		const ks=kwTbl[kts[i]];
+		if(meta[ks[0]]){
+			const v=meta[ks[0]]-0;
+			if(v>=0) ts.push({code:gbb[kwTbl._s2t.get(ks[0])],dataId:0,value:v,});
+		}
+		if(meta[ks[1]]){
+			const arr=JSON.parse(meta[ks[1]]),c=gbb[kwTbl._s2t.get(ks[1])];
+			for(let x=0;x!==arr.length;++x){
+				const v=arr[x][1]-0;
+				if(v>=0) ts.push({code:c,dataId:arr[x][0],value:v,});
+			}
+		}
+	}
+},
+];
+}
+
+t=['num_addRepeats',];
+cf(Game_BattlerBase.prototype,t[0],function f(obj){
+	let rtv=f.ori?f.ori.apply(this,arguments):0;
+	if(!f.tbl.tbl){ f.tbl.tbl=[
+		['skill' ,DataManager.isSkill ],
+		['item'  ,DataManager.isItem  ],
+	]; }
+	for(let x=0,arr=f.tbl.tbl;x!==arr.length;++x){
+		const func=arr[x][1];
+		if(!func.call(DataManager,obj)) continue;
+		const kws=f.tbl[arr[x][0]];
+		if(func===DataManager.isSkill && obj===$dataSkills[this.attackSkillId()]) rtv+=this.traitsSum(Game_BattlerBase[f.tbl._s2t.get(kws[1])],f.tbl._normalAtkId);
+		rtv+=this.traitsSumAll(Game_BattlerBase[f.tbl._s2t.get(kws[0])]);
+		rtv+=this.traitsSum(Game_BattlerBase[f.tbl._s2t.get(kws[1])],obj.id);
+	}
+	return rtv;
+},kwTbl);
+cf(Game_Action.prototype,'numRepeats',function f(){
+	let rtv=f.ori.apply(this,arguments);
+	rtv+=this.subject()[f.tbl[0]](this.item());
+	return (rtv>=0?rtv:0)|0;
+},t);
+t=undefined;
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 自動技能，全域的戰鬥atb跑條自動施放
+ * @author agold404
+ * @help on skill's note <autoSkill:[turnAtbCharge,"js_condition"]>
+ * 
+ * "js condition" is a string.
+ * 
+ * or
+ * 
+ * <autoSkill:[turnAtbCharge]>
+ * without "js condition", implying true
+ * 
+ * 這個被天使染指過，說什麼用事件
+ * = =
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw='autoSkill';
+
+const evtcmd_save={code:355,indent:0,parameters:["$gameTemp._autoSkill_atb=$gameTemp._autoSkill_btlr._atbSpeed;  console.log('save'); debugger;"],};
+const evtcmd_wait={code:230,indent:0,parameters:[1],};
+const evtcmd_load={code:355,indent:0,parameters:["$gameTemp._autoSkill_btlr._atbSpeed=$gameTemp._autoSkill_atb;  $gameTemp._autoSkill_btlr=undefined;  console.log('load'); debugger;"],};
+
+{ const p=Scene_Boot.prototype;
+k='start';
+r=p[k]; (p[k]=function f(){
+	$dataSkills.forEach(f.forEach);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+p[k].forEach=dataobj=>{ if(!dataobj) return;
+	const meta=dataobj.meta;
+	if(dataobj[kw]=meta && meta[kw]?JSON.parse(meta[kw]):undefined){
+		if(dataobj[kw].length===1) dataobj[kw].push(undefined);
+		dataobj[kw]._list=[
+			//evtcmd_save,
+			{code:339,indent:0,parameters:[0,0,dataobj.id,-1],},
+			//evtcmd_wait,
+			//evtcmd_load,
+			Game_Interpreter.NOP,
+		];
+		// [(enemy=0,actor=1),actorId_or_enemyIdx,skillId,(last=-2,rnd=-1,(n-1)th),] 
+	}
+};
+}
+
+t=['_atbTicksAll',kw+"_getBtlr","_"+kw,"_"+kw+"_partyIdx","_"+kw+"_btlrIdx",kw,];
+cf(
+cf(
+cf(
+cf(
+BattleManager,'updateATBTicks',function f(){
+	this[f.tbl[0]]+=this.tickRate();
+	return f.ori.apply(this,arguments);
+},t),'startBattle',function f(){
+	this[f.tbl[0]]=0;
+	if(this[f.tbl[2]]) this[f.tbl[2]].clear(); else this[f.tbl[2]]=new Map(); // btlr -> skillLastChargedFull
+	this[f.tbl[4]]=this[f.tbl[3]]=0;
+	return f.ori.apply(this,arguments);
+},t),t[1],function f(firstRetryPara){
+	const curr=[this[f.tbl[3]],this[f.tbl[4]],];
+	if(firstRetryPara && firstRetryPara[0]===curr[0] && firstRetryPara[1]===curr[1]) return;
+	const pt=this[f.tbl[3]]?$gameParty:$gameTroop,idx=this[f.tbl[4]]|0;
+	const arr=pt.allMembers();
+	if(!idx || idx<arr.length){
+		++this[f.tbl[4]];
+		return (!arr[idx] || arr[idx].isHidden())?f.call(this,firstRetryPara||curr):arr[idx];
+	}else{
+		this[f.tbl[3]]^=1;
+		this[f.tbl[4]]=0;
+		return f.call(this,firstRetryPara||curr);
+	}
+},t),'pushActionSkill',function f(btlr,dataobj){
+	const bm=this,skill=dataobj;
+	const info=skill[f.tbl[5]]; if(!info) return;
+	const para=info._list[0].parameters;
+	para[0]=bm[f.tbl[3]];
+	if(btlr.constructor===Game_Actor){
+		if(!f.tbl.cloneId) f.tbl.cloneId={actr:$dataActors.length,}; // enemy is by party index, giveup
+		para[1]=f.tbl.cloneId.actr;
+		const src=btlr.getData();
+		if(!src._autoSkillCloned){
+			const trgt=src._autoSkill_clonedData={};
+			for(let i in src) trgt[i]=src[i];
+			trgt.id=para[1];
+		}
+		$dataActors[para[1]]=src._autoSkill_clonedData;
+		($gameActors._data[para[1]]=JsonEx.makeDeepCopy(btlr))._actorId=para[1];
+	}else{
+		para[1]=bm[f.tbl[4]]-1;
+	}
+	$gameTroop._interpreter.setup(info._list);
+},t);
+cf(
+cf(
+Game_Troop.prototype,'setupBattleEvent',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[1]]();
+	return rtv;
+},t),t[1],function f(){
+	const bm=BattleManager;
+	for(let _=$gameParty.allMembers().length+$gameTroop.allMembers().length;_--;){
+		if(this._interpreter.isRunning()) return true;
+		const btlr=bm[f.tbl[1]](); if(!btlr) continue;
+		const skills=btlr.skills();
+		let obj=bm[f.tbl[2]].get(btlr); if(!obj) bm[f.tbl[2]].set(btlr,obj=new Map());
+		for(let x=0,arr=skills;x!==arr.length;++x){
+			const skill=arr[x];
+			const info=skill[f.tbl[5]]; if(!info) continue;
+			const lastChargingStart=obj.get(skill)|0;
+			{ const _=undefined;
+			if( bm[f.tbl[0]]>=lastChargingStart+info[0] && (info[1]===undefined||eval(info[1])) ) ;
+			else continue;
+			}
+			obj.set(skill,bm[f.tbl[0]]);
+			const para=info._list[0].parameters;
+			para[0]=bm[f.tbl[3]];
+			if(btlr.constructor===Game_Actor){
+				if(!f.tbl.cloneId) f.tbl.cloneId={actr:$dataActors.length,}; // enemy is by party index, giveup
+				para[1]=f.tbl.cloneId.actr;
+				const src=btlr.getData();
+				if(!src._autoSkillCloned){
+					const trgt=src._autoSkill_clonedData={};
+					for(let i in src) trgt[i]=src[i];
+					trgt.id=para[1];
+				}
+				$dataActors[para[1]]=src._autoSkill_clonedData;
+				($gameActors._data[para[1]]=JsonEx.makeDeepCopy(btlr))._actorId=para[1];
+			}else{
+				para[1]=bm[f.tbl[4]]-1;
+			}
+			this._interpreter.setup(info._list);
+		}
+	}
+},t);
+t=undefined;
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 讀取後先執行一些javascript。
+ * @author agold404
+ * @help $gameSystem._onLoadGameJs=[];
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+cf(DataManager,'extractSaveContents',function f(conts){
+	const rtv=f.ori.apply(this,arguments);
+	const arr=$gameSystem._onLoadGameJs;
+	if(arr && arr.length){ for(let x=0;x!==arr.length;++x){
+		try{
+			eval(arr[x]);
+		}catch(e){
+			console.warn('onLoadGameJs fail:',arr[x]);
+		}
+	} }
+	return rtv;
+});
+
+cf(cf(Game_System.prototype,'onLoadGameJs',function(){
+	let rtv=this._onLoadGameJs; if(!rtv) rtv=this._onLoadGameJs=[];
+	return rtv;
+}),'onLoadGameJs_swap',function(idx1,idx2){
+	const arr=this.onLoadGameJs();
+	const tmp=arr[idx1]; arr[idx1]=arr[idx2]; arr[idx2]=tmp;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc MainMenu. ver. 機器人G
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(1)(()=>{ let k,r,t;
+
+t={
+adjCmdPos:function(bm){
+	const sp=this;
+	const sc=sp._sc; if(sc._cmdPos_terminated!==false) return;
+	const cmds=sc._commands,conf=sc._conf_cmdPos,idx=sp._cmdPos_idx,mid=sp._cmdPos_mid;
+	let shx=conf.cmdw;
+	if(sp._cmdPos_side){
+		// R
+		if(idx+1===cmds.length) sc._compos[idx][0]=cmds[idx].x=Graphics.boxWidth-conf.padx-Math.ceil((1-sp.anchor.x)*bm.width);
+		for(let i=idx,x=cmds[idx].x;i--!==mid;) sc._compos[i][0]=cmds[i].x=(x-=conf.cmdw);
+	}else{
+		// L
+		if(!idx) sc._compos[idx][0]=cmds[idx].x=conf.padx+Math.ceil(sp.anchor.x*bm.width);
+		for(let i=idx+1,x=cmds[idx].x;i!==mid;++i) sc._compos[i][0]=cmds[i].x=(x+=conf.cmdw);
+	}
+	sc._compos[idx][1]=sp.y=conf.pady+bm.height*sp.anchor.y;
+},
+hideMogGold:(sp,i)=>{
+	sp.visible=false;
+	sp.alpha=sp.opacity=0;
+	sp.x=-Graphics.boxWidth;
+},
+re:{
+r:/\r/g,
+cmdw:/(^|\n)[ \t]*cmdw[ \t]*=([^\n]+)/,
+padx:/(^|\n)[ \t]*padx[ \t]*=([^\n]+)/,
+pady:/(^|\n)[ \t]*pady[ \t]*=([^\n]+)/,
+namex:/(^|\n)[ \t]*namex[ \t]*=([^\n]+)/,
+namey:/(^|\n)[ \t]*namey[ \t]*=([^\n]+)/,
+namew:/(^|\n)[ \t]*namew[ \t]*=([^\n]+)/,
+nameh:/(^|\n)[ \t]*nameh[ \t]*=([^\n]+)/,
+namedx:/(^|\n)[ \t]*namedx[ \t]*=([^\n]+)/,
+namedy:/(^|\n)[ \t]*namedy[ \t]*=([^\n]+)/,
+goldx:/(^|\n)[ \t]*goldx[ \t]*=([^\n]+)/,
+goldy:/(^|\n)[ \t]*goldy[ \t]*=([^\n]+)/,
+goldw:/(^|\n)[ \t]*goldw[ \t]*=([^\n]+)/,
+goldh:/(^|\n)[ \t]*goldh[ \t]*=([^\n]+)/,
+golda:/(^|\n)[ \t]*golda[ \t]*=([^\n]+)/,
+// goldfsz:/(^|\n)[ \t]*goldfsz[ \t]*=([^\n]+)/,
+},
+defaults:{
+cmdw:48,
+padx:23,
+pady:12,
+namex:408,
+namey:64,
+namew:256,
+nameh:32,
+namedx:0,
+namedy:-200,
+goldx:135,
+goldy:533,
+goldw:148,
+goldh:32,
+golda:"right", // align
+},
+path:"BLR_custom/MainMenu/cmdPos.txt",
+hasMog:undefined,
+hasYep:undefined,
+};
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+Scene_Menu.prototype,'createCommands',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const mid=(this._comList.length|0)-(this._comList.length>>1);
+	this._conf_cmdPos=this.getConfig_cmdPos();
+	for(let i=0|0;i!==this._comList.length;++i){
+		const sp=this._commands[i];
+		sp._sc=this;
+		sp._cmdPos_side=(sp._cmdPos_idx=i)>=(sp._cmdPos_mid=mid);
+		this._compos[i][1]=Moghunter.scMenu_ComY; // ?
+		const bm=sp.bitmap; if(bm) bm.addLoadListener(f.tbl.adjCmdPos.bind(sp));
+	}
+	return rtv;
+},t),'createGold',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._gold_number) this._gold_number.forEach(f.tbl.hideMogGold);
+	this._conf_cmdPos=this.getConfig_cmdPos();
+	if(this._goldSprite) console.warn("not expected already having this._goldSprite");
+	const conf=this.getConfig_cmdPos();
+	const sp=this._goldSprite=new Sprite(new Bitmap(conf.goldw,conf.goldh));
+	if(f.tbl.hasMog) sp.bitmap.fontSize=Moghunter.scMenu_playTimeNumberFontSize; // same as time
+	sp.x=conf.goldx;
+	sp.y=conf.goldy;
+	(this._field||this).addChild(sp);
+	sp._lastVal=undefined;
+	this.refreshGold();
+	return rtv;
+},t),'getGoldVal',function f(){
+	if(f.ori) console.warn("not expected having f.ori");
+	let gold=$gameParty.gold(); if($gameParty.maxGold()<gold && f.tbl.hasYep && Yanfly.Param && Yanfly.Param.GoldOverlap) gold=Yanfly.Param.GoldOverlap;
+	return gold;
+},t),'refreshGold',function f(forced){
+	if(f.ori) console.warn("not expected having f.ori");
+	const gold=this.getGoldVal(),sp=this._goldSprite,conf=this.getConfig_cmdPos();
+	if(!conf || !sp.bitmap || (!forced && sp._lastVal===gold)) return;
+	sp.bitmap.clear();
+	sp.bitmap.drawText(''+(sp._lastVal=gold),0,0,conf.goldw,conf.goldh,conf.golda);
+},t),'_getConfig_cmdPos',function f(){
+	if(f.ori) console.warn("not expected having f.ori");
+	const t=f.tbl;
+	const re=t.re,raw=ImageManager.otherFiles_getData(t.path);
+	const data=raw&&raw.replace(re.r,''); if(!data) console.warn("file:\n",t.path,"\n","not loaded or is empty");
+	const func=data?console.warn:console.log;
+	let cw,px,py,nx,ny,nw,nh,ndx,ndy,gx,gy,gw,gh,ga,gfsz; if(data){ let m;
+		if(m=data.match(re.cmdw)) cw=Number(m[2]);
+		if(m=data.match(re.padx)) px=Number(m[2]);
+		if(m=data.match(re.pady)) py=Number(m[2]);
+		if(m=data.match(re.namex)) nx=Number(m[2]);
+		if(m=data.match(re.namey)) ny=Number(m[2]);
+		if(m=data.match(re.namew)) nw=Number(m[2]);
+		if(m=data.match(re.nameh)) nh=Number(m[2]);
+		if(m=data.match(re.namedx)) ndx=Number(m[2]);
+		if(m=data.match(re.namedy)) ndy=Number(m[2]);
+		if(m=data.match(re.goldx)) gx=Number(m[2]);
+		if(m=data.match(re.goldy)) gy=Number(m[2]);
+		if(m=data.match(re.goldw)) gw=Number(m[2]);
+		if(m=data.match(re.goldh)) gh=Number(m[2]);
+		if(m=data.match(re.golda)) ga=m[2];
+	}
+	if(isNaN(cw  )) func.apply(console,["set cmdw =",cw=t.defaults.cmdw]);
+	if(isNaN(px  )) func.apply(console,["set padx =",px=t.defaults.padx]);
+	if(isNaN(py  )) func.apply(console,["set pady =",py=t.defaults.pady]);
+	if(isNaN(nx  )) func.apply(console,["set namex =",nx=t.defaults.namex]);
+	if(isNaN(ny  )) func.apply(console,["set namey =",ny=t.defaults.namey]);
+	if(isNaN(nw  )) func.apply(console,["set namew =",nw=t.defaults.namew]);
+	if(isNaN(nh  )) func.apply(console,["set nameh =",nh=t.defaults.nameh]);
+	if(isNaN(ndx )) func.apply(console,["set namedx =",ndx=t.defaults.namedx]);
+	if(isNaN(ndy )) func.apply(console,["set namedy =",ndy=t.defaults.namedy]);
+	if(isNaN(gx  )) func.apply(console,["set goldx =",gx=t.defaults.goldx]);
+	if(isNaN(gy  )) func.apply(console,["set goldy =",gy=t.defaults.goldy]);
+	if(isNaN(gw  )) func.apply(console,["set goldw =",gw=t.defaults.goldw]);
+	if(isNaN(gh  )) func.apply(console,["set goldh =",gh=t.defaults.goldh]);
+	if(ga===undefined) func.apply(console,["set golda =",ga=t.defaults.golda]);
+	if(f.tbl.hasMog){
+		Moghunter.scMenu_ComNameX=nx;
+		Moghunter.scMenu_ComNameY=ny;
+	}
+	return ({
+		cmdw:cw,padx:px,pady:py,
+		goldx:gx,goldy:gy,goldw:gw,goldh:gh,
+		golda:ga,
+		namex:nx,namey:ny,namew:nw,nameh:nh,namedx:ndx,namedy:ndy,
+	});
+},t),'getConfig_cmdPos',function f(){
+	return this._conf_cmdPos||(this._conf_cmdPos=this._getConfig_cmdPos());
+},t),'initialize',function f(){
+	const im=ImageManager;
+	im.otherFiles_delData(f.tbl.path);
+	im.otherFiles_addLoad(f.tbl.path);
+	const rtv=f.ori.apply(this,arguments);
+	this._cmdPos_terminated=false;
+	this._conf_cmdPos=undefined;
+	f.tbl.hasMog=typeof Moghunter !=='undefined';
+	f.tbl.hasYep=typeof Yanfly    !=='undefined';
+	return rtv;
+},t),'terminate',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._cmdPos_terminated=true;
+	return rtv;
+},t),'update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.refreshGold();
+	return rtv;
+},t),'createCommandName',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(f.tbl.hasMog){
+		const conf=this.getConfig_cmdPos();
+		this._commandName.bitmap=new Bitmap(conf.namew,conf.nameh);
+		this._commandName.anchor.x=0.5;
+	}
+	return rtv;
+},t),'refreshCommandName',function f(){
+	if(f.tbl.hasMog){
+		const conf=this.getConfig_cmdPos();
+		this._commandNameIndex = this._commandWindow._index;
+		this._commandNameIndex2 = -2;
+		this._commandName.bitmap.clear();
+		this.drawCmdName(this._comList[this._commandNameIndex].name);
+	}else return f.ori.apply(this,arguments);
+},t),'refreshActorName',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(f.tbl.hasMog){
+		this._commandNameIndex = -2;
+		this._commandNameIndex2 = this._statusWindow._index;
+		this._commandName.bitmap.clear();
+		const actor=$gameParty.members()[this._statusWindow._index];
+		if(!actor) return;
+		this.drawCmdName(actor.name());
+	}
+	return rtv;
+},t),'drawCmdName',function f(txt){
+	if(f.ori) console.warn("not expected having f.ori");
+	// cmd name, actr name. supposed bitmap cleared, first draw, so opacity=0
+	const conf=this.getConfig_cmdPos();
+	this._commandName.bitmap.drawText(txt,0,0,conf.namew,conf.nameh,"center");
+	this._commandName.x=conf.namex+conf.namedx;
+	this._commandName.y=conf.namey+conf.namedy;
+	this._commandName.opacity=0;
+});
+t=undefined;
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 變數價格商店
+ * @author agold404
+ * @help .
+ * 
+ * $gameTemp.varBuyPrice=[ [type,itemId,varId_or_jsFunc,n-th], ... ];
+ * type = 'i' or 'w' or 'a'
+ * n-th counts from 1, meaning only n-th type[itemId] apply this varPrice. if n-th not >0, then it will apply to all type[itemId] goods.
+ * fractions in n-th will be tructated.
+ * value of n-th not >0 treated same.
+ * same n-th setting to same item use last config.
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t='deprecated function. please use ';
+
+cf(
+cf(
+Scene_Shop.prototype,'terminate',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	$gameTemp.varBuyPrice=undefined;
+	return rtv;
+}),'buyingPrice',function f(){
+	const w=this._buyWindow;
+	return w.priceByIdx(w.index());
+},undefined,true,true);
+
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+cf(
+Window_ShopBuy.prototype,'makeItemList',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._priceByFunc) this._priceByFunc.clear(); else this._priceByFunc=new Map();
+	if(!f.tbl) f.tbl=new Map([['i',$dataItems],['w',$dataWeapons],['a',$dataArmors]]);
+	if($gameTemp.varBuyPrice && $gameTemp.varBuyPrice.length>=0){
+		const data=new Map(),arr=$gameTemp.varBuyPrice,ctr=new Map();
+		for(let x=0;x!==arr.length;++x){
+			const cont=f.tbl.get(arr[x][0]);
+			const dataobj=cont&&cont[arr[x][1]]; if(!dataobj) continue;
+			let m=data.get(dataobj); if(!m) data.set(dataobj,m=new Map());
+			arr[x][3]|=0;
+			m.set(0<arr[x][3]?arr[x][3]:undefined,arr[x][2]);
+		}
+		for(let x=0,arr=this._data;x!==arr.length;++x){ if(data.has(arr[x])){
+			const cnt=(ctr.get(arr[x])|0)+1;
+			ctr.set(arr[x],cnt);
+			const m=data.get(arr[x]);
+			let info; // gameVarId or jsFunc
+			if(m.has(cnt)) info=m.get(cnt);
+			else if(m.has(undefined)) info=m.get(undefined);
+			else continue;
+			if(info!==undefined){
+				if(info && info.constructor===Function){
+					this._priceByFunc.set(info,this._price[x]=info());
+				}else this._price[x]=$gameVariables.value(info);
+			}
+		} }
+	}
+	return rtv;
+}),'price',function f(){
+	console.warn(f.tbl[0]);
+	alert(f.tbl[0]);
+	debugger;
+	return f.ori.apply(this,arguments);
+},[t+'priceByIdx',]),'isEnabledByIdx',function f(idx){
+	return this._data[idx] && this.priceByIdx(idx) <= this._money && !$gameParty.hasMaxItems(this._data[idx]);
+},undefined,true,true),'isEnabled',function f(){
+	console.warn(f.tbl[0]);
+	alert(f.tbl[0]);
+	debugger;
+	return f.ori.apply(this,arguments);
+},[t+'isEnabledByIdx',]),'drawItem',function f(idx){
+	const item = this._data[idx] , rect = this.itemRect(idx) , priceWidth = f.tbl[0];
+	rect.width-=this.textPadding();
+	this.changePaintOpacity(this.isEnabledByIdx(idx));
+	this.drawItemName(item, rect.x, rect.y, rect.width - priceWidth);
+	this.drawText(this.priceByIdx(idx), rect.x + rect.width - priceWidth, rect.y, priceWidth, 'right');
+	this.changePaintOpacity(true);
+},[96,],true,true),'priceByIdx',function f(idx){
+	return this._price[idx]||0;
+}),'isCurrentItemEnabled',function f(){
+	return this.isEnabledByIdx(this.index());
+},undefined,true,true),'update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this.active && this._priceByFunc.size){
+		const res={diff:false,};
+		this._priceByFunc.forEach(f.tbl[0].bind(res));
+		if(res.diff) this.refresh();
+	}
+	return rtv;
+},[
+function(v,k){
+	if(k()!==v) this.diff=true;
+},
+]);
 
 })();
 
@@ -15191,6 +16782,7 @@ r=p[k]; (p[k]=function f(){
 	if(arguments[0] && arguments[0].constructor===String) arguments[0]=arguments[0]
 		.replace(/(?<![0-9])89\.34%/g,'89.64%')
 		.replace(/(?<=被)激活/g,'啟動')
+		.replace(/組合拳(?!套)/g,'連續技')
 		.replace(/(?<![刺偏])激活/g,'啟用')
 		.replace(/(?<=遺漏的)信息(?=，)/g,'訊息')
 		.replace(/(?<=根本不是同一個)水平(?=的)/g,'等級')
@@ -15206,7 +16798,9 @@ r=p[k]; (p[k]=function f(){
 	$dataItems   .forEach(f.tbl[0]);
 	$dataWeapons .forEach(f.tbl[0]);
 	$dataArmors  .forEach(f.tbl[0]);
-	return f.ori.apply(this,arguments);
+	const rtv=f.ori.apply(this,arguments);
+	console.log("MOG_Weather_EX.js is coded the worst I've ever seen.","So bad that you should directly edit it.");
+	return rtv;
 }).ori=r;
 p[k].tbl=[
 dataobj=>{ if(!dataobj || !dataobj.description) return;
@@ -15256,8 +16850,8 @@ p[k].tbl=[
 function(f){ if(!f()) this.push(f); },
 ];
 k='add_additionalUpdate';
-r=p[k]; (p[k]=function f(func,isBefore){
-	const arr=isBefore?this.additionalUpdates_before():this.additionalUpdates_after();
+r=p[k]; (p[k]=function f(func,isAfter){
+	const arr=isAfter?this.additionalUpdates_after():this.additionalUpdates_before();
 	arr.push(func);
 }).ori=r;
 }
