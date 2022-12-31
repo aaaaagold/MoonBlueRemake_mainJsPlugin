@@ -37,7 +37,15 @@ const cf=(p,k,f,tbl,is_putDeepest,is_notUsingOri)=>{
 	f.tbl=tbl;
 	return p;
 };
-
+function cfc(p){
+	if(this===window || (typeof globalThis!=='undefined'&&this===globalThis)) throw new Error('call a constructor without new');
+	this._p=p;
+}
+cfc.prototype.constructor=cfc;
+cfc.prototype.add=function(key,f,t,d,u){
+	cf(this._p,key,f,t,d,u);
+	return this;
+};
 
 /*
 短到不想變成插件的東西們
@@ -135,7 +143,14 @@ const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	if(typeof $gameMessage!=='undefined' && $gameMessage.popup) $gameMessage.popup("已複製: "+s.replace(/\\/g,"\\\\"),1);
 };
 
-Game_Interpreter.NOP={code:0,indent:0,parameters:[],};
+{ const a=Game_Interpreter,p=a.prototype;
+a.NOP={code:0,indent:0,parameters:[],};
+// prevent being slow due to getting non-exists property
+for(let x=0,arr=[0,404,];x!==arr.length;++x){
+	const key='command'+arr[x];
+	p[key]=p[key]||undefined;
+}
+}
 cf(Game_System.prototype,'initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._rndId=LZString.compressToBase64(''+Date.now()+Math.random()+Math.random()).slice(11);
@@ -1617,7 +1632,7 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 }
 
 { const p=Game_Battler.prototype;
-p.evalSelWeight=function(setting,options){
+p.evalSelWeight=function(setting,options,act){
 	if(options && options.useTgr) return this.tgr;
 	let rtv=0;
 	if(setting.script){
@@ -1633,14 +1648,14 @@ p.evalSelWeight=function(setting,options){
 }
 
 { const p=Game_Unit.prototype;
-p.selectRandomTargetFrom=(arr,setting,options)=>{
+p.selectRandomTargetFrom=(arr,setting,options,act)=>{
 	let sum=0,isRnd=false,res=[];
 	options=options||{};
 	if(!setting) options.useTgr=isRnd=true;
 	else if(!setting.isPriority) isRnd=true;
 	let maxVal=-Infinity,maxValIdxv=[];
 	for(let x=0,w;x!==arr.length;++x){
-		w=arr[x].evalSelWeight(setting,options);
+		w=arr[x].evalSelWeight(setting,options,act);
 		if(isRnd) w=w>=0?w:0;
 		if(w>=maxVal){
 			if(maxVal!==w){
@@ -1661,12 +1676,12 @@ p.selectRandomTargetFrom=(arr,setting,options)=>{
 k='randomTarget';
 r=p[k]; (p[k]=function f(act,options){
 	const item=act&&act.item();
-	return this.selectRandomTargetFrom(options&&options.ignoreIfDead?this.members():this.aliveMembers(),item&&item.rndSelWeights,options);
+	return this.selectRandomTargetFrom(options&&options.ignoreIfDead?this.members():this.aliveMembers(),item&&item.rndSelWeights,options,act);
 }).ori=r;
 k='randomDeadTarget';
 r=p[k]; (p[k]=function f(act,options){
 	const item=act&&act.item();
-	return this.selectRandomTargetFrom(options&&options.ignoreIfDead?this.members():this.deadMembers(),item&&item.rndSelWeights,options);	
+	return this.selectRandomTargetFrom(options&&options.ignoreIfDead?this.members():this.deadMembers(),item&&item.rndSelWeights,options,act);
 //	const members=options.ignoreIfDead?this.members():this.deadMembers();
 //	if(!members.length) return null;
 //	return members[Math.floor(Math.random() * members.length)];
@@ -6649,7 +6664,7 @@ Game_Enemy[t][k]=Game_Actor[t][k]=function(){ return this.getData().meta; };
  * 
  * 
  * $gameScreen.clearNoiseEffect(noise_type);
- * $gameScreen.setNoiseEffect(noise_type,[冷卻時間_單位幀,持續時間_單位幀,橫向長度_畫面比例,冷卻後產生的機率_每幀隨機一次]);
+ * $gameScreen.setNoiseEffect(noise_type,[冷卻時間_單位幀,持續時間_單位幀,橫向長度_畫面比例,冷卻後產生的機率_每幀隨機一次,負片機率預設=0]);
  * 
  * 
  * This plugin can be renamed as you want.
@@ -6745,7 +6760,7 @@ t=p.renderNoiseEffect_h=function f(){
 			return gc2.style.display="none";
 		}
 	}
-	const argv=$gameScreen.noiseEffectArgv(1); // [ CD , 持續 , 長度(遊戲畫面比例) , 每幀機率]
+	const argv=$gameScreen.noiseEffectArgv(1); // [ CD , 持續 , 長度(遊戲畫面比例) , 每幀機率 , 負片機率]
 	if(gc2.style.width!==c.style.width) gc2.style.width=c.style.width;
 	if(gc2.style.height!==c.style.height) gc2.style.height=c.style.height;
 	
@@ -6782,11 +6797,28 @@ t=p.renderNoiseEffect_h=function f(){
 		{
 			lenO>>=3;
 			lenO+=nh>>1;
+			let tmpc2,tmpctx2;
+			if(prm[4]){
+				tmpc2=f.tmpc2||(f.tmpc2=document.createElement('canvas'));
+				const c=tmpctx.canvas;
+				tmpc2.width  =c.width  ;
+				tmpc2.height =c.height ;
+				tmpctx2=tmpc2.getContext('2d');
+				tmpctx2.fillStyle='rgba(255,255,255,1)';
+				tmpctx2.fillRect(0,0,tmpc.width,tmpc.height);
+				tmpctx2.globalCompositeOperation='difference';
+			}
 			if(prm[3][0]){
-				tmpctx.drawImage(c,0,prm[3][1],lenO,nh,0,0,tmpc.width,tmpc.height);
+				if(prm[4]){
+					tmpctx2.drawImage(c,0,prm[3][1],lenO,nh,0,0,tmpc.width,tmpc.height);
+					tmpctx.drawImage(tmpc2,0,0);
+				}else tmpctx.drawImage(c,0,prm[3][1],lenO,nh,0,0,tmpc.width,tmpc.height);
 				ctx2.drawImage(tmpc,0,prm[3][1]>>2);
 			}else{
-				tmpctx.drawImage(c,c.width-lenO,prm[3][1],lenO,nh,0,0,tmpc.width,tmpc.height);
+				if(prm[4]){
+					tmpctx2.drawImage(c,c.width-lenO,prm[3][1],lenO,nh,0,0,tmpc.width,tmpc.height);
+					tmpctx.drawImage(tmpc2,0,0);
+				}else tmpctx.drawImage(c,c.width-lenO,prm[3][1],lenO,nh,0,0,tmpc.width,tmpc.height);
 				ctx2.drawImage(tmpc,w-lenM,prm[3][1]>>2);
 			}
 		}
@@ -6797,7 +6829,7 @@ t=p.renderNoiseEffect_h=function f(){
 	{ const tmp=f.tbl; f.tbl=f.tbl2; f.tbl2=tmp; tmp.length=1; }
 	if(argv && Graphics.frameCount-f.tbl[0]>=argv[0] && Math.random()<argv[3]){
 		f.tbl[0]=Graphics.frameCount;
-		f.tbl.push([Graphics.frameCount,argv[1],argv[2],[Math.random()<0.5,(c.height+nh)*Math.random()-nh,]]);
+		f.tbl.push([Graphics.frameCount,argv[1],argv[2],[Math.random()<0.5,(c.height+nh)*Math.random()-nh,],Math.random()<argv[4],]);
 		// frm_strt,ctr_max,len_ratio,[LR,y]
 	}
 	if(gc2.style.display==="none") gc2.style.display="";
@@ -6837,7 +6869,7 @@ t=p.renderNoiseEffect_v=function f(){
 			return gc2.style.display="none";
 		}
 	}
-	const argv=$gameScreen.noiseEffectArgv(2); // [ CD , 持續 , 長度(遊戲畫面比例) , 每幀機率]
+	const argv=$gameScreen.noiseEffectArgv(2); // [ CD , 持續 , 長度(遊戲畫面比例) , 每幀機率 , 負片機率]
 	if(gc2.style.width!==c.style.width) gc2.style.width=c.style.width;
 	if(gc2.style.height!==c.style.height) gc2.style.height=c.style.height;
 	
@@ -6874,11 +6906,28 @@ t=p.renderNoiseEffect_v=function f(){
 		{
 			lenO>>=3;
 			lenO+=nw>>1;
+			let tmpc2,tmpctx2;
+			if(prm[4]){
+				tmpc2=f.tmpc2||(f.tmpc2=document.createElement('canvas'));
+				const c=tmpctx.canvas;
+				tmpc2.width  =c.width  ;
+				tmpc2.height =c.height ;
+				tmpctx2=tmpc2.getContext('2d');
+				tmpctx2.fillStyle='rgba(255,255,255,1)';
+				tmpctx2.fillRect(0,0,tmpc.width,tmpc.height);
+				tmpctx2.globalCompositeOperation='difference';
+			}
 			if(prm[3][1]){
-				tmpctx.drawImage(c, prm[3][0],0,nw,lenO, 0,0,tmpc.width,tmpc.height);
+				if(prm[4]){
+					tmpctx2.drawImage(c, prm[3][0],0,nw,lenO, 0,0,tmpc.width,tmpc.height);
+					tmpctx.drawImage(tmpc2,0,0);
+				}else tmpctx.drawImage(c, prm[3][0],0,nw,lenO, 0,0,tmpc.width,tmpc.height);
 				ctx2.drawImage(tmpc,prm[3][0]>>2,0);
 			}else{
-				tmpctx.drawImage(c, prm[3][0],c.height-lenO,nw,lenO, 0,0,tmpc.width,tmpc.height);
+				if(prm[4]){
+					tmpctx2.drawImage(c, prm[3][0],c.height-lenO,nw,lenO, 0,0,tmpc.width,tmpc.height);
+					tmpctx.drawImage(tmpc2,0,0);
+				}else tmpctx.drawImage(c, prm[3][0],c.height-lenO,nw,lenO, 0,0,tmpc.width,tmpc.height);
 				ctx2.drawImage(tmpc,prm[3][0]>>2,h-lenM);
 			}
 		}
@@ -6889,7 +6938,7 @@ t=p.renderNoiseEffect_v=function f(){
 	{ const tmp=f.tbl; f.tbl=f.tbl2; f.tbl2=tmp; tmp.length=1; }
 	if(argv && Graphics.frameCount-f.tbl[0]>=argv[0] && Math.random()<argv[3]){
 		f.tbl[0]=Graphics.frameCount;
-		f.tbl.push([Graphics.frameCount,argv[1],argv[2],[(c.width+nw)*Math.random()-nw,Math.random()<0.5,]]);
+		f.tbl.push([Graphics.frameCount,argv[1],argv[2],[(c.width+nw)*Math.random()-nw,Math.random()<0.5,],Math.random()<argv[4],]);
 		// frm_strt,ctr_max,len_ratio,[x,UD]
 	}
 	if(gc2.style.display==="none") gc2.style.display="";
@@ -7347,7 +7396,11 @@ p.addSeries=function(key,bm){
 };
 }
 
-{
+cf(Scene_Boot,'loadSystemImages',function f(){
+	f.tbl[0]();
+	return f.ori.apply(this,arguments);
+},[
+()=>{
 	const rsrvId='-'+Math.random();
 	const base=ImageManager.reserveSystem('IconSet');
 	const buff=ImageManager.reserveSystem(buffIconImgName,undefined,rsrvId);
@@ -7369,7 +7422,8 @@ p.addSeries=function(key,bm){
 		if(base.isReady()) f();
 		else buff.addLoadListener(f);
 	});
-}
+},
+]);
 
 })();
 
@@ -9010,7 +9064,7 @@ for(let x=0,s=new Set();x!==keys.length;++x) if(s.has(keys[x])) throw new Error(
 idxv.push(Infinity);
 
 { const p=Scene_Battle.prototype;
-p.itemShortCutFly=function(){
+p.itemShortcutFly=function(){
 	const sc=SceneManager._scene;
 	if(sc._partyCommandWindow.active) return;
 	const cmdW=sc._actorCommandWindow,itemW=sc._itemWindow;
@@ -9033,7 +9087,7 @@ p.itemShortCutFly=function(){
 };
 k='update';
 r=p[k]; (p[k]=function f(){
-	this.itemShortCutFly();
+	this.itemShortcutFly();
 	return f.ori.apply(this,arguments);
 }).ori=r;
 }
@@ -11152,6 +11206,7 @@ p.radiusWaveEffect_push=function(argv){
 	// 	init_raduis_pixel , radius_inc_speed_pixel >= 1 , thickness_pixel >= 1 ,
 	// 	curr_frames >=0 , total_inc_duration_in_frames >= 1 , fade_out_start_in_last_N_frames ,
 	// 	pass2_arr_op_filled ,
+	//	bool_allTheWay:noHole?
 	// ]
 	if(isNaN(argv[0])||isNaN(argv[1])) return;
 	argv[0]|=0;
@@ -11228,6 +11283,9 @@ p._radiusWaveEffect_getFramesTotalFradeOut=function(id){
 p._radiusWaveEffect_getPass2=function(id){
 	return this.radiusWaveEffect_get(id)[8];
 };
+p._radiusWaveEffect_getAllTheWay=function(id){
+	return this.radiusWaveEffect_get(id)[9];
+};
 p.radiusWaveEffect_incFrame=function(id,d){
 	if(d===undefined) d=1;
 	const rtv=this._radiusWaveEffect_getFramesCurr(id)+d;
@@ -11255,12 +11313,15 @@ p.radiusWaveEffect_getRadius_inner=function(id){
 p.radiusWaveEffect_getPass2=function(id){
 	return this._radiusWaveEffect_getPass2(id);
 };
-p.radiusWaveEffect_gen=function(x,y,thickness,speed,duration,fadeOutFrames,pass2){
+p.radiusWaveEffect_getAllTheWay=function(id){
+	return this._radiusWaveEffect_getAllTheWay(id);
+};
+p.radiusWaveEffect_gen=function(x,y,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
 	if(!(speed>=1)) speed=8;
 	if(!(thickness>=1)) thickness=64;
 	if(!(duration>=1)) duration=128+~~(Math.random()*32);
 	if(!(fadeOutFrames>=0)) fadeOutFrames=16+~~(Math.random()*4);
-	this.radiusWaveEffect_push([x,y,0,speed,thickness,0,duration,fadeOutFrames,pass2]);
+	this.radiusWaveEffect_push([x,y,0,speed,thickness,0,duration,fadeOutFrames,pass2,allTheWay]);
 };
 }
 
@@ -11304,12 +11365,13 @@ t=p.renderRadiusWaveEffect=function f(){
 	
 	const mwh2=Math.max(c.width,c.height)<<1,mwhs=Math.max(w,h)<<1;
 	const ctx2=gc2.getContext('2d'); ctx2.clearRect(0,0,w,h);
-	for(let x=0,xs=effCnt,unit=1<<shrinkBits,r,r2,ri,rs,rs2,ris,alpha,tmpc=f.tmpc,xyss,tmpctx,grd,pass2,xy,xo,yo,xe,ye,xso,yso,xse,yse,shiftx,shifty,shiftxs,shiftys,tmp;x!==xs;++x){
+	for(let x=0,xs=effCnt,unit=1<<shrinkBits,r,r2,ri,rs,rs2,ris,alpha,tmpc=f.tmpc,xyss,tmpctx,grd,pass2,xy,xo,yo,xe,ye,xso,yso,xse,yse,allTheWay,tmp;x!==xs;++x){
 		r=$gameScreen.radiusWaveEffect_getRadius(x);
 		ri=$gameScreen.radiusWaveEffect_getRadius_inner(x);
 		alpha=$gameScreen.radiusWaveEffect_getCssOpacity(x);
 		pass2=$gameScreen.radiusWaveEffect_getPass2(x);
 		xy=$gameScreen.radiusWaveEffect_getPos(x);
+		allTheWay=$gameScreen.radiusWaveEffect_getAllTheWay(x);
 		
 		rs=r/unit;
 		ris=ri/unit;
@@ -11344,19 +11406,29 @@ t=p.renderRadiusWaveEffect=function f(){
 		tmpctx.globalCompositeOperation='source-over';
 		{
 			if(ri>=0){
-				grd=tmpctx.createRadialGradient(rs-shiftxs,rs-shiftys,ris,rs-shiftxs,rs-shiftys,rs);
-				grd.addColorStop(f.tbl[0], "rgba(0,0,0,0)");
-				grd.addColorStop(f.tbl[1], "rgba(0,0,0,"+alpha+")");
-				grd.addColorStop(f.tbl[2], "rgba(0,0,0,"+alpha+")");
-				grd.addColorStop(f.tbl[3], "rgba(0,0,0,0)");
+				if(allTheWay){
+					grd=tmpctx.createRadialGradient(rs-shiftxs,rs-shiftys,ris,rs-shiftxs,rs-shiftys,rs);
+					grd.addColorStop(f.tbl[0], "rgba(0,0,0,"+alpha+")");
+					grd.addColorStop(f.tbl[2], "rgba(0,0,0,"+alpha+")");
+					grd.addColorStop(f.tbl[3], "rgba(0,0,0,0)");
+				}else{
+					grd=tmpctx.createRadialGradient(rs-shiftxs,rs-shiftys,ris,rs-shiftxs,rs-shiftys,rs);
+					grd.addColorStop(f.tbl[0], "rgba(0,0,0,0)");
+					grd.addColorStop(f.tbl[1], "rgba(0,0,0,"+alpha+")");
+					grd.addColorStop(f.tbl[2], "rgba(0,0,0,"+alpha+")");
+					grd.addColorStop(f.tbl[3], "rgba(0,0,0,0)");
+				}
 			}else if(r>0){
 				grd=tmpctx.createRadialGradient(rs-shiftxs,rs-shiftys,0,rs-shiftxs,rs-shiftys,rs);
-				const r0=-ri/(r-ri);
+				const r0=1-r/(r-ri);
 				const unit=1-r0;
 				if(r0<f.tbl[0]){
 				}else if(r0<f.tbl[1]){
-					grd.addColorStop(f.tbl[0], "rgba(0,0,0,"+((r0-f.tbl[0])/(f.tbl[1]-f.tbl[0]))*alpha+")");
-					grd.addColorStop((f.tbl[1]-r0)/unit, "rgba(0,0,0,"+alpha+")");
+					if(allTheWay) grd.addColorStop(f.tbl[0], "rgba(0,0,0,"+alpha+")");
+					else{
+						grd.addColorStop(f.tbl[0], "rgba(0,0,0,"+((r0-f.tbl[0])/(f.tbl[1]-f.tbl[0]))*alpha+")");
+						grd.addColorStop((f.tbl[1]-r0)/unit, "rgba(0,0,0,"+alpha+")");
+					}
 					grd.addColorStop((f.tbl[2]-r0)/unit, "rgba(0,0,0,"+alpha+")");
 					grd.addColorStop((f.tbl[3]-r0)/unit, "rgba(0,0,0,0)");
 				}else if(r0<f.tbl[2]){
@@ -11408,7 +11480,7 @@ t.tmpc2=document.createElement('canvas');
 }
 
 { const p=BattleManager;
-p.radiusWaveEffect_genAtBtlr=function f(btlr,dx,dy,thickness,speed,duration,fadeOutFrames,pass2){
+p.radiusWaveEffect_genAtBtlr=function f(btlr,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
 	if(btlr&&btlr.constructor===Array){
 		for(let x=0;x!==btlr.length;++x) f.call(this,btlr[x],dx,dy,thickness,speed,duration,fadeOutFrames,pass2);
 		return;
@@ -11416,22 +11488,22 @@ p.radiusWaveEffect_genAtBtlr=function f(btlr,dx,dy,thickness,speed,duration,fade
 	const sc=SceneManager._scene;
 	const sp=sc._btlr2sp&&sc._btlr2sp.get(btlr); if(!sp) return;
 	dx|=0; dy|=0;
-	$gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2);
+	$gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
 };
-p.radiusWaveEffect_genAtTarget=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2){
-	return this.radiusWaveEffect_genAtBtlr(this._targets,dx,dy,thickness,speed,duration,fadeOutFrames,pass2);
+p.radiusWaveEffect_genAtTarget=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
+	return this.radiusWaveEffect_genAtBtlr(this._targets,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
 };
-p.radiusWaveEffect_genAtSubject=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2){
-	return this.radiusWaveEffect_genAtBtlr(this._subject,dx,dy,thickness,speed,duration,fadeOutFrames,pass2);
+p.radiusWaveEffect_genAtSubject=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
+	return this.radiusWaveEffect_genAtBtlr(this._subject,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
 };
 }
 
 { const p=Game_Character.prototype;
-p.radiusWaveEffect_gen=function(dx,dy,thickness,speed,duration,fadeOutFrames,pass2){
+p.radiusWaveEffect_gen=function(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
 	const sc=SceneManager._scene;
 	const sp=sc._chr2sp&&sc._chr2sp.get(this); if(!sp) return;
 	dx|=0; dy|=0;
-	$gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2);
+	$gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
 };
 }
 
@@ -16232,7 +16304,7 @@ r=p[k]; (p[k]=function f(){
 p[k].forEach=dataobj=>{ if(!dataobj) return;
 	const meta=dataobj.meta;
 	if(dataobj[kw]=meta && meta[kw]?JSON.parse(meta[kw]):undefined){
-		if(dataobj[kw].length===1) dataobj[kw].push(undefined);
+		if(dataobj[kw].length===1) dataobj[kw].push(undefined); // cache access property [1]
 		dataobj[kw]._list=[
 			//evtcmd_save,
 			{code:339,indent:0,parameters:[0,0,dataobj.id,-1],},
@@ -16240,7 +16312,10 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 			//evtcmd_load,
 			Game_Interpreter.NOP,
 		];
-		// [(enemy=0,actor=1),actorId_or_enemyIdx,skillId,(last=-2,rnd=-1,(n-1)th),] 
+		// [(enemy=0,actor=1),actorId_or_enemyIdx,skillId,(last=-2,rnd=-1,(n-1)th; will be changed to user if ._isForUser ),] 
+		if(dataobj[kw]._isForUser=dataobj.scope===11){
+			dataobj.scope=7; // target type has no label in Game_Action
+		}
 	}
 };
 }
@@ -16271,10 +16346,12 @@ BattleManager,'updateATBTicks',function f(){
 		this[f.tbl[4]]=0;
 		return f.call(this,firstRetryPara||curr);
 	}
-},t),'pushActionSkill',function f(btlr,dataobj){
+},t),'pushActionSkill',function f(itrp,btlr,dataobj){
 	const bm=this,skill=dataobj;
 	const info=skill[f.tbl[5]]; if(!info) return;
+	
 	const para=info._list[0].parameters;
+	// set user
 	para[0]=bm[f.tbl[3]];
 	if(btlr.constructor===Game_Actor){
 		if(!f.tbl.cloneId) f.tbl.cloneId={actr:$dataActors.length,}; // enemy is by party index, giveup
@@ -16290,7 +16367,12 @@ BattleManager,'updateATBTicks',function f(){
 	}else{
 		para[1]=bm[f.tbl[4]]-1;
 	}
-	$gameTroop._interpreter.setup(info._list);
+	// set target if scope=="user"(11)
+	if(info._isForUser){
+		if((para[3]=btlr.index())<0) return;
+	}else para[3]=-1; // rnd=-1
+	itrp.setup(info._list);
+	return true;
 },t);
 cf(
 cf(
@@ -16299,9 +16381,12 @@ Game_Troop.prototype,'setupBattleEvent',function f(){
 	this[f.tbl[1]]();
 	return rtv;
 },t),t[1],function f(){
-	const bm=BattleManager;
-	for(let _=$gameParty.allMembers().length+$gameTroop.allMembers().length;_--;){
-		if(this._interpreter.isRunning()) return true;
+	// supposed: 1 at a time.
+	// it's important. the whole design is based on above.
+	const itrp=this._interpreter;
+	if(itrp.isRunning()) return true;
+	const bm=BattleManager,pta=$gameParty.allMembers(),pte=$gameTroop.allMembers();
+	for(let _=pta.length+pte.length;_--;){
 		const btlr=bm[f.tbl[1]](); if(!btlr) continue;
 		const skills=btlr.skills();
 		let obj=bm[f.tbl[2]].get(btlr); if(!obj) bm[f.tbl[2]].set(btlr,obj=new Map());
@@ -16314,23 +16399,8 @@ Game_Troop.prototype,'setupBattleEvent',function f(){
 			else continue;
 			}
 			obj.set(skill,bm[f.tbl[0]]);
-			const para=info._list[0].parameters;
-			para[0]=bm[f.tbl[3]];
-			if(btlr.constructor===Game_Actor){
-				if(!f.tbl.cloneId) f.tbl.cloneId={actr:$dataActors.length,}; // enemy is by party index, giveup
-				para[1]=f.tbl.cloneId.actr;
-				const src=btlr.getData();
-				if(!src._autoSkillCloned){
-					const trgt=src._autoSkill_clonedData={};
-					for(let i in src) trgt[i]=src[i];
-					trgt.id=para[1];
-				}
-				$dataActors[para[1]]=src._autoSkill_clonedData;
-				($gameActors._data[para[1]]=JsonEx.makeDeepCopy(btlr))._actorId=para[1];
-			}else{
-				para[1]=bm[f.tbl[4]]-1;
-			}
-			this._interpreter.setup(info._list);
+			
+			if(bm.pushActionSkill(itrp,btlr,skill)) return;
 		}
 	}
 },t);
@@ -16705,6 +16775,220 @@ function(v,k){
 	if(k()!==v) this.diff=true;
 },
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 多組選項相連
+ * @author agold404
+ * @help 1-line comment: @CONCAT between two concequent "Show Choices"
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+/*
+## build-in flow ##
+when choose:
+	set ($gameMessage) this._branch[this._indent] = n;
+		// cancel: n=-2 ; others: from 0
+*/
+
+new cfc(Game_Interpreter.prototype).add('setupChoices',function f(params){
+	this._setupChoices_concat(arguments);
+	return f.ori.apply(this,arguments);
+}).add('_setupChoices_concat_findCmdEnd',function f(strt,indent,setCmd402Param0From){
+	// no error check
+	// setCmd402Param0From:
+	//	Expected to be int.
+	//	if >=0, set following cmd402's param0 from 'setCmd402Param0From'.
+	// 	i.e. the first encounting cmd402's param0 will be set to setCmd402Param0From, the second will be set to setCmd402Param0From+1, and so on.
+	// cmd404 === cmd_ShowChoices's end
+	let rtv=strt;
+	for(const arr=this._list;arr[rtv]&&(indent<arr[rtv].indent||404!==arr[rtv].code);++rtv){
+		if(setCmd402Param0From>=0 && indent===arr[rtv].indent && arr[rtv].code===402){
+			arr[rtv].parameters[0]=setCmd402Param0From++;
+		}
+	}
+	return rtv;
+}).add('_setupChoices_concat',function f(args){
+	// suppose params=args[0] and is the object in '$dataMap'
+	let b=this._index;
+	const strt=b,indent=this._indent,cmds=this._list;
+	if(cmds[strt]._setupChoices_concat_isDetected) return; // another detecting guard: not modifying again
+	
+	let params=args[0];
+if(0){
+	// prevent modifying oringinal data
+	args[0]=params=params.slice();
+	params[0]=params[0].slice();
+}
+	let defaultChoice=params[2];
+	
+	const setIndentTo=indent+1; // Math.max(999999,this._indent+99999); // match the behavior of 'skipBranch'
+	for(let choicesCnt;;){
+		b=this._setupChoices_concat_findCmdEnd(b,indent,choicesCnt)+1;
+		//console.log(b); // debug
+		if(!cmds[b-1] || cmds[b-1].indent<indent || !cmds[b] || cmds[b].code!==108 || !cmds[b].parameters || cmds[b].parameters[0]!==f.tbl[0] || !cmds[b+1] || cmds[b+1].code!==102) break;
+		choicesCnt=params[0].length;
+		++b;
+		cmds[b].parameters[0].forEach(f.tbl[1],params[0]);
+		// modify so that it won't be detected again.
+		{
+			// [... cmd0, chEnd, comment, ...]
+			//                   ^b
+			for(let x=3;x--;){
+				cmds[b-x].code=0;
+				cmds[b-x].indent=setIndentTo;
+			}
+		}
+		// set default if needed
+		if(!(defaultChoice>=0)&&cmds[b].parameters[2]>=0) defaultChoice=cmds[b].parameters[2]-(-choicesCnt);
+	}
+	params[2]=defaultChoice;
+	cmds[strt]._setupChoices_concat_isDetected=true; // another detecting guard
+	return b;
+},[
+"@CONCAT",
+function(chLabel){
+	this.push(chLabel);
+},
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc tilemapColorTone
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw='tilemapColorTone';
+t=[kw,"_"+kw,];
+t.push(t[1]+"_color",t[1]+"_ratio"); // 2,3
+t.push(t[1]+"_ignore",t[1]+"_last"); // 4,5
+for(let x=1;x!==6;++x) t.push((t[x]+"_get").slice(1),(t[x]+"_set").slice(1),);
+t.push([undefined,undefined]); // 16
+t.push(t[1]+"_dirty"); // 17
+t.push(new Set([Tilemap,ShaderTilemap])); // 18
+
+for(let x=0,arr=[Game_Screen,Sprite,Tilemap];x!==arr.length;++x){
+new cfc(arr[x].prototype).add(t[6],function f(currColorTone){
+	return [this[f.tbl[2]]||[],this[f.tbl[3]],];
+},t).add(t[7],function f(c,r){
+	this[f.tbl[2]]=c;
+	this[f.tbl[3]]=r;
+},t).add(t[8],function f(){
+	return this[f.tbl[2]];
+},t).add(t[9],function f(c){
+	return this[f.tbl[2]]=c;
+},t).add(t[10],function f(){
+	return this[f.tbl[3]].slice();
+},t).add(t[11],function f(r){
+	return this[f.tbl[3]]=r;
+},t).add(t[12],function f(){
+	return this[f.tbl[4]];
+},t).add(t[13],function f(ignore){
+	this[f.tbl[17]]=true;
+	return this[f.tbl[4]]=ignore;
+},t).add(t[14],function f(){
+	return this[f.tbl[5]];
+},t).add(t[15],function f(last){
+	if(!(f.tbl[5] in this)) this[f.tbl[5]]=[undefined,undefined];
+	this[f.tbl[5]][0]=last[0].slice();
+	this[f.tbl[5]][1]=last[1];
+	return this[f.tbl[5]];
+},t);
+}
+
+new cfc(PIXI.Container.prototype).add(t[0],function f(){
+	let shouldUpdate=false;
+	if(f.tbl[18].has(this.constructor)){
+		// tilemap
+		if(!(f.tbl[5] in this)) this[f.tbl[5]]=[undefined,undefined,];
+		if(!(f.tbl[1] in this)) this[f.tbl[1]]=[undefined,undefined,];
+		if($gameScreen) this[f.tbl[1]]=$gameScreen[f.tbl[6]]();
+		if(!this[f.tbl[1]].equals(this[f.tbl[5]])){
+			let preCal=undefined;
+			const c=this[f.tbl[1]][0],r=this[f.tbl[1]][1];
+			if(c&&r){
+				preCal=[];
+				for(let x=0;x!==c.length;++x) preCal.push(c[x]*r);
+			}
+			this[f.tbl[17]]=true;
+			for(let x=0,arr=this.children,xs=arr.length;x!==xs;++x){
+				arr[x][f.tbl[17]]=true;
+				arr[x][f.tbl[1]]=preCal;
+			}
+			this[f.tbl[5]]=this[f.tbl[1]];
+		}
+	}else{
+		if(!this[f.tbl[4]] && this[f.tbl[17]]){
+			for(let x=0,arr=this.children,xs=arr.length;x!==xs;++x){
+				arr[x][f.tbl[17]]=true;
+				arr[x][f.tbl[1]]=this[f.tbl[1]];
+			}
+			if(this._refresh) this._refresh();
+			else if(this.constructor===PIXI.tilemap.ZLayer){
+				const c=this[f.tbl[1]];
+				if(c){
+					if(!this._filters) this._filters=[new ToneFilter()];
+					const tf=this._filters[0];
+					tf.reset();
+					tf.adjustTone(c[0],c[1],c[2]);
+					tf.adjustSaturation(-c[3]);
+					if(!this.filterArea){
+						const margin =48;
+						const width  =Graphics.width  + (margin<<1);
+						const height =Graphics.height + (margin<<1);
+						this.filterArea=new Rectangle(-margin, -margin, width, height);
+					}
+				}else{
+					this._filters=null;
+					this.filterArea=null;
+				}
+			}
+		}
+		this[f.tbl[17]]=false;
+	}
+},t);
+for(let x=0,arr=[PIXI.Container,Tilemap];x!==arr.length;++x){
+new cfc(arr[x].prototype).add('renderCanvas',function f(){
+	this[f.tbl[0]]();
+	return f.ori&&f.ori.apply(this,arguments);
+},t).add('renderWebGL',function f(){
+	this[f.tbl[0]]();
+	return f.ori&&f.ori.apply(this,arguments);
+},t);
+}
+
+const f=function f(){
+	if((f.tbl[1] in this)&&this[f.tbl[1]]&&!this[f.tbl[4]]&&!f.tbl[18].has(this.constructor)) return this[f.tbl[1]];
+	else return this.__colorTone;
+};
+f.ori=undefined;
+f.tbl=t;
+
+if(0) new cfc(Sprite.prototype).add('getColorTone',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(((f.tbl[4] in this)&&this[f.tbl[4]])||!(f.tbl[1] in this)||!this[f.tbl[1]]||f.tbl[16].equals(this[f.tbl[1]])) return rtv;
+	const cr=this[f.tbl[1]]; for(let x=0,arr=rtv;x!==arr.length;++x) arr[x]=~~(arr[x]*(1-cr[1])+cr[0][x]*cr[1]);
+	return rtv;
+},t);
+else Object.defineProperty(Sprite.prototype,'_colorTone',{
+	get:f,
+	set:function(rhs){ return this.__colorTone=rhs; },
+	configurable:true,
+});
 
 })();
 
