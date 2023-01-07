@@ -847,28 +847,37 @@ t=undefined;
 } // 多1幀來讀其他東西
 
 
-{ // 確保下個場景要預讀的東西好了 // ImageManager.isReady()
+{ // 支援前場景暫存恢復+確保下個場景要預讀的東西好了 // ImageManager.isReady()
 cf(SceneManager,'changeScene',function(){
 	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
+		let recordedPrevScene;
 		if(this._scene){
-			this._scene.terminate();
-			this._scene.detachReservation();
+			if(!this._nextScene._prevScene){
+				this._scene.terminate();
+				this._scene.detachReservation();
+			}
 			this._previousClass = this._scene.constructor;
+			recordedPrevScene = this._scene._prevScene;
 		}
-		this._scene = this._nextScene;
-		if(this._scene){
-			this._scene.attachReservation();
-			this._scene.create();
+		if(recordedPrevScene && this._nextScene && recordedPrevScene.constructor===this._nextScene.constructor){
 			this._nextScene = null;
-			this._sceneStarted = false;
-			this.onSceneCreate();
+			(this._scene=recordedPrevScene)._active=true;
+		}else{
+			this._scene = this._nextScene;
+			if(this._scene){
+				this._scene.attachReservation();
+				this._scene.create();
+				this._nextScene = null;
+				this._sceneStarted = false;
+				this.onSceneCreate();
+			}
 		}
 		if(this._exiting){
 			this.terminate();
 		}
 	}
 },undefined,true,true);
-} // 確保下個場景要預讀的東西好了
+} // 支援前場景暫存恢復+確保下個場景要預讀的東西好了
 
 
 { // 處理傷害數字lag
@@ -1307,12 +1316,63 @@ if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[k]=p[k];
 
 (()=>{ let k,r,t;
 
+// 未先判斷是否已給bitmap
 if(typeof ActorStatusSkill!=='undefined'){ const p=ActorStatusSkill.prototype;
 k='refresh';
 r=p[k]; (p[k]=function f(){
 	if(!this.bitmap) return;
 	return f.ori.apply(this,arguments);
 }).ori=r;
+}
+
+// 幫call destroy
+new cfc(Scene_Base.prototype).add('removeTRSprites',function f(){
+	const allSprites=new Set(this._spriteTrasition).union_inplaceThat(new Set($gameSystem._treSpriteData));
+	const rtv=f.ori.apply(this,arguments);
+	allSprites.forEach(f.tbl[0]);
+	return rtv;
+},[
+sp=>sp.destroy(true),
+]);
+
+// 重新合併 Game_(Actor/Enemy).prototype.gain*p
+{ const aa=Game_Actor,ea=Game_Enemy;
+const ap=aa.prototype,ep=ea.prototype;
+const arr=['gainHp','gainMp','gainTp',];
+for(let x=0;x!==arr.length;++x){
+const k=arr[x];
+t=[k+"_merged"];
+// base
+cf(Game_Battler.prototype,t[0],function f(val){
+	const func=f.tbl[0].get(this.constructor);
+	if(func){
+		const acc=this.accumulateGains_get();
+		if(acc) acc[f.tbl[1]]+=val;
+		return func.apply(this,arguments);
+	}else console.warn("not found",f.tbl[1],"for",this.constructor.name);
+},[
+new Map([
+	[aa,ap[k]],
+	[ea,ep[k]],
+]),
+k,
+]);
+// call the base
+const f=function f(){
+	return Game_Battler.prototype[f.tbl[0]].apply(this,arguments);
+};
+cf(ap,k,f,t,true,true);
+cf(ep,k,f,t,true,true);
+} // for
+new cfc(Game_Battler.prototype).add('accumulateGains_init',function f(){
+	const rtv=this._accumulateGains={};
+	for(let x=0;x!==arr.length;++x) rtv[arr[x]]=0;
+	return rtv;
+},arr).add('accumulateGains_del',function f(){
+	return this._accumulateGains=undefined;
+},arr).add('accumulateGains_get',function f(){
+	return this._accumulateGains;
+},arr);
 }
 
 })();
@@ -4509,13 +4569,19 @@ p.getDmgSum=function(t,type,ele){
 k='executeDamage';
 r=p[k]; (p[k]=function f(t){
 	const hp=t.hp,mp=t.mp,tp=t.tp,bm=BattleManager;
-	f.ori.apply(this,arguments);
+	const acc=t.accumulateGains_init();
+	const rtv=f.ori.apply(this,arguments);
 	if(bm._phase) bm.logDmg(t,{
-		dhp:hp-t.hp,
-		dmp:mp-t.mp,
-		dtp:tp-t.tp,
+		dhp:-acc['gainHp'],
+		dmp:-acc['gainMp'],
+		dtp:-acc['gainTp'],
+//		dhp:hp-t.hp,
+//		dmp:mp-t.mp,
+//		dtp:tp-t.tp,
 		eles:this._lastAllEles,
 	});
+	t.accumulateGains_del();
+	return rtv;
 }).ori=r;
 }
 
@@ -5290,37 +5356,27 @@ bits_all,
 function(t){ return this&t.dataId; },
 (r,n)=>r+n.value,
 ];
-}
 
 t=[kwmain,kw,];
-for(let x=0,arr=[Game_Actor,Game_Enemy,];x!==arr.length;++x){ const p=arr[x].prototype;
-k='gainHp';
-r=p[k]; (p[k]=function f(val){
+new cfc(p).add('gainHp_merged',function f(val){
 	if(val>0){ const odr=this[f.tbl[0]](); if(odr>0){
 		const overflow=(this._hp+val-this.mhp)*odr;
 		if(overflow>0) return f.call(this,-overflow);
 	} }
 	return f.ori.apply(this,arguments);
-}).ori=r;
-p[k].tbl=t;
-k='gainMp';
-r=p[k]; (p[k]=function f(val){
+},t).add('gainMp_merged',function f(val){
 	if(val>0){ const odr=this[f.tbl[0]](); if(odr>0){
 		const overflow=(this._mp+val-this.mmp)*odr;
 		if(overflow>0) return f.call(this,-overflow);
 	} }
 	return f.ori.apply(this,arguments);
-}).ori=r;
-p[k].tbl=t;
-k='gainTp';
-r=p[k]; (p[k]=function f(val){
+},t).add('gainTp_merged',function f(val){
 	if(val>0){ const odr=this[f.tbl[0]](); if(odr>0){
 		const overflow=(this._mp+val-this.maxTp())*odr;
 		if(overflow>0) return f.call(this,-overflow);
 	} }
 	return f.ori.apply(this,arguments);
-}).ori=r;
-p[k].tbl=t;
+},t);
 }
 
 { const p=Game_Action.prototype;
@@ -15301,8 +15357,7 @@ cf(cf(cf(cf(cf(p,'initMembers',function f(id){
 },undefined,true),'getHp2',function(){
 	return this._hp2||0;
 },undefined,true);
-for(let x=0,arr=[Game_Actor,Game_Enemy,];x!==arr.length;++x){ const p=arr[x].prototype;
-cf(p,'gainHp',function f(value){
+cf(p,'gainHp_merged',function f(value){
 	if(this._hp2_valid && value<0){
 		const hp2=this.getHp2();
 		if(0<hp2){
@@ -15313,7 +15368,6 @@ cf(p,'gainHp',function f(value){
 	}
 	return f.ori.apply(this,arguments);
 },undefined,true);
-} // for
 }
 
 { const p=Game_Action.prototype;
@@ -15737,9 +15791,9 @@ Object[k](r, optionSymbolKeyRate, { // 變成幾倍
 });
 
 cf(cf(cf(SceneManager,'changeScene',function f(){
-	const nc=this._nextScene;
+	const sc=this._scene;
 	const rtv=f.ori.apply(this,arguments);
-	if(this._scene && this._scene===nc) this.onSceneChange();
+	if(this._scene && sc && this._scene!==sc) this.onSceneChange();
 	return rtv;
 }),'onSceneChange',function f(){
 	const rtv=f.ori&&f.ori.apply(this,arguments);
@@ -15909,9 +15963,9 @@ dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
 t=[kw_main,gbb[kw],(a,b)=>a.dataId-b.dataId,t=>t.func=t.func||eval(t.value),];
 cf(cf(Game_Battler.prototype,kw_main,function f(){
 	return this.traits(f.tbl[1]).sort(f.tbl[2]).map(f.tbl[3]);
-},t),'onDamage',function f(val){
+},t),'onDamage',function f(val,subject){
 	const rtv=f.ori.apply(this,arguments);
-	for(let x=0,arr=this[f.tbl[0]]();x!==arr.length;++x) arr[x].call(this,val);
+	for(let x=0,arr=this[f.tbl[0]]();x!==arr.length;++x) arr[x].call(this,val,subject);
 	return rtv;
 },t);
 t=undefined;
@@ -16514,21 +16568,15 @@ golda:"right", // align
 path:"BLR_custom/MainMenu/cmdPos.txt",
 hasMog:undefined,
 hasYep:undefined,
+lineVal:(a,b,x,y)=>{
+	// y=ax+b => ax+b-y?
+	// point x,y
+	return a*x+b-y;
+},
+sideSlopes:[2,-2],
+btmWidth:46,
 };
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-cf(
-Scene_Menu.prototype,'createCommands',function f(){
+new cfc(Scene_Menu.prototype).add('createCommands',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	const mid=(this._comList.length|0)-(this._comList.length>>1);
 	this._conf_cmdPos=this.getConfig_cmdPos();
@@ -16540,7 +16588,7 @@ Scene_Menu.prototype,'createCommands',function f(){
 		const bm=sp.bitmap; if(bm) bm.addLoadListener(f.tbl.adjCmdPos.bind(sp));
 	}
 	return rtv;
-},t),'createGold',function f(){
+},t).add('createGold',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	if(this._gold_number) this._gold_number.forEach(f.tbl.hideMogGold);
 	this._conf_cmdPos=this.getConfig_cmdPos();
@@ -16554,17 +16602,17 @@ Scene_Menu.prototype,'createCommands',function f(){
 	sp._lastVal=undefined;
 	this.refreshGold();
 	return rtv;
-},t),'getGoldVal',function f(){
+},t).add('getGoldVal',function f(){
 	if(f.ori) console.warn("not expected having f.ori");
 	let gold=$gameParty.gold(); if($gameParty.maxGold()<gold && f.tbl.hasYep && Yanfly.Param && Yanfly.Param.GoldOverlap) gold=Yanfly.Param.GoldOverlap;
 	return gold;
-},t),'refreshGold',function f(forced){
+},t).add('refreshGold',function f(forced){
 	if(f.ori) console.warn("not expected having f.ori");
 	const gold=this.getGoldVal(),sp=this._goldSprite,conf=this.getConfig_cmdPos();
 	if(!conf || !sp.bitmap || (!forced && sp._lastVal===gold)) return;
 	sp.bitmap.clear();
 	sp.bitmap.drawText(''+(sp._lastVal=gold),0,0,conf.goldw,conf.goldh,conf.golda);
-},t),'_getConfig_cmdPos',function f(){
+},t).add('_getConfig_cmdPos',function f(){
 	if(f.ori) console.warn("not expected having f.ori");
 	const t=f.tbl;
 	const re=t.re,raw=ImageManager.otherFiles_getData(t.path);
@@ -16610,9 +16658,9 @@ Scene_Menu.prototype,'createCommands',function f(){
 		golda:ga,
 		namex:nx,namey:ny,namew:nw,nameh:nh,namedx:ndx,namedy:ndy,
 	});
-},t),'getConfig_cmdPos',function f(){
+},t).add('getConfig_cmdPos',function f(){
 	return this._conf_cmdPos||(this._conf_cmdPos=this._getConfig_cmdPos());
-},t),'initialize',function f(){
+},t).add('initialize',function f(){
 	const im=ImageManager;
 	im.otherFiles_delData(f.tbl.path);
 	im.otherFiles_addLoad(f.tbl.path);
@@ -16622,15 +16670,15 @@ Scene_Menu.prototype,'createCommands',function f(){
 	f.tbl.hasMog=typeof Moghunter !=='undefined';
 	f.tbl.hasYep=typeof Yanfly    !=='undefined';
 	return rtv;
-},t),'terminate',function f(){
+},t).add('terminate',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._cmdPos_terminated=true;
 	return rtv;
-},t),'update',function f(){
+},t).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.refreshGold();
 	return rtv;
-},t),'createCommandName',function f(){
+},t).add('createCommandName',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	if(f.tbl.hasMog){
 		const conf=this.getConfig_cmdPos();
@@ -16638,7 +16686,7 @@ Scene_Menu.prototype,'createCommands',function f(){
 		this._commandName.anchor.x=0.5;
 	}
 	return rtv;
-},t),'refreshCommandName',function f(){
+},t).add('refreshCommandName',function f(){
 	if(f.tbl.hasMog){
 		const conf=this.getConfig_cmdPos();
 		this._commandNameIndex = this._commandWindow._index;
@@ -16646,7 +16694,7 @@ Scene_Menu.prototype,'createCommands',function f(){
 		this._commandName.bitmap.clear();
 		this.drawCmdName(this._comList[this._commandNameIndex].name);
 	}else return f.ori.apply(this,arguments);
-},t),'refreshActorName',function f(){
+},t).add('refreshActorName',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	if(f.tbl.hasMog){
 		this._commandNameIndex = -2;
@@ -16657,7 +16705,7 @@ Scene_Menu.prototype,'createCommands',function f(){
 		this.drawCmdName(actor.name());
 	}
 	return rtv;
-},t),'drawCmdName',function f(txt){
+},t).add('drawCmdName',function f(txt){
 	if(f.ori) console.warn("not expected having f.ori");
 	// cmd name, actr name. supposed bitmap cleared, first draw, so opacity=0
 	const conf=this.getConfig_cmdPos();
@@ -16665,7 +16713,18 @@ Scene_Menu.prototype,'createCommands',function f(){
 	this._commandName.x=conf.namex+conf.namedx;
 	this._commandName.y=conf.namey+conf.namedy;
 	this._commandName.opacity=0;
-});
+}).add('isOnSprite_cmd',function f(sp){
+	const w=sp.width,h=sp.height,a=sp.anchor;
+	const x=sp.x-a.x*w,y=sp.y-a.y*h;
+	if(!sp.visible || !sp.opacity) return false;
+	const dx=TouchInput.x-x,dy=TouchInput.y-y;
+	if(dy<0||dy>=h) return false;
+	const slope=f.tbl.sideSlopes[sp._cmdPos_side|0];
+	const a1=slope,b1=slope<0?h:0;
+	if(f.tbl.lineVal(a1,b1,dx,dy)/a1<0 || f.tbl.lineVal(a1,b1,dx-f.tbl.btmWidth,dy)/a1>=0) return false;
+	// a<0
+	return true;	
+},t);
 t=undefined;
 
 })();
@@ -16978,17 +17037,354 @@ const f=function f(){
 f.ori=undefined;
 f.tbl=t;
 
-if(0) new cfc(Sprite.prototype).add('getColorTone',function f(){
-	const rtv=f.ori.apply(this,arguments);
-	if(((f.tbl[4] in this)&&this[f.tbl[4]])||!(f.tbl[1] in this)||!this[f.tbl[1]]||f.tbl[16].equals(this[f.tbl[1]])) return rtv;
-	const cr=this[f.tbl[1]]; for(let x=0,arr=rtv;x!==arr.length;++x) arr[x]=~~(arr[x]*(1-cr[1])+cr[0][x]*cr[1]);
-	return rtv;
-},t);
-else Object.defineProperty(Sprite.prototype,'_colorTone',{
+Object.defineProperty(Sprite.prototype,'_colorTone',{
 	get:f,
 	set:function(rhs){ return this.__colorTone=rhs; },
 	configurable:true,
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc customizable auto-battle member
+ * @author agold404
+ * @help add <autoBattleCustomizable:total_skills_can_be_chosen_excluding_atk_and_def> in note of actor to activate customization feature
+ * add <autoBattleCustomizable:integer> on other "traits" available things to increase/decrease the number, by addition and substraction.
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t,a,p; const gbb=Game_BattlerBase;
+
+const kwtxt='調整權重';
+const kwbase='autoBattleCustomizable';
+const kwtrait="TRAIT_"+kwbase;
+const kwinfo="_"+kwbase+"_info";
+const kwgetinfo="get_"+kwbase+"_info";
+
+gbb.addEnum(kwtrait);
+
+t=[kwbase,kwtxt,'(empty)',kwtrait,gbb[kwtrait],kwgetinfo,kwinfo,info=>info&&info[0]&&0<info[1]-0,];
+
+
+cf(Scene_Boot.prototype,'start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits; if(!ts) return;
+	const v=meta[kwbase]-0;
+	if(v) ts.push({code:gbb[kwtrait],dataId:0,value:v,});
+},
+]);
+
+
+new cfc(gbb.prototype).add(t[0],function f(){
+	return this.traitsSum(f.tbl[4],0);
+},t).add(t[5],function f(){
+	let rtv=this[f.tbl[6]]; if(!rtv) rtv=this[f.tbl[6]]=[[1,1],[2,1],];
+	return rtv;
+},t);
+
+
+a=function f(){
+	this.initialize.apply(this,arguments);
+};
+window['Scene_CustomizingSkillWeight']=a;
+p=a.prototype=Object.create(Scene_MenuBase.prototype);
+p.constructor=a;
+
+p.initialize=function f(){
+	Scene_MenuBase.prototype.initialize.apply(this,arguments);
+	const psc=this._prevScene=SceneManager._scene;
+	this._actor=psc&&psc._actor;
+};
+p.create=function f(){
+	Scene_MenuBase.prototype.create.apply(this,arguments);
+	this.createWindows();
+};
+new cfc(p).add('createWindows',function f(){
+	const bh=Graphics.boxHeight;
+	const wn=this._window_actorName = new Window_Help(1);
+	const wc=this._window_customizing = new Window_CustomizingSkillWeight(0,wn.height);
+	const wh=this._window_help = new Window_Help(3);
+	const maxH=wc._maxHeight=(wh.y=bh-wh.height)-wn.height;
+	const ws=this._window_skills = new Window_AllSkillList(wc.width,wn.height,wc.width,maxH);
+	if(ws._actor=wc._actor=this._actor) wn.setText(this._actor.name());
+	wc.makeCommandList();
+	wc.height=wc.windowHeight();
+	wc.refresh();
+	ws.refresh();
+	ws._customizing=wc;
+	ws.setHelpWindow(wh);
+	wc.setHandler(f.tbl[0],this.onChangeSkill.bind(this));
+	wc.setHandler('cancel',this.popScene.bind(this));
+	ws.setHandler('ok',this.onChangeSkillOk.bind(this));
+	ws.setHandler('cancel',this.onChangeSkillCancel.bind(this));
+	this.addWindow(wn);
+	this.addWindow(wc);
+	this.addWindow(ws);
+	this.addWindow(wh);
+},t,true,true).add('onChangeSkill',function f(){
+	this._window_customizing.deactivate();
+	this._window_skills.activate();
+	if(this._window_skills.index()<0) this._window_skills.select(0);
+},t,true,true).add('onChangeSkillOk',function f(){
+	this._window_customizing.setCurrent(this._window_skills.item());
+	this.onChangeSkillCancel();
+},t,true,true).add('onChangeSkillCancel',function f(){
+	this._window_skills.deactivate();
+	this._window_customizing.activate();
+},t,true,true);
+
+
+a=function f(){
+	this.initialize.apply(this,arguments);
+};
+window['Window_AllSkillList']=a;
+p=a.prototype=Object.create(Window_SkillList.prototype);
+p.constructor=a;
+
+p.initialize=function f(){
+	Window_SkillList.prototype.initialize.apply(this,arguments);
+	this._maxCols=undefined;
+};
+p.maxCols=function(){
+	return isNaN(this._maxCols)?1:this._maxCols;
+};
+p.isEnabled=p.includes=()=>true;
+
+
+a=function f(){
+	this.initialize.apply(this,arguments);
+};
+window['Window_CustomizingSkillWeight']=a;
+p=a.prototype=Object.create(Window_Command.prototype);
+p.constructor=a;
+
+p.initialize=function f(){
+	Window_Command.prototype.initialize.apply(this,arguments);
+};
+p.windowWidth=function f(){
+	return Graphics.boxWidth>>1;
+};
+p.weightWidth=function(){
+	return 64;
+};
+cf(p,'get_customWeights',function f(){
+	const actr=this._actor;
+	let rtv;
+	if(actr) rtv=actr[f.tbl[5]]();
+	return rtv;
+},t);
+cf(p,'setCurrent',function f(item){
+	const cw=this.get_customWeights();
+	if(cw){
+		const idx=this.index(),id=item?item.id:0;
+		if(cw[idx]) cw[idx][0]=id;
+		else cw[idx]=[id,0];
+		if(!this._list) this._list=[];
+		this._list[idx]={name: cw[idx], symbol: f.tbl[0], enabled: true, ext: null};
+		this.redrawItem(idx);
+	}
+},t);
+p._adjWeight=function(idx,delta){
+	const cw=this.get_customWeights();
+	if(cw){
+		if(!cw[idx]) this.setCurrent(0);
+		let val=cw[idx][1];
+		cw[idx][1]=Math.max(val+delta,0);
+		if(cw[idx][1]!==val) this.redrawItem(idx);
+	}
+};
+p.cursorLeft=function(){
+	this._adjWeight(this.index(),-1-(Input.isPressed('shift'))*9);
+};
+p.cursorRight=function(){
+	this._adjWeight(this.index(),1+(Input.isPressed('shift'))*9);
+};
+p.isCursorMovable=p.isOpenAndActive;
+p.processWheel_th=()=>20;
+p.processWheel=function f(){
+	if(this.isOpenAndActive()){
+		const th=this.processWheel_th(),absy=Math.abs(TouchInput.wheelY),absx=Math.abs(TouchInput.wheelX);
+		if(absy>=th){
+			if(TouchInput.wheelY<0) this.scrollUp();
+			else this.scrollDown();
+		}else if(absx>=th){
+			if(TouchInput.wheelX<0) this.cursorLeft();
+			else this.cursorRight();
+		}
+	}
+};
+new cfc(p).add('makeCommandList',function f(){
+	const cw=this.get_customWeights(); if(!cw) return;
+	if(!cw[0]) cw[0]=[1,1];
+	if(!cw[1]) cw[1]=[2,1];
+	this.addCommand(cw[0],'atk',false);
+	this.addCommand(cw[1],'def',false);
+	if(this._actor){
+		const customizables=this._actor[f.tbl[0]]();
+		const sz=Math.max(cw.length-2,customizables);
+		for(let x=0;x<sz;++x) this.addCommand(cw[x+2],f.tbl[0],x<customizables);
+	}
+},t,true,true).add('windowHeight',function f(){
+	let rtv=f.ori.apply(this,arguments);
+	if(!isNaN(this._maxHeight)) rtv=Math.min(rtv,this._maxHeight);
+	return rtv;
+},t).add('drawItem',function f(idx){
+	const rect = this.itemRectForText(idx);
+	const align = this.itemTextAlign();
+	this.resetTextColor();
+	this.changePaintOpacity(this.isCommandEnabled(idx));
+	const ww=this.weightWidth();
+	const w=rect.width-ww;
+	let x=rect.x;
+	const info=this.commandName(idx);
+	if(info && info[0]){
+		const skill=$dataSkills[info[0]];
+		if(skill) this.drawText(skill.name, x, rect.y, w);
+		x+=w;
+		this.drawText(info[1], x, rect.y, ww, 'right');
+	}else{
+		this.drawText(f.tbl[2], rect.x, rect.y, w);
+		x+=w;
+		const val=info&&info[1];
+		this.drawText(val|0, x, rect.y, ww, 'right');
+	}
+},t,true,true);
+
+
+new cfc(Scene_Skill.prototype).add('createSkillTypeWindow',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._skillTypeWindow.setHandler(f.tbl[0],this.customizingSkillWeight.bind(this));
+	return rtv;
+},t).add('customizingSkillWeight',function f(){
+	SceneManager.push(Scene_CustomizingSkillWeight);
+	this._skillTypeWindow.activate();
+},t,true,true);
+
+
+cf(Window_SkillType.prototype,'makeCommandList',function f(){
+	if(this._actor && this._actor.getData().meta[f.tbl[0]]) this.addCommand(f.tbl[1], f.tbl[0], true);
+	return f.ori.apply(this,arguments);
+},t);
+
+
+cf(Game_Actor.prototype,'makeAutoBattleActions',function f(){
+	if(!this.getData().meta[f.tbl[0]]) return f.ori.apply(this,arguments);
+	const cw=this[f.tbl[5]]();
+	if(!cw.some(f.tbl[7])) return f.ori.apply(this,arguments);
+	const arr=[]; for(let x=0;x!==cw.length;++x) if(cw[x][1]) arr.push([cw[x][0],(arr.length?arr.back[1]:0)+cw[x][1]]);
+	const M=arr.back[1];
+	for(let x=arr.length;--x;) arr[x][1]=arr[x-1][1];
+	arr[0][1]=0;
+	for(let x=0,xs=this.numActions();x!==xs;++x){
+		const r=Math.random()*M;
+		let i=0,j=arr.length;
+		while(i+1<j){
+			let m=(i+j)>>1;
+			if(r<arr[m][1]) j=m;
+			else i=m;
+		}
+		const act=new Game_Action(this);
+		act.setSkill(arr[i][0]);
+		this.setAction(x,act);
+	}
+	this.setActionState('waiting');
+},t);
+
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 受HP攻擊(>0)時，上攻擊者狀態
+ * @author agold404
+ * @help 有trait的東西的note <反擊上狀態:[狀態id,...]>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t,a,p; const gbb=Game_BattlerBase;
+
+const kwtxt='反擊上狀態';
+const kwbase=kwtxt;
+const kwtrait="TRAIT_"+kwbase;
+const kwget="get_"+kwbase;
+
+gbb.addEnum(kwtrait);
+
+t=[kwbase,kwtxt,kwtrait,gbb[kwtrait],function(v,k){
+	const r=this.stateRate(k);
+	for(let x=0;x<v;++x) if(Math.random()<r) this.addState(k);
+},];
+
+cf(Scene_Boot.prototype,'start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits; if(!ts||!meta[kwbase]) return;
+	const arr=JSON.parse(meta[kwbase]),id2idx=new Map();
+	for(let x=0;x!==arr.length;++x){ if(arr[x]){
+		const idx=id2idx.get(arr[x]);
+		if(idx>=0) ++ts[idx].value;
+		else{
+			id2idx.set(arr[x],ts.length);
+			ts.push({code:gbb[kwtrait],dataId:arr[x],value:1,});
+		}
+	} }
+},
+]);
+
+new cfc(gbb.prototype).add(t[0],function f(){
+	// Map([id,count])
+	return this.traitsMap_sum(f.tbl[3]);
+},t);
+
+new cfc(Game_Battler.prototype).add('onDamage',function f(val,subject){
+	const revStatesMap=this[f.tbl[0]]();
+	if(revStatesMap.size) revStatesMap.forEach(f.tbl[4].bind(subject));
+	return f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
+}
 
 })();
 
@@ -17041,6 +17437,70 @@ p[k].forEach=(dataobj)=>{ if(!dataobj) return;
 	if(dataobj.note) DataManager.extractMetadata(dataobj);
 };
 }
+
+})();
+
+
+"use strict";
+/*:
+ * @plugindesc 特殊魔獸actor tag + 自動調MOG
+ * @author agold404
+ * @help actors' note: <魔獸>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw="魔獸";
+const addedMeta=[
+["addEquipAmount","[0,-1,-1,-1,3]"],
+["autoBattleCustomizable","4"],
+];
+const autoBattleTrait={code:Game_BattlerBase.TRAIT_SPECIAL_FLAG,dataId:Game_BattlerBase.FLAG_ID_AUTO_BATTLE,value:1,};
+
+t=[kw,];
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors.forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	if(meta[kw]){
+		for(let x=0;x!==addedMeta.length;++x){
+			meta[addedMeta[x][0]]=addedMeta[x][1];
+		}
+		const ts=dataobj.traits;
+		if(ts&&!ts.some(t=>autoBattleTrait.code===t.code&&autoBattleTrait.dataId===t.dataId)) ts.push(autoBattleTrait);
+	}
+},
+]);
+
+new cfc(Scene_Equip.prototype).add('createLayoutSlot',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const sp=this._layoutSlot_魔獸=new Sprite(ImageManager.loadMenusequip("LayoutSlot_monster"));
+	sp.visiale=false;
+	this._field.addChild(sp);
+	this.changeLayoutSlotByActor();
+	return rtv;
+},t).add('updateLayout',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const ref=this._layoutSlot,sp=this._layoutSlot_魔獸;
+	sp.x=ref.x;
+	sp.y=ref.y;
+	sp.opacity=ref.opacity;
+	return rtv;
+},t).add('updateActor',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.changeLayoutSlotByActor();
+	return rtv;
+},t).add('changeLayoutSlotByActor',function f(){
+	if(!this._actor) return;
+	const isNormal=!this._actor.getData().meta[f.tbl[0]];
+	const ls_ori=this._layoutSlot,ls_魔=this._layoutSlot_魔獸;
+	if(ls_ori) this._layoutSlot     .visible  =isNormal;
+	if(ls_魔)  this._layoutSlot_魔獸.visible =!isNormal;
+},t);
 
 })();
 
