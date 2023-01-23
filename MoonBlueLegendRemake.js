@@ -4531,6 +4531,7 @@ p._logDmg=(t,info,r,ele)=>{
 };
 p.logDmg=function(t,info){
 	if(!this._phase) return;
+	if(!t._dmgLog) this.clearDmgLog(t);
 	t._dmgLog.push(info);
 	if(t._dmgLog.eles){
 		for(let x=0,arr=t._dmgLog.eles;x!==arr.length;++x){
@@ -5372,7 +5373,7 @@ new cfc(p).add('gainHp_merged',function f(val){
 	return f.ori.apply(this,arguments);
 },t).add('gainTp_merged',function f(val){
 	if(val>0){ const odr=this[f.tbl[0]](); if(odr>0){
-		const overflow=(this._mp+val-this.maxTp())*odr;
+		const overflow=(this._tp+val-this.maxTp())*odr;
 		if(overflow>0) return f.call(this,-overflow);
 	} }
 	return f.ori.apply(this,arguments);
@@ -11312,6 +11313,9 @@ p._radiusWaveEffect_setFramesTotal=function(id,val){
 p._radiusWaveEffect_setFramesTotalFradeOut=function(id,val){
 	return this.radiusWaveEffect_get(id)[7]=val;
 };
+p._radiusWaveEffect_setPass2=function(id,val){
+	return this.radiusWaveEffect_get(id)[8]=val;
+};
 p._radiusWaveEffect_getPos_x=function(id){
 	return this.radiusWaveEffect_get(id)[0];
 };
@@ -11348,6 +11352,10 @@ p.radiusWaveEffect_incFrame=function(id,d){
 	this._radiusWaveEffect_setFramesCurr(id,rtv);
 	return rtv;
 };
+p.radiusWaveEffect_setPass2=function(id,val){
+	const obj=this.radiusWaveEffect_get(id);
+	return obj&&(obj[8]=val);
+};
 p.radiusWaveEffect_getPos=function(id){
 	if(id>=this.radiusWaveEffect_size()) return;
 	return [this._radiusWaveEffect_getPos_x(id),this._radiusWaveEffect_getPos_y(id)];
@@ -11377,7 +11385,7 @@ p.radiusWaveEffect_gen=function(x,y,thickness,speed,duration,fadeOutFrames,pass2
 	if(!(thickness>=1)) thickness=64;
 	if(!(duration>=1)) duration=128+~~(Math.random()*32);
 	if(!(fadeOutFrames>=0)) fadeOutFrames=16+~~(Math.random()*4);
-	this.radiusWaveEffect_push([x,y,0,speed,thickness,0,duration,fadeOutFrames,pass2,allTheWay]);
+	return this.radiusWaveEffect_push([x,y,0,speed,thickness,0,duration,fadeOutFrames,pass2,allTheWay]);
 };
 }
 
@@ -11544,7 +11552,7 @@ p.radiusWaveEffect_genAtBtlr=function f(btlr,dx,dy,thickness,speed,duration,fade
 	const sc=SceneManager._scene;
 	const sp=sc._btlr2sp&&sc._btlr2sp.get(btlr); if(!sp) return;
 	dx|=0; dy|=0;
-	$gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
+	return $gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
 };
 p.radiusWaveEffect_genAtTarget=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
 	return this.radiusWaveEffect_genAtBtlr(this._targets,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
@@ -11559,7 +11567,7 @@ p.radiusWaveEffect_gen=function(dx,dy,thickness,speed,duration,fadeOutFrames,pas
 	const sc=SceneManager._scene;
 	const sp=sc._chr2sp&&sc._chr2sp.get(this); if(!sp) return;
 	dx|=0; dy|=0;
-	$gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
+	return $gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
 };
 }
 
@@ -16326,13 +16334,15 @@ t=undefined;
 /*:
  * @plugindesc 自動技能，全域的戰鬥atb跑條自動施放
  * @author agold404
- * @help on skill's note <autoSkill:[turnAtbCharge,"js_condition"]>
+ * @help on skill's note <autoSkill:[turnAtbCharge,times,"js_condition"]>
  * 
+ * times is a positive integer
  * "js condition" is a string.
  * 
  * or
  * 
  * <autoSkill:[turnAtbCharge]>
+ * without "times", implying Infinity
  * without "js condition", implying true
  * 
  * 這個被天使染指過，說什麼用事件
@@ -16358,7 +16368,9 @@ r=p[k]; (p[k]=function f(){
 p[k].forEach=dataobj=>{ if(!dataobj) return;
 	const meta=dataobj.meta;
 	if(dataobj[kw]=meta && meta[kw]?JSON.parse(meta[kw]):undefined){
-		if(dataobj[kw].length===1) dataobj[kw].push(undefined); // cache access property [1]
+		if(dataobj[kw].length===1) dataobj[kw].push(Infinity); // cache access property [1]
+		if(dataobj[kw].length===2) dataobj[kw].push(undefined); // cache access property [2]
+		dataobj[kw][1]-=0;
 		dataobj[kw]._list=[
 			//evtcmd_save,
 			{code:339,indent:0,parameters:[0,0,dataobj.id,-1],},
@@ -16374,7 +16386,8 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 };
 }
 
-t=['_atbTicksAll',kw+"_getBtlr","_"+kw,"_"+kw+"_partyIdx","_"+kw+"_btlrIdx",kw,];
+const timesIdx=1,funcIdx=2;
+t=['_atbTicksAll',kw+"_getBtlr","_"+kw,"_"+kw+"_partyIdx","_"+kw+"_btlrIdx",kw,timesIdx,funcIdx,];
 cf(
 cf(
 cf(
@@ -16428,6 +16441,21 @@ BattleManager,'updateATBTicks',function f(){
 	itrp.setup(info._list);
 	return true;
 },t);
+new cfc(BattleManager).add('get_autoSkill_usedTimes',function f(btlr,dataobj){
+	const cont=this._autoSkill_usedTimes_getContainer();
+	const m=cont.get(btlr);
+	return m?m.get(dataobj)|0:0;
+},t).add('inc_autoSkill_usedTimes',function f(btlr,dataobj){
+	const cont=this._autoSkill_usedTimes_getContainer();
+	let m=cont.get(btlr); if(!m) cont.set(btlr,m=new Map());
+	const rtv=(m.get(dataobj)|0)+1;
+	m.set(dataobj,rtv);
+	return rtv;
+},t).add('_autoSkill_usedTimes_getContainer',function (){
+	const sc=SceneManager._scene||{};
+	let rtv=sc._autoSkill_usedTimes; if(!rtv) rtv=sc._autoSkill_usedTimes=new Map();
+	return rtv;
+},t);
 cf(
 cf(
 Game_Troop.prototype,'setupBattleEvent',function f(){
@@ -16448,11 +16476,12 @@ Game_Troop.prototype,'setupBattleEvent',function f(){
 			const skill=arr[x];
 			const info=skill[f.tbl[5]]; if(!info) continue;
 			const lastChargingStart=obj.get(skill)|0;
-			{ const _=undefined;
-			if( bm[f.tbl[0]]>=lastChargingStart+info[0] && (info[1]===undefined||eval(info[1])) ) ;
+			{ const _=undefined; // block accessing outside-scope vars
+			if( bm[f.tbl[0]]>=lastChargingStart+info[0] && (bm.get_autoSkill_usedTimes(btlr,skill)<info[f.tbl[6]]) && (info[f.tbl[7]]===_||eval(info[f.tbl[7]])) ) ;
 			else continue;
 			}
 			obj.set(skill,bm[f.tbl[0]]);
+			bm.inc_autoSkill_usedTimes(btlr,skill);
 			
 			if(bm.pushActionSkill(itrp,btlr,skill)) return;
 		}
@@ -16939,19 +16968,41 @@ for(let x=1;x!==6;++x) t.push((t[x]+"_get").slice(1),(t[x]+"_set").slice(1),);
 t.push([undefined,undefined]); // 16
 t.push(t[1]+"_dirty"); // 17
 t.push(new Set([Tilemap,ShaderTilemap])); // 18
+t.push(t[1]+"_toneFilter"); // 19: new ToneFilter()
+t.push([
+	-1,  0,  0,  1,  0,
+	 0, -1,  0,  1,  0,
+	 0,  0, -1,  1,  0,
+	 0,  0,  0,  1,  0,
+]); // 20: invert color matrix
+t.push(t[1]+"_inverted"); // 21
+t.push(t[0]+"_propagate"); // 22: function
+t.push(function(v,i){return i<15?v<0?1-this*(1-v):this*v:v;}); // 23: invertColorMatrix.map(,ratio);
+
+new cfc(ToneFilter.prototype).add('_spInvert',function f(ratio,isMul){
+	ratio-=0; if(isNaN(ratio)) ratio=1;
+	const arr=f.tbl[20].map(f.tbl[23],ratio);
+	this._loadMatrix(arr,isMul);
+},t).add('setInvert',function f(ratio){
+	this.enabled=ratio;
+	this._spInvert(ratio);
+},t).add('pushInvert',function f(ratio){
+	this._spInvert(ratio,true);
+},t);
 
 for(let x=0,arr=[Game_Screen,Sprite,Tilemap];x!==arr.length;++x){
-new cfc(arr[x].prototype).add(t[6],function f(currColorTone){
-	return [this[f.tbl[2]]||[],this[f.tbl[3]],];
-},t).add(t[7],function f(c,r){
+new cfc(arr[x].prototype).add(t[6],function f(){
+	return [this[f.tbl[2]]||undefined,this[f.tbl[3]],this[f.tbl[21]],];
+},t).add(t[7],function f(c,r,isInverted){
 	this[f.tbl[2]]=c;
 	this[f.tbl[3]]=r;
+	this[f.tbl[21]]=isInverted||undefined;
 },t).add(t[8],function f(){
-	return this[f.tbl[2]];
+	return this[f.tbl[2]]&&this[f.tbl[2]].slice();
 },t).add(t[9],function f(c){
 	return this[f.tbl[2]]=c;
 },t).add(t[10],function f(){
-	return this[f.tbl[3]].slice();
+	return this[f.tbl[3]];
 },t).add(t[11],function f(r){
 	return this[f.tbl[3]]=r;
 },t).add(t[12],function f(){
@@ -16970,55 +17021,156 @@ new cfc(arr[x].prototype).add(t[6],function f(currColorTone){
 }
 
 new cfc(PIXI.Container.prototype).add(t[0],function f(){
-	let shouldUpdate=false;
 	if(f.tbl[18].has(this.constructor)){
 		// tilemap
-		if(!(f.tbl[5] in this)) this[f.tbl[5]]=[undefined,undefined,];
-		if(!(f.tbl[1] in this)) this[f.tbl[1]]=[undefined,undefined,];
+		if(!(f.tbl[5] in this)) this[f.tbl[5]]=[undefined,undefined,undefined,];
+		if(!(f.tbl[1] in this)) this[f.tbl[1]]=[undefined,undefined,undefined,];
 		if($gameScreen) this[f.tbl[1]]=$gameScreen[f.tbl[6]]();
 		if(!this[f.tbl[1]].equals(this[f.tbl[5]])){
 			let preCal=undefined;
-			const c=this[f.tbl[1]][0],r=this[f.tbl[1]][1];
+			if(!this[f.tbl[21]]) this[f.tbl[21]]=new ToneFilter();
+			const c=this[f.tbl[1]][0],r=this[f.tbl[1]][1],invertedFilter=this[f.tbl[21]],invertRatio=this[f.tbl[1]][2];
+			invertedFilter.setInvert(invertRatio);
 			if(c&&r){
 				preCal=[];
 				for(let x=0;x!==c.length;++x) preCal.push(c[x]*r);
 			}
-			this[f.tbl[17]]=true;
-			for(let x=0,arr=this.children,xs=arr.length;x!==xs;++x){
-				arr[x][f.tbl[17]]=true;
-				arr[x][f.tbl[1]]=preCal;
-			}
-			this[f.tbl[5]]=this[f.tbl[1]];
+			// this[f.tbl[17]]=true; // is it needed?
+			this[f.tbl[22]](preCal,invertedFilter);
+			this[f.tbl[5]]=this[f.tbl[1]]; // recorded as last
 		}
 	}else{
 		if(!this[f.tbl[4]] && this[f.tbl[17]]){
-			for(let x=0,arr=this.children,xs=arr.length;x!==xs;++x){
-				arr[x][f.tbl[17]]=true;
-				arr[x][f.tbl[1]]=this[f.tbl[1]];
-			}
-			if(this._refresh) this._refresh();
-			else if(this.constructor===PIXI.tilemap.ZLayer){
+			const invertedFilter=this[f.tbl[21]];
+			const shouldInverted=invertedFilter&&invertedFilter.enabled;
+			this[f.tbl[22]](this[f.tbl[1]],invertedFilter); // preCal,inverted?&&tilemap,
+			let shouldClearFilter=false;
+			if(this._refresh){
+				if(!(this._invertedColor_after=shouldInverted)) shouldClearFilter=true;
+				this._refresh();
+			}else if(this.constructor===PIXI.tilemap.ZLayer){
 				const c=this[f.tbl[1]];
+				if(!this[f.tbl[19]]) this[f.tbl[19]]=new ToneFilter();
+				let tmp=true;
 				if(c){
-					if(!this._filters) this._filters=[new ToneFilter()];
-					const tf=this._filters[0];
+					tmp=false;
+					if(!this._filters) this._filters=[];
+					const tf=this[f.tbl[19]];
+					this._filters.uniquePush(tf);
 					tf.reset();
 					tf.adjustTone(c[0],c[1],c[2]);
 					tf.adjustSaturation(-c[3]);
+				}
+				if(shouldInverted){
+					tmp=false;
+					if(!this._filters) this._filters=[];
+					this._filters.uniquePush(invertedFilter);
+				}
+				if(!(shouldClearFilter=tmp)){
 					if(!this.filterArea){
 						const margin =48;
 						const width  =Graphics.width  + (margin<<1);
 						const height =Graphics.height + (margin<<1);
 						this.filterArea=new Rectangle(-margin, -margin, width, height);
 					}
-				}else{
-					this._filters=null;
-					this.filterArea=null;
+				}
+			}
+			if(shouldClearFilter){
+				if(this._filters){
+					this._filters.uniquePop(this[f.tbl[19]]); // for ZLayer
+					this._filters.uniquePop(invertedFilter);
+					if(!this._filters.length){
+						this._filters=null;
+						this.filterArea=null;
+					}
 				}
 			}
 		}
 		this[f.tbl[17]]=false;
 	}
+},t).add(t[22],function f(preCal,invertedFilter){
+	for(let x=0,arr=this.children,xs=arr.length;x!==xs;++x){
+		arr[x][f.tbl[17]]=true;
+		arr[x][f.tbl[1]]=preCal;
+		arr[x][f.tbl[21]]=invertedFilter;
+	}
+},t);
+new cfc(Sprite.prototype).add('initialize',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	this[f.tbl[19]]=undefined;
+	this._invertedColor_after=this._invertedColor_after_last=undefined;
+	return rtv;
+},t).add('_needsTint',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	return rtv || this._invertedColor_after_last || this._invertedColor_after;
+},t).add('_executeTint',function f(x,y,w,h){
+	const ctx=this._context , tone=this._colorTone , color = this._blendColor;
+	
+	ctx.globalCompositeOperation = 'copy';
+	ctx.drawImage(this._bitmap.canvas, x, y, w, h, 0, 0, w, h);
+	
+	this._executeTint_otherEffects_before(ctx,x,y,w,h);
+	
+	if (Graphics.canUseSaturationBlend() && 0<tone[3]){
+		const gray = Math.max(0, tone[3]);
+		ctx.globalCompositeOperation = 'saturation';
+		ctx.fillStyle = 'rgba(255,255,255,' + (tone[3]-(-1)) / 256 + ')';
+		ctx.fillRect(0, 0, w, h);
+	}
+	
+	if(0<tone[0]||0<tone[1]||0<tone[2]){
+		const r1 = Math.max(0, tone[0]);
+		const g1 = Math.max(0, tone[1]);
+		const b1 = Math.max(0, tone[2]);
+		ctx.globalCompositeOperation = 'lighter';
+		ctx.fillStyle = Utils.rgbToCssColor(r1, g1, b1);
+		ctx.fillRect(0, 0, w, h);
+	}
+	
+	if(tone[0]<0||tone[1]<0||tone[2]<0){
+		if(Graphics.canUseDifferenceBlend()){
+			ctx.globalCompositeOperation = 'difference';
+			ctx.fillStyle = 'white';
+			ctx.fillRect(0, 0, w, h);
+			
+			const r2 = Math.max(0, -tone[0]);
+			const g2 = Math.max(0, -tone[1]);
+			const b2 = Math.max(0, -tone[2]);
+			ctx.globalCompositeOperation = 'lighter';
+			ctx.fillStyle = Utils.rgbToCssColor(r2, g2, b2);
+			ctx.fillRect(0, 0, w, h);
+			
+			ctx.globalCompositeOperation = 'difference';
+			ctx.fillStyle = 'white';
+			ctx.fillRect(0, 0, w, h);
+		}
+	}
+	
+	if(0<color[3]){
+		const r3 = Math.max(0, color[0]);
+		const g3 = Math.max(0, color[1]);
+		const b3 = Math.max(0, color[2]);
+		const a3 = Math.max(0, color[3]);
+		ctx.globalCompositeOperation = 'source-atop';
+		ctx.fillStyle = Utils.rgbToCssColor(r3, g3, b3);
+		ctx.globalAlpha = a3 / 255;
+		ctx.fillRect(0, 0, w, h);
+	}
+	
+	this._executeTint_otherEffects_after(ctx,x,y,w,h);
+	
+	ctx.globalCompositeOperation = 'destination-in';
+	ctx.globalAlpha = 1;
+	ctx.drawImage(this._bitmap.canvas, x, y, w, h, 0, 0, w, h);
+},t).add('_executeTint_otherEffects_before',function f(ctx,x,y,w,h){
+},t).add('_executeTint_otherEffects_after',function f(ctx,x,y,w,h){
+	this._executeTint_otherEffects_after_invert(ctx,x,y,w,h);
+},t).add('_executeTint_otherEffects_after_invert',function f(ctx,x,y,w,h){
+	if(!(this._invertedColor_after_last=this._invertedColor_after)) return;
+	ctx.globalCompositeOperation = 'difference';
+	const v=255*this._invertedColor_after;
+	ctx.fillStyle = Utils.rgbToCssColor(v,v,v);
+	ctx.fillRect(0, 0, w, h);
 },t);
 for(let x=0,arr=[PIXI.Container,Tilemap];x!==arr.length;++x){
 new cfc(arr[x].prototype).add('renderCanvas',function f(){
@@ -17373,18 +17525,392 @@ new cfc(Game_Battler.prototype).add('onDamage',function f(val,subject){
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc Sprite_Actor ㄉㄨㄞ ㄉㄨㄞ
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
-{
+t=[
+{s:{x:1,y:1},a:{x:0.5,y:1},},
+{t:36,p:16},
+]
+
+new cfc(Sprite_Battler.prototype).add('ㄉㄨㄞ',function f(df,dr,du,t,p){
+	// front,rear
+	if(isNaN(t)) t=f.tbl[1].t;
+	if(isNaN(p)) p=f.tbl[1].p;
+	t-=0;
+	p-=0;
+	const isActor=this.constructor===Sprite_Actor;
+	const rtv=this._ㄉㄨㄞ={
+		l:isActor?df:dr,
+		r:isActor?dr:df,
+		u:du,
+		tc:Graphics.frameCount,
+		td:t,
+		te:Graphics.frameCount+t,
+		ts:Graphics.frameCount,
+		p:p,
+		lessThanP:p<t,
+	};
+	return rtv;
+},t);
+for(let x=0,arr=[Sprite_Actor,Sprite_Enemy,];x!==arr.length;++x){
+new cfc(arr[x].prototype).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const ㄉ=this._ㄉㄨㄞ;
+	if(ㄉ && ㄉ.tc<ㄉ.te && ㄉ.tc!==Graphics.frameCount){
+		ㄉ.tc=Graphics.frameCount;
+		const s=this.scale,a=this.anchor,eft=this._effectTarget||this,sds=this._shadowSprite;
+		if(ㄉ.tc<ㄉ.te){
+			const dt=ㄉ.te-ㄉ.tc;
+			const d=Math.cos((dt/ㄉ.p)*(Math.PI*2))*(dt/ㄉ.td);
+			s.y=f.tbl[0].s.y+d*ㄉ.u;
+			if(ㄉ.l||ㄉ.r){
+				const delta=d*(ㄉ.l+ㄉ.r)/2;
+				const sx=f.tbl[0].s.x+delta;
+				const offsetX=-this.width*f.tbl[0].a.x;
+				const ax_=(ㄉ.l-ㄉ.r)/(ㄉ.l+ㄉ.r); // -1 <- 0 -> 1
+				const ax=(ax_+1.0)/2;
+				const newax=ax-(this.width*(ax-f.tbl[0].a.x)/(this.width*sx));
+				if(eft){
+					eft.scale.x=sx;
+					eft.anchor.x=newax;
+				}
+				if(sds){
+					sds.scale.x=sx;
+					sds.anchor.x=newax;
+				}
+			}
+		}else{
+			this._ㄉㄨㄞ=undefined;
+			if(eft) eft.scale.x=f.tbl[0].s.x;
+			if(sds) sds.scale.x=f.tbl[0].s.x;
+			s.y=f.tbl[0].s.y;
+			if(eft) eft.anchor.x=f.tbl[0].a.x;
+			if(sds) sds.anchor.x=f.tbl[0].a.x;
+			a.y=f.tbl[0].a.y;
+		}
+	}
+	return rtv;
+},t);
+} // for
+
+new cfc(BattleManager).add('ㄉㄨㄞ_genAtBtlr',function f(btlr,df,dr,du,t,p){
+	if(btlr&&btlr.constructor===Array){
+		for(let x=0;x!==btlr.length;++x) f.call(this,btlr[x],df,dr,du,t,p);
+		return;
+	}
+	const sc=SceneManager._scene;
+	const sp=sc._btlr2sp&&sc._btlr2sp.get(btlr); if(!sp) return;
+	return sp.ㄉㄨㄞ(df,dr,du,t,p);
+}).add('ㄉㄨㄞ_genAtTarget',function f(df,dr,du,t,p){
+	return this.ㄉㄨㄞ_genAtBtlr(this._targets,df,dr,du,t,p);
+}).add('ㄉㄨㄞ_genAtSubject',function f(df,dr,du,t,p){
+	return this.ㄉㄨㄞ_genAtBtlr(this._subject,df,dr,du,t,p);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc Game_Player.prototype.canMove always can move
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=['_playerAlwaysCanMove'];
+t.push(t[0].slice(1));
+t.push(t[1]+"_get");
+t.push(t[1]+"_set");
+
+new cfc(Game_System.prototype).add(t[2],function f(){
+	return this[f.tbl[0]];
+},t).add(t[3],function f(val){
+	return this[f.tbl[0]]=val;
+},t);
+
+new cfc(Game_Player.prototype).add('canMove',function f(){
+	return $gameSystem && $gameSystem[f.tbl[2]]() || f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc edit MOG_HPGauge enemy: HPGaugeSprite
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+// mp有改色需求
+
+const kw='showMpTp';
+
+if(typeof HPGaugeSprite!=='undefined'){
+t=[
+'img/battle/',
+{bars:{
+	//hp:'GaugeEnemy_B-HP',
+	mp:'GaugeEnemy_B-MP',
+	tp:'GaugeEnemy_B-TP',
+},frames:{
+	//hp:   'GaugeEnemy_A-HP',
+	//mptp: 'GaugeEnemy_A-MPTP',
+	all:  'GaugeEnemy_A-HPMPTP',
+},pos:{
+	mp:{dx:0  ,dy:15},
+	tp:{dx:47 ,dy:15},
+}},
+kw,
+'_called_prepareSlide',
+function(sp){ sp.visible=this; },
+];
+new cfc(HPGaugeSprite.prototype).add('shouldShowMpTp',function f(){
+	if(this.type===0) return false;
+	const btlr=this.battler();
+	return btlr && btlr.constructor===Game_Enemy && btlr.getData().meta[f.tbl[2]];
+},t).add('loadBitmaps',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.loadBitmaps_mptp();
+	return rtv;
+},t).add('loadBitmaps_mptp',function f(){
+	//if(!this.shouldShowMpTp()) return;
+	const imgr=ImageManager,confs=f.tbl[1];
+	//this._layImg_hp   =imgr.loadBitmap(f.tbl[0],confs.frames.hp   ,0,true);
+	//this._layImg_mptp =imgr.loadBitmap(f.tbl[0],confs.frames.mptp ,0,true);
+	this._layImg_all  =imgr.loadBitmap(f.tbl[0],confs.frames.all  ,0,true);
+	//this._meterImg_hp =imgr.loadBitmap(f.tbl[0],confs.bars.hp     ,0,true);
+	this._meterImg_mp =imgr.loadBitmap(f.tbl[0],confs.bars.mp     ,0,true);
+	this._meterImg_tp =imgr.loadBitmap(f.tbl[0],confs.bars.tp     ,0,true);
+},t).add('createSprites',function f(){
+	if(this._meterImg_mp.isReady()&&this._meterImg_tp.isReady()) return f.ori.apply(this,arguments);
+},t).add('createLayout',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(!this.shouldShowMpTp()) return rtv;
+	if(this._layImg_all) this._layout.bitmap=this._layImg_all;
+	return rtv;
+},t).add('_createMeter',function f(meter,meterImg,x,y,max,curr){
+	for(let i=0;i!==2;++i){
+		meter[i]=new Sprite(meterImg);
+		meter[i].value1=curr;
+		meter[i].value2=max;
+		meter[i].ds=0;
+		meter[i].w=meterImg.width;
+		meter[i].h=meterImg.height>>1;
+		if(this.type===0){
+			meter[i].x=x;
+			meter[i].y=y;
+		}else{
+			meter[i].x=x;
+			meter[i].y=y;
+		}
+		this.addChild(meter[i]);
+	}
+	this.refreshMeter(meter[0],curr,max,1);
+	this.refreshMeter(meter[1],curr,max,0);
+},t).add('createMeter',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.createMeter_mptp();
+	return rtv;
+},t).add('createMeter_mptp',function f(){
+	//if(!this.shouldShowMpTp()) return;
+	const btlr=this.battler();
+	if(btlr){
+		const x=this._meter[0].x,y=this._meter[0].y,pos=f.tbl[1].pos;
+		this._createMeter(this._meter_mp=[],this._meterImg_mp,x+pos.mp.dx,y+pos.mp.dy,btlr.mmp     ,btlr.mp);
+		this._createMeter(this._meter_tp=[],this._meterImg_tp,x+pos.tp.dx,y+pos.tp.dy,btlr.maxTp() ,btlr.tp);
+	}
+},t).add('updateMeter',function f(){
+	this[f.tbl[3]]=false;
+	const rtv=f.ori.apply(this,arguments);
+	this.updateMeter_mptp();
+	return rtv;
+},t).add('updateMeter_mptp',function f(){
+	const visible=this.shouldShowMpTp();
+	if(this._meter_mp) this._meter_mp.forEach(f.tbl[4],visible);
+	if(this._meter_tp) this._meter_tp.forEach(f.tbl[4],visible);
+	if(visible){
+		if(this._layImg_all) this._layout.bitmap=this._layImg_all;
+	}else{
+		if(this._layImg) this._layout.bitmap=this._layImg;
+	}
+	if(!visible||!this._meter_mp||!this._meter_tp) return;
+	this.refreshMeter_mptp();
+},t).add('prepareSlide',function f(){
+	if(this[f.tbl[3]]) return;
+	this[f.tbl[3]]=true;
+	return f.ori.apply(this,arguments);
+},t).add('refreshMeter_mptp',function f(){
+	if(!this.shouldShowMpTp()) return;
+	const btlr=this.battler(); if(!btlr) return;
+	let meter,c,m,m0refreshed;
+	meter=this._meter_mp;
+	c=btlr.mp;
+	m=btlr.mmp;
+	m0refreshed=false;
+	if(meter&& meter[0].value1!==c){
+		meter[0].value1=this.update_dif(meter[0].value1,c,60,1);
+		if(!m0refreshed){ m0refreshed=true; this.refreshMeter(meter[0],meter[0].value1,m,1); }
+	}
+	if(meter&&$gameTemp._hpGauge[0]&&( (btlr._empgauge && btlr._empgauge[4]) || meter[1].value1!==c || meter[1].value2!==m )){
+		btlr._empgauge[4]=false;
+		meter[1].value1=c;
+		meter[1].value2=m;
+		if(!m0refreshed){ m0refreshed=true; this.refreshMeter(meter[0],meter[0].value1 ,m,1); }
+		this.refreshMeter(meter[1],c,m,0);
+		this.prepareSlide();
+	}
+	meter=this._meter_tp;
+	c=btlr.tp;
+	m=btlr.maxTp();
+	m0refreshed=false;
+	if(meter&& meter[0].value1!==c){
+		meter[0].value1=this.update_dif(meter[0].value1,c,60,1);
+		if(!m0refreshed){ m0refreshed=true; this.refreshMeter(meter[0],meter[0].value1,m,1); }
+	}
+	if(meter&&$gameTemp._hpGauge[0]&&( (btlr._etpgauge && btlr._etpgauge[4]) || meter[1].value1!==c || meter[1].value2!==m )){
+		btlr._empgauge[4]=false;
+		meter[1].value1=c;
+		meter[1].value2=m;
+		if(!m0refreshed){ m0refreshed=true; this.refreshMeter(meter[0],meter[0].value1,m,1); }
+		this.refreshMeter(meter[1],c,m,0);
+		this.prepareSlide();
+	}
+},t);
+new cfc(Game_Enemy.prototype).add('setup',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const dataobj=this.getData(); if(dataobj && dataobj.meta[f.tbl[2]]){
+		this._empgauge = [false,0,0,false,false];
+		this._etpgauge = [false,0,0,false,false];
+	}
+	return rtv;
+},t);
 }
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc YEP _atbChargeMod by traits
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kwtxt='詠唱加速';
+const kwbase=kwtxt;
+const kwtrait="TRAIT_"+kwbase;
+const kwget="get_"+kwbase;
+
+gbb.addEnum(kwtrait);
+
+t=[kwbase,kwtxt,kwtrait,kwget,gbb[kwtrait],];
+
+cf(Scene_Boot.prototype,'start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits; if(!ts||!meta[kwbase]) return;
+	const val=meta[kwbase]-0; if(!val) return;
+	ts.push({code:gbb[kwtrait],dataId:0,value:val,});
+},
+]);
+
+new cfc(gbb.prototype).add(t[3],function f(){
+	return this.traitsSum(f.tbl[4],0);
+},t);
+
+new cfc(Game_Battler.prototype).add('setupATBCharge',function f(){
+	const rtv=f.ori.apply(this,arguments); if(this._bypassAtbEndTurn) return rtv;
+	this._atbChargeMod+=this[f.tbl[3]]();
+	return rtv;
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 隊伍成員管理
+ * @author agold404
+ * @help .
+ * 
+ * $gameSystem.partyMembers_push_createEmpty();
+ * $gameSystem.partyMembers_pop_loadLast();
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_System.prototype).add('partyMembers_clearCurrent',function f(){
+	$gameParty._actors=[];
+	return this;
+}).add('partyMembers_push_createEmpty',function f(){
+	const obj=this._partyMembers_getArr();
+	const rtv=obj.length;
+	obj.push($gameParty._actors);
+	this.partyMembers_clearCurrent();
+	return this;
+}).add('partyMembers_pop_loadLast',function f(){
+	const obj=this._partyMembers_getArr();
+	$gameParty._actors=obj.pop();
+	$gamePlayer.refresh();
+	return this;
+}).add('_partyMembers_getArr',function f(){
+	let rtv=this._隊伍成員arr; if(!rtv) rtv=this._隊伍成員arr=[];
+	return rtv;
+}).add('partyMembers_save',function f(id){
+	const obj=this._partyMembers_getDict();
+	obj[id]=$gameParty._actors;
+	return this;
+}).add('partyMembers_load',function f(id){
+	const obj=this._partyMembers_getDict();
+	$gameParty._actors=obj[id];
+	return this;
+}).add('partyMembers_delete',function f(id){
+	const obj=this._partyMembers_getDict();
+	delete obj[id];
+	return this;
+}).add('_partyMembers_getDict',function f(){
+	let rtv=this._隊伍成員dict; if(!rtv) rtv=this._隊伍成員dict=[];
+	return rtv;
+});
 
 })();
 
@@ -17498,8 +18024,8 @@ new cfc(Scene_Equip.prototype).add('createLayoutSlot',function f(){
 	if(!this._actor) return;
 	const isNormal=!this._actor.getData().meta[f.tbl[0]];
 	const ls_ori=this._layoutSlot,ls_魔=this._layoutSlot_魔獸;
-	if(ls_ori) this._layoutSlot     .visible  =isNormal;
-	if(ls_魔)  this._layoutSlot_魔獸.visible =!isNormal;
+	if(ls_ori) ls_ori.visible  =isNormal;
+	if(ls_魔)  ls_魔 .visible =!isNormal;
 },t);
 
 })();
