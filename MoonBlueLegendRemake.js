@@ -852,7 +852,7 @@ cf(SceneManager,'changeScene',function(){
 	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
 		let recordedPrevScene;
 		if(this._scene){
-			if(!this._nextScene._prevScene){
+			if(DataManager.isBattleTest()||!this._nextScene._prevScene){
 				this._scene.terminate();
 				this._scene.detachReservation();
 			}
@@ -7449,7 +7449,7 @@ p.addSeries=function(key,bm){
 	if(!this._series) this._series=new Map();
 	if(this._series.has(key)) return;
 	this._series.set(key,bm);
-	bm.addLoadListener(()=>this._series.delete(key) && console.log(bm.height));
+	bm.addLoadListener(()=>this._series.delete(key));
 };
 }
 
@@ -7474,6 +7474,7 @@ cf(Scene_Boot,'loadSystemImages',function f(){
 		Game_BattlerBase.prototype.buffIconIndex.tbl.max=~~(buff.height/Sprite_StateIcon._iconHeight+0.5);
 		ImageManager.releaseReservation(rsrvId);
 		base._createBaseTexture(c);
+		console.log("buffIcons concatenated");
 	};
 	base.addLoadListener(()=>{
 		if(base.isReady()) f();
@@ -10436,8 +10437,15 @@ p.getPosKey=function(x,y){
 }).forEach=function(evt){ evt.start(this); };
 k='moveStraight';
 r=p[k]; (p[k]=function f(){
+	const x=this.x,y=this.y;
 	const rtv=f.ori.apply(this,arguments);
-	if(!this.isMovementSucceeded()){
+	if(this.isMovementSucceeded()){
+		// edit location table of $gameMap
+		if($gameMap){
+			$gameMap.update_locTbl_delEvt_overall(this,x,y);
+			$gameMap.update_locTbl_addEvt_overall(this);
+		}
+	}else{
 		// touch front
 		let x = $gameMap.roundXWithDirection(this.x, this.direction());
 		let y = $gameMap.roundYWithDirection(this.y, this.direction());
@@ -10504,10 +10512,11 @@ r=p[k]; (p[k]=function f(strtMeta){
 }
 
 { const p=Game_Map.prototype;
-k='update';
+k='update_locTbl';
 r=p[k]; (p[k]=function f(){
 	const evts=this._events;
 	if(evts){
+		{ let s=evts._set; if(s) s.clear(); else s=evts._set=new Set(); }
 		{
 			let c=evts.coords,m; if(!c) c=evts.coords=[];
 			for(let p=5;p-->=0;){
@@ -10519,20 +10528,48 @@ r=p[k]; (p[k]=function f(){
 		{ let nb=evts.nonblockings; if(nb) nb.length=0; else nb=evts.nonblockings=[]; }
 		evts.forEach(f.forEach,this);
 	}
-	return f.ori.apply(this,arguments);
 }).ori=r;
-(p[k].forEach=function f(evt,i,a){ if(!evt) return;
-	f.tbl(evt,a.coords[-1],this);
+(p[k].forEach=function(evt,i,a){ if(!evt) return;
+	if(a._set) a._set.add(evt);
+	this.update_locTbl_addEvt(evt,a.coords[-1]);
 	const evtd=evt.event(); if(!evtd) return;
 	const meta=evtd.meta;
-	if(meta.strtByAny) f.tbl(evt,a.coords[evt._priorityType],this);
+	if(meta.strtByAny) this.update_locTbl_addEvt(evt,a.coords[evt._priorityType]);
 	if(!evt.isBlockingExecutable()) a.nonblockings.push(evt);
-}).tbl=(evt,coord,mp)=>{
+});
+k='update_locTbl_addEvt';
+r=p[k]; (p[k]=function f(evt,coord){
 	if(!coord) return;
-	const key=((evt.y*mp.width())<<1)+evt.x;
+	const key=evt.getPosKey();
 	let arr=coord.get(key); if(!arr) coord.set(key,arr=[]);
-	arr.push(evt);
-};
+	arr.uniquePush(evt);
+}).ori=r;
+k='update_locTbl_delEvt';
+r=p[k]; (p[k]=function f(evt,coord,x,y){
+	if(!coord) return;
+	const key=evt.getPosKey(x,y);
+	const arr=coord.get(key); if(!arr) return;
+	arr.uniquePop(evt);
+}).ori=r;
+k='update_locTbl_chkEvtErr';
+r=p[k]; (p[k]=function f(evt){
+	return !this._events||this._events._set&&!this._events._set.has(evt);
+}).ori=r;
+k='update_locTbl_addEvt_overall';
+r=p[k]; (p[k]=function f(evt){
+	if(this.update_locTbl_chkEvtErr(evt)) return;
+	this.update_locTbl_addEvt(evt,this._events.coords&&this._events.coords[-1]);
+}).ori=r;
+k='update_locTbl_delEvt_overall';
+r=p[k]; (p[k]=function f(evt,x,y){
+	if(this.update_locTbl_chkEvtErr(evt)) return;
+	this.update_locTbl_delEvt(evt,this._events.coords&&this._events.coords[-1],x,y);
+}).ori=r;
+k='update';
+r=p[k]; (p[k]=function f(){
+	this.update_locTbl();
+	return f.ori.apply(this,arguments);
+}).ori=r;
 k='updateInterpreter';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -16428,6 +16465,7 @@ BattleManager,'updateATBTicks',function f(){
 			const trgt=src._autoSkill_clonedData={};
 			for(let i in src) trgt[i]=src[i];
 			trgt.id=para[1];
+			trgt._cloneRef=src;
 		}
 		$dataActors[para[1]]=src._autoSkill_clonedData;
 		($gameActors._data[para[1]]=JsonEx.makeDeepCopy(btlr))._actorId=para[1];
@@ -17911,6 +17949,219 @@ new cfc(Game_System.prototype).add('partyMembers_clearCurrent',function f(){
 	let rtv=this._隊伍成員dict; if(!rtv) rtv=this._隊伍成員dict=[];
 	return rtv;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 對話視窗額外顯示圖片
+ * @author agold404
+ * @help .
+ * 
+ * $gameSystem.additionalMsgImg_add_global(id,"path/to/img.png",x,y,moveInfo);
+ * $gameSystem.additionalMsgImg_add_faceCenter(id,"path/to/img.png",dx,dy,moveInfo);
+ * $gameSystem.additionalMsgImg_del(id);
+ * $gameSystem.additionalMsgImg_clear();
+ * 
+ * moveInfo = {type:type,arg:arg};
+ * arg: depends on type
+ * type:
+ *   "rotate". arg: rotate radius per update
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_System.prototype).add('_additionalMsgImg_getArr',function f(){
+	let rtv=this._additionalMsgImg; if(!rtv) rtv=this._additionalMsgImg=[];
+	while(rtv.length&&!rtv.back) rtv.pop();
+	if(!rtv._id2idx){ rtv._id2idx=new Map(); rtv.forEach(f.tbl[0]); }
+	return rtv;
+},[
+(x,i,a)=>x&&a._id2idx.set(x.id,i),
+]).add('_additionalMsgImg_add',function f(info){
+	const arr=this._additionalMsgImg_getArr();
+	const idx=arr._id2idx.get(info.id);
+	if(idx===undefined){
+		arr._id2idx.set(info.id,arr.length);
+		arr.push(info);
+	}else arr[idx]=info;
+	return this;
+}).add('additionalMsgImg_clear',function f(){
+	this._additionalMsgImg=undefined;
+}).add('additionalMsgImg_add_global',function f(id,path,x,y,moveInfo,){
+	this._additionalMsgImg_add({id:id,path:path,type:'global',x:x,y:y,move:moveInfo,});
+	return this;
+}).add('additionalMsgImg_add_faceCenter',function f(id,path,dx,dy,moveInfo){
+	this._additionalMsgImg_add({id:id,path:path,type:'faceCenter',x:dx,y:dy,move:moveInfo,});
+	return this;
+}).add('additionalMsgImg_del',function f(id){
+	const arr=this._additionalMsgImg_getArr();
+	const idx=arr._id2idx.get(id); arr._id2idx.delete(id);
+	const rtv=arr[idx]; 
+	if(idx>=0) arr[idx]=0;
+	return rtv;
+}).add('additionalMsgImg_getInfos',function f(){
+	return this._additionalMsgImg_getArr().filter(f.tbl[0]);
+},[
+x=>x,
+]);
+
+new cfc(Scene_Map.prototype).add('createMessageWindow',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._messageWindow._additionalMsgImg_use=true;
+	return rtv;
+});
+
+new cfc(Window_Message.prototype).add('initMembers',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._additionalMsgImg_use=false;
+	this._additionalMsgImg_faceDrawn=false;
+	return rtv;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.additionalMsgImg_updateChildren();
+	return rtv;
+}).add('additionalMsgImg_updateChildren',function f(){
+	let m=this._additionalMsgImg_spritesMap; if(!m) m=this._additionalMsgImg_spritesMap=new Map();
+	if(!this.isOpen()) return m.forEach(f.tbl[1]);
+	const arr=$gameSystem.additionalMsgImg_getInfos();
+	const s=this._additionalMsgImg_infosSet=new Set(arr||undefined);
+	{
+		const delList=[]; delList._ref=s; m.forEach(f.tbl[0].bind(delList));
+		for(let x=delList.length;x--;){
+			m.delete(delList[x][0]);
+			this.removeChild(delList[x][1]);
+		}
+	}
+	s._ref=m;
+	s._window=this;
+	s.forEach(f.tbl[2].bind(s));
+},[
+function(sp,info){ if(!this._ref.has(info)) this.push([info,sp,]); },
+function f(sp,info){ sp.visible=false; },
+function f(info){
+	let sp=this._ref.get(info);
+	if(!sp){
+		sp=new Sprite(ImageManager.loadNormalBitmap(info.path));
+		this._ref.set(info,sp);
+		this._window.addChild(sp);
+		const a=sp.anchor; a.y=a.x=0.5;
+	}
+	this._window.additionalMsgImg_updateMove(sp,info);
+},
+]).add('additionalMsgImg_updateMove',function f(sp,info){
+	this.additionalMsgImg_setLoc(sp,info);
+	if(info.move){
+		const func=f.tbl[info.move.type];
+		if(func) func(sp,info);
+	}
+},{
+"rotate":(sp,info)=>{
+	const pi2=Math.PI*2;
+	sp.rotation=((sp.rotation+info.move.arg)%pi2+pi2)%pi2;
+},
+}).add('additionalMsgImg_setLoc',function f(sp,info){
+	sp.visible=false;
+	const func=f.tbl[info.type];
+	return func&&func(this,sp,info);
+},{
+"global":(self,sp,info)=>{ // TODO
+	sp.visible=true;
+	sp.x=info.x-self.x;
+	sp.y=info.y-self.y;
+},
+"faceCenter":(self,sp,info)=>{
+	const argv=self._lastDrawFaceArgv; if(!argv||!argv[0]._image||!self._additionalMsgImg_faceDrawn) return;
+	sp.visible=true;
+	const c=self._windowContentsSprite;
+	const x=argv[5]+((argv[7]||argv[3])>>1);
+	const y=argv[6]+((argv[8]||argv[4])>>1);
+	sp.x=c.x+x+info.x;
+	sp.y=c.y+y+info.y;
+},
+}).add('drawMessageFace',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._additionalMsgImg_faceDrawn=true;
+	return rtv;
+}).add('newPage',function f(){
+	this._additionalMsgImg_faceDrawn=false;
+	return f.ori.apply(this,arguments);
+});
+
+new cfc(Window_Base.prototype).add('drawFace',function f(faceName, faceIndex, x, y, width, height){
+	width = width || Window_Base._faceWidth;
+	height = height || Window_Base._faceHeight;
+	const bitmap = ImageManager.loadFace(faceName);
+	const pw = Window_Base._faceWidth;
+	const ph = Window_Base._faceHeight;
+	const sw = Math.min(width, pw);
+	const sh = Math.min(height, ph);
+	const dx = Math.floor(x + Math.max(width - pw, 0) / 2);
+	const dy = Math.floor(y + Math.max(height - ph, 0) / 2);
+	const sx = faceIndex % 4 * pw + (pw - sw) / 2;
+	const sy = Math.floor(faceIndex / 4) * ph + (ph - sh) / 2;
+	const argv=[bitmap, sx, sy, sw, sh, dx, dy, ];
+	this.contents.blt.apply(this.contents,argv);
+	this._lastDrawFaceArgv=argv;
+},undefined,true,true);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc mini prng (pseudo random number generator)
+ * @author agold404
+ * @help .
+ * 
+ * $gameSystem.miniPrng_init(seed,b,a);
+ * $gameSystem.miniPrng_getNext();
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_System.prototype).add('miniPrng_init',function f(seed,b,a){
+	const rtv=this._miniPrng={
+		M:65537,
+		a:a===undefined?23:a-0,
+		b:b===undefined?0:b-0,
+		stat:seed===undefined?1:seed-0,
+	};
+	for(let x=0,keys=['a','b','stat',];x!==keys.length;++x) rtv[keys[x]]%=rtv.M;
+	return rtv;
+}).add('miniPrng_getNext',function f(info){
+	let obj=this._miniPrng; if(!obj) obj=this.miniPrng_init(Date.now());
+	const rtv=obj.stat;
+	obj.stat=((obj.stat*obj.a+obj.b)%obj.M+obj.M)%obj.M;
+	return rtv;
+}).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.miniPrng_init(Date.now());
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
+}
 
 })();
 
