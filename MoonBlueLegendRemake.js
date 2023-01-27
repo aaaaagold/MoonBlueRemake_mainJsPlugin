@@ -103,6 +103,22 @@ p.minus_inplace=function(set2){ set2.forEach(x=>this.delete(x)); return this; };
 p.minus=function(set2){ return new Set(this).minus_inplace(set2); };
 }
 //
+{ const p=HTMLElement.prototype,d=document;
+d.ce=d.createElement;
+d.ctxt=d.createTextNode;
+d.ge=d.getElementById;
+p.ac=function(c){ this.appendChild(c); return this; };
+p.atxt=function(t){ this.appendChild(d.ctxt(t)); return this; };
+p.rc=function(c){ this.removeChild(c); return this; }
+p.rf=function(i){
+	const arr=this.childNodes;
+	while(arr.length>i) this.rc(arr[arr.length-1]);
+	return this;
+};
+p.ga=p.getAttribute;
+p.sa=function(a,v){ this.setAttribute(a,v); return this; };
+}
+//
 { const p=HTMLCanvasElement.prototype;
 p.ptcp=function(x,y,w,h,resizeTo){
 	// partial copy ; return another canvas
@@ -114,7 +130,7 @@ p.ptcp=function(x,y,w,h,resizeTo){
 	}
 	rtv.width  =targetW;
 	rtv.height =targetH;
-
+	
 	const ctx=rtv.getContext('2d');
 	ctx.drawImage(
 		this,
@@ -132,6 +148,7 @@ p.scale=function(r){
 	return src.ptcp(0,0,this.width,this.height,{w:w*r||1,h:h*r||1});
 };
 }
+
 const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	const txtin=d.ce("input").sa("class","outofscreen");
 	d.body.ac(txtin);
@@ -18150,18 +18167,160 @@ new cfc(Game_System.prototype).add('miniPrng_init',function f(seed,b,a){
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc 更新讀取錯誤視窗
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
-{
+const d=document;
+
+new cfc(Bitmap.prototype).add('_requestImage',function f(url,substituteUrl){
+	if(substituteUrl) arguments[0]=substituteUrl;
+	return f.ori.apply(this,arguments);
+});
+
+t='prototype';
+for(let x=0,arr=[['img',Bitmap[t]._requestImage,],['audio',WebAudio[t]._load,],['video',Graphics._playVideo,],];x!==arr.length;++x){
+	const type=arr[x][0];
+	const bind=arr[x][1].bind;
+	arr[x][1]._type=type;
+	arr[x][1].bind=function(){
+		const rtv=bind.apply(this,arguments);
+		rtv._type=type;
+		return rtv;
+	};
 }
+
+new cfc(ResourceHandler).add('createLoader',function f(url, retryMethod, resignMethod, retryInterval) {
+	const self=this;
+	retryInterval = retryInterval || this._defaultRetryInterval;
+	const reloaders = this._reloaders;
+	let retryCount = 0;
+	return function(){
+		if(retryCount<retryInterval.length) setTimeout(retryMethod, retryInterval[retryCount++]);
+		else{
+			if(resignMethod) resignMethod();
+			if(url){
+				if(!reloaders.length) self.createLoader_loadErr(url,retryMethod);
+				reloaders.push(giveUp=>{ retryCount=0; retryMethod(giveUp&&f.tbl[retryMethod._type]||url); });
+			}
+		}
+	};
+},{
+'img':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=', // blank_1x1
+'audio':'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQAAAAA=', // blank_audio
+},true).add('createLoader_loadErr',function(url,retryMethod){
+	Graphics.printLoadingError(url,retryMethod._type,);
+	SceneManager.stop();
+},undefined,true).add('retry',function (giveUp){
+	if(0<this._reloaders.length){
+		Graphics.eraseLoadingError();
+		SceneManager.resume();
+		this._reloaders.forEach(reloader=>reloader(giveUp));
+		this._reloaders.length = 0;
+	}
+},undefined,true);
+
+if(d.head){
+	const css=d.ce('style');
+	css.atxt(
+		'button.errAct{ font-size:24px; color:#FFFFFF; background-color:rgba(0,0,0,0.75); }\n' +
+		'button.errAct:hover{ background-color:rgba(123,123,0,0.875); }\n' +
+		''
+	);
+	d.head.ac(css);
+}
+
+new cfc(Graphics).add('printLoadingError',function f(url,type){
+	const rtv=this._errorPrinter;
+	if(this._errorPrinter && !this._errorShowed){
+		// create error board
+		this._errorPrinter.rf(0).ac(this._makeErrorHtml("Loading Error", "Failed to load: " + url));
+		this._errorPrinter.style.zIndex=99;
+		
+		// retry?
+		const btn=this._setErrActBtnStyle(d.ce('button')).atxt("Retry");
+		btn.onmousedown=btn.ontouchstart=(evt)=>{
+			ResourceHandler.retry();
+			evt.stopPropagation();
+			rtv.style.zIndex=99;
+		};
+		this._errorPrinter.ac(btn);
+		this._loadingCount = -Infinity;
+		
+		const alt=f.tbl.alts[type]; if(alt) alt(this);
+		
+		let arr=this._errorPrinter.querySelectorAll("button"); //let arr=d.querySelectorAll('#ErrorPrinter>button');
+		// clear btn.style.backgroundColor so they can use style sheet
+		//for(let x=0;x!==arr.length;++x) if(arr[x].style) arr[x].style.backgroundColor='';
+		// adjust width,height to the same
+		let w=0,h=0;
+		for(let x=0;x!==arr.length;++x){
+			if(w<arr[x].offsetWidth ) w=arr[x].offsetWidth ;
+			if(h<arr[x].offsetHeight) h=arr[x].offsetHeight;
+		}
+		if(w&&h){ // both none zero
+			++w;++h; // offset width/height are integer "measurement"s
+			for(let x=0;x!==arr.length;++x){
+				arr[x].style.width =w+'px';
+				arr[x].style.height=h+'px';
+			}
+		}
+	}
+	return rtv;
+},{
+alts:{
+	'img':self=>{
+		// using transparent image?
+		const btn=self._setErrActBtnStyle(d.ce('button'));
+		btn.ac(d.ce('div').atxt('Give up')).ac(d.ce('div').atxt('(use 1x1 transparent image)'));
+		btn.onmousedown=btn.ontouchstart=(evt)=>{
+			ResourceHandler.retry(1);
+			evt.stopPropagation();
+			self._errorPrinter.style.zIndex=99;
+		};
+		self._errorPrinter.ac(d.ce('br')).ac(btn);
+		self._loadingCount = -Infinity;
+	},
+	'audio':self=>{
+		// using empty audio?
+		const btn=self._setErrActBtnStyle(d.ce('button'));
+		btn.ac(d.ce('div').atxt('Give up')).ac(d.ce('div').atxt('(use empty audio)'));
+		btn.onmousedown=btn.ontouchstart=(evt)=>{
+			ResourceHandler.retry(1);
+			evt.stopPropagation();
+		};
+		self._errorPrinter.ac(d.ce('br')).ac(btn);
+		self._loadingCount = -Infinity;
+	},
+},
+},true).add('printError',function f(name,msg){
+	this._errorShowed=true;
+	if(this._errorPrinter) this._errorPrinter.ac(this._makeErrorHtml(name, msg));
+	this._applyCanvasFilter();
+	this._clearUpperCanvas();
+},undefined,true).add('_makeErrorHtml',function f(name,msg){
+	return d.ce("div").sa("style","background-color:rgba(0,0,0,0.5);").ac(
+		d.ce("font").sa("color","yellow").ac(
+			d.ce("b").atxt(name)
+		)
+	).ac(d.ce("br")).ac(
+		d.ce("font").sa("color","white").atxt(msg)
+	).ac(d.ce("br"));
+},undefined,true).add('_setErrActBtnStyle',function f(btn){
+	return btn.sa('style',f.tbl.css_inline.btn).sa('class',f.tbl.css_class.btn);
+},{
+css_class:{
+	btn:'errAct',
+},
+css_inline:{
+	btn:'',
+},
+},undefined,true);
 
 })();
 
