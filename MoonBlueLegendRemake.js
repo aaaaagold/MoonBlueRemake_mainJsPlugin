@@ -18325,6 +18325,180 @@ css_inline:{
 })();
 
 
+﻿"use strict";
+/*:
+ * @plugindesc Game_Picture effects 圖片特效 api
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Picture.prototype).add('effect_shake',function f(strengthXY,periodXY,duration){
+	this._shake_dur=~~duration;
+	this._shake_prd=periodXY;
+	this._shake_str=strengthXY;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.updateEffect_shake();
+	return rtv;
+}).add('updateEffect_shake',function f(){
+	if(0<this._shake_dur){
+		const shk=this._shake_str,pi2=Math.PI*2;
+		this._shake_dx=Math.sin(pi2*this._shake_dur/this._shake_prd.x)*shk.x;
+		this._shake_dy=Math.sin(pi2*this._shake_dur/this._shake_prd.y)*shk.y;
+		if(!(0<--this._shake_dur)){
+			this._shake_dur=
+			this._shake_dx=
+			this._shake_dy=
+			this._shake_prd=
+			this._shake_str=
+				undefined;
+		}
+	}
+}).add('x',function f(){
+	return (this._shake_dx||0)+f.ori.apply(this,arguments);
+}).add('y',function f(){
+	return (this._shake_dy||0)+f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc Heap
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{ const w=window; if(!w.Heap){
+	let $dddd$;
+	w.Heap=function(){ this.initialize.apply(this,arguments); };
+	w.Heap.prototype.constructor=w.Heap;
+	$dddd$=w.Heap.prototype.initialize=function f(func_cmp3,arr,inPlace){
+		{
+			let lt=func_cmp3;
+			this._lt=(lt&&lt.constructor===Function)?(a,b)=>lt(a,b)<0:f.ori;
+		}
+		this._searchTbl=new Map();
+		if(arr&&arr.constructor===Array){
+			if(inPlace){
+				arr.push(arr[0]);
+				arr[0]=undefined;
+				this._data=arr;
+			}else this._data=[undefined].concat(arr);
+			this.makeHeap();
+		}else this._data=[undefined];
+	};
+	$dddd$.ori=(a,b)=>a<b;
+	w.Heap.prototype.clear=function(){
+		this._data.length=1;
+		this._searchTbl.clear();
+	};
+	w.Heap.prototype.remove=function(ele){
+		// do not use when 'ele' is basic type: undefined,null,Boolean,Number,String
+		const st=this._searchTbl;
+		let idx=st.get(ele);
+		if(idx===undefined){ debugger; return; }
+		st.delete(ele);
+		const arr=this._data;
+		const rtv=arr[idx];
+		arr[idx]=arr.back;
+		st.set(arr[idx],idx);
+		arr.pop();
+		this._sink(idx);
+		return rtv;
+	};
+	Object.defineProperties(w.Heap.prototype,{
+		top: {
+			get:function(){return this._data[1];},
+			set:function(rhs){
+				const arr=this._data,st=this._searchTbl;
+				st.delete(arr[1]);
+				arr[1]=rhs;
+				st.set(arr[1],1);
+				this._sink();
+				return rhs;
+			},
+		configurable: false},
+		length: {
+			get:function(){return this._data.length-1;},
+		configurable: false}
+	});
+	w.Heap.prototype._sink=function(strt){
+		const arr=this._data;
+		if(arr.length===1) return;
+		let idx=(strt<<1)||2,lt=this._lt;
+		while(idx<arr.length){
+			const offset=((idx|1)<arr.length&&lt(arr[idx],arr[idx|1]))^0; // larger
+			if(lt(arr[idx>>1],arr[idx|offset])){ // less than larger one
+				const idx1=idx>>1,idx2=idx|offset,st=this._searchTbl;
+				const tmp=arr[idx1]; arr[idx1]=arr[idx2]; arr[idx2]=tmp;
+				st.set(arr[idx1],idx1);
+				st.set(arr[idx2],idx2);
+			}else break;
+			idx|=offset;
+			idx<<=1;
+		}
+		return idx;
+	};
+	w.Heap.prototype._float=function(strt){
+		const arr=this._data;
+		if(arr.length===1) return;
+		let idx=strt||(arr.length-1),lt=this._lt;
+		while(idx!==1 && lt(arr[idx>>1],arr[idx])){
+			const st=this._searchTbl,idx0=idx;
+			idx>>=1;
+			const tmp=arr[idx]; arr[idx]=arr[idx0]; arr[idx0]=tmp;
+			st.set(arr[idx0],idx0);
+			st.set(arr[idx ],idx );
+		}
+		return idx;
+	};
+	w.Heap.prototype.makeHeap=function(){
+		const arr=this._data;
+		for(let x=arr.length;--x;) this._sink(x);
+		for(let x=arr.length;--x;) this._searchTbl.set(arr[x],x);
+	};
+	w.Heap.prototype.push=function(rhs){
+		const arr=this._data;
+		arr.push(rhs);
+		this._searchTbl.set(arr.back,arr.length-1);
+		this._float();
+	};
+	w.Heap.prototype.pop=function(){
+		const arr=this._data;
+		if(arr.length===1) return;
+		const rtv=arr[1],st=this._searchTbl;
+		st.delete(rtv);
+		arr[1]=arr.back;
+		st.set(arr[1],1);
+		arr.pop();
+		this._sink();
+		return rtv;
+	};
+	w.Heap.prototype.toArr=function(){return this._data.slice(1);};
+	w.Heap.prototype.rsrvTop=function(){
+		const arr=this._data;
+		if(arr.length===1) return;
+		const st=this._searchTbl;
+		st.clear();
+		arr.length=2;
+		st.set(arr[1],1);
+		return this.top;
+	};
+} }
+
+})();
+
+
 ﻿
 
 
