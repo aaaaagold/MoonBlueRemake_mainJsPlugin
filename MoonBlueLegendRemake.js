@@ -1437,6 +1437,38 @@ new cfc(Game_Battler.prototype).add('accumulateGains_init',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc Fix Glitch of plugin - MOG_Weather_EX in loopMap
+ * @author agold404
+ *
+ * @help 還有多少插件要修，你們不能寫好嗎 QAQ
+ */
+
+// fixbug__MOG_Weather_EX__loopMapDisplayGlitch
+
+if(typeof SpriteWeatherEX!=='undefined') SpriteWeatherEX.prototype.updateScroll = function(sprite) {
+	let pr;
+	if($dataMap && !(pr=$dataMap._threshold)){
+		pr=$dataMap._threshold=[];
+		pr[0]=($dataMap.width  -1)*$gameMap.tileWidth  (); pr[0]*=pr[0];
+		pr[1]=($dataMap.height -1)*$gameMap.tileHeight (); pr[1]*=pr[1];
+	}
+	sprite._sx -= sprite._ani[1];
+	sprite._sy -= sprite._ani[2];
+	const displayX_tw=$gameMap.displayX() * $gameMap.tileWidth  ();
+	const displayY_th=$gameMap.displayY() * $gameMap.tileHeight ();
+	if(this._lastDisplayX_tw!==undefined){
+		const dx=displayX_tw-this._lastDisplayX_tw; if(dx*dx>pr[0]) sprite._sx-=dx;
+		const dy=displayY_th-this._lastDisplayY_th; if(dy*dy>pr[1]) sprite._sy-=dy;
+	}
+	sprite.origin.x = displayX_tw + sprite._sx;
+	sprite.origin.y = displayY_th + sprite._sy;
+	this._lastDisplayX_tw=displayX_tw;
+	this._lastDisplayY_th=displayY_th;
+};
+
+
+﻿"use strict";
+/*:
  * @plugindesc 修 MOG_Weather_EX.js 太卡ㄉ問題
  * @author agold404
  * @help 再不讀演算法及了解語言特性試試看?
@@ -2213,38 +2245,6 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 }
 })();
-
-
-﻿"use strict";
-/*:
- * @plugindesc Fix Glitch of plugin - MOG_Weather_EX in loopMap
- * @author agold404
- *
- * @help 還有多少插件要修，你們不能寫好嗎 QAQ
- */
-
-// fixbug__MOG_Weather_EX__loopMapDisplayGlitch
-
-if(typeof SpriteWeatherEX!=='undefined') SpriteWeatherEX.prototype.updateScroll = function(sprite) {
-	let pr;
-	if($dataMap && !(pr=$dataMap._threshold)){
-		pr=$dataMap._threshold=[];
-		pr[0]=($dataMap.width  -1)*$gameMap.tileWidth  (); pr[0]*=pr[0];
-		pr[1]=($dataMap.height -1)*$gameMap.tileHeight (); pr[1]*=pr[1];
-	}
-	sprite._sx -= sprite._ani[1];
-	sprite._sy -= sprite._ani[2];
-	const displayX_tw=$gameMap.displayX() * $gameMap.tileWidth  ();
-	const displayY_th=$gameMap.displayY() * $gameMap.tileHeight ();
-	if(this._lastDisplayX_tw!==undefined){
-		const dx=displayX_tw-this._lastDisplayX_tw; if(dx*dx>pr[0]) sprite._sx-=dx;
-		const dy=displayY_th-this._lastDisplayY_th; if(dy*dy>pr[1]) sprite._sy-=dy;
-	}
-	sprite.origin.x = displayX_tw + sprite._sx;
-	sprite.origin.y = displayY_th + sprite._sy;
-	this._lastDisplayX_tw=displayX_tw;
-	this._lastDisplayY_th=displayY_th;
-};
 
 
 ﻿"use strict";
