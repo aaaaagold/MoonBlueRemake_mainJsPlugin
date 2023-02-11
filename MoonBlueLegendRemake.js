@@ -174,6 +174,19 @@ cf(Game_System.prototype,'initialize',function f(){
 	return rtv;
 });
 Game_Timer.prototype.onExpire=()=>{}; // not abort battle
+new cfc(Game_Action.prototype).add('applyGlobal',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.applyGlobal_javascript();
+	return rtv;
+}).add('applyGlobal_javascript',function f(){
+	const item=this.item();
+	const js=item && item.meta[f.tbl[0]];
+	if(js){
+		eval(js);
+	}
+},[
+"applyGlobal_javascript",
+]);
 PIXI.ObservablePoint.prototype.resize=function(n){ return this.set(n,n); };
 PIXI.Rectangle.prototype.equals=function(rect){ return this.x===rect.x&&this.y===rect.y&&this.width===rect.width&&this.height===rect.height; };
 ConfigManager.readVolume=function(config, name){ const value=config[name]; return (value===undefined)?50:Number(value).clamp(0, 100); };
@@ -345,6 +358,31 @@ cf(cf(cf(Window_Selectable.prototype,'processCursorMove',t=function f(){
 t.tbl[0].forEach(info=>{
 	Input.keyMapper[info[0]]=info[1];
 });
+t=undefined;
+new cfc(Scene_Base.prototype).add('_prevScene_store',function f(){
+	// called when 'scene.initialize'
+	this._lastBgBm=SceneManager.backgroundBitmap();
+	this._oriStop=undefined;
+	const sc=this._prevScene=SceneManager._scene;
+	if(sc){
+		if(sc.constructor===Scene_Battle){
+			// _fadeSprite
+			this._oriStop=sc.stop;
+			sc.stop=f.tbl[0];
+		}
+		SceneManager.snapForBackground();
+	}
+},[
+function(){ Scene_Base.prototype.stop.call(this); },
+],true,true).add('_prevScene_restore',function f(){
+	// called in 'scene.create', after background created
+	if(this._oriStop){
+		const sc=this._prevScene; // if this._oriStop!==undefined, sc!==undefined // already stopped 
+		if(this._oriStop===sc.constructor.prototype.stop) delete sc.stop;
+		else sc.stop=this._oriStop;
+	}
+	if(this._lastBgBm) SceneManager._backgroundBitmap=this._lastBgBm;
+},t,true,true);
 
 /*
 調皮
@@ -399,7 +437,7 @@ const devers={
 	"鎧特":["支線製作","小遊戲製作","劇情相關部分"],
 	"牙籤":["CG","頭像","部分UI"],
 	"黃金":["此插件作者","修正原廠js及其他插件的bug","遊戲中部份特殊功能"],
-	"才才":["劇情相關部分"],
+	"材材":["劇情相關部分"],
 	"波波":["學習畫地圖"],
 	"狗頭":["exe反組譯大師"],
 	"樺城":["畫地圖"],
@@ -423,8 +461,8 @@ const byWork={
 	"PV":["攸藍","LULU",],
 },byWork_={
 	"原著既最後細調組":["天使",],
-	"劇情組":["天使","才才","咕咕咕",],
-	"事件組":["鎧特","才才","狗頭",],
+	"劇情組":["天使","咕咕咕","材材",],
+	"事件組":["鎧特","咕咕咕","狗頭",],
 	"戰鬥組":["攸藍",],
 	"CG組":["牙籤","柏林",],
 	"寫插件組":["黃金",],
@@ -865,7 +903,11 @@ t=undefined;
 
 
 { // 支援前場景暫存恢復+確保下個場景要預讀的東西好了 // ImageManager.isReady()
-cf(SceneManager,'changeScene',function(){
+new cfc(SceneManager).add('push',function f(sceneClass,shouldRecordCurrentScene){
+	this._stack.push(this._scene.constructor);
+	this.goto(sceneClass,shouldRecordCurrentScene);
+	if(shouldRecordCurrentScene && this._nextScene) this._nextScene._prevScene=this._scene;
+},undefined,true,true).add('changeScene',function(){
 	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
 		let recordedPrevScene;
 		if(this._scene){
@@ -889,9 +931,7 @@ cf(SceneManager,'changeScene',function(){
 				this.onSceneCreate();
 			}
 		}
-		if(this._exiting){
-			this.terminate();
-		}
+		if(this._exiting) this.terminate();
 	}
 },undefined,true,true);
 } // 支援前場景暫存恢復+確保下個場景要預讀的東西好了
@@ -11323,7 +11363,7 @@ p.radiusWaveEffect_push=function(argv){
 	argv[0]|=0;
 	argv[1]|=0;
 	argv[2]|=0;
-	if(!(argv[3]>=1)) argv[3]=1;
+	if(isNaN(argv[3])) argv[3]=1;
 	argv[3]|=0;
 	if(!(argv[4]>=1)) argv[4]=1;
 	argv[4]|=0;
@@ -11340,7 +11380,10 @@ p.radiusWaveEffect_clearAll=function(){
 p.radiusWaveEffect_arrange=function(){
 	// !!!! O(n) !!!!
 	let cnt=0,arr=this._radiusWaveEffectArgvv;
-	for(let x=0;x!==arr.length;++x) if(arr[x][5]<arr[x][6]) arr[cnt++]=arr[x];
+	for(let x=0;x!==arr.length;++x){
+		if(this._radiusWaveEffect_getRadiusInc(x)<0 && 0>=this.radiusWaveEffect_getRadius(x)) continue;
+		if(this._radiusWaveEffect_getFramesCurr(x)<this._radiusWaveEffect_getFramesTotal(x)) arr[cnt++]=arr[x];
+	}
 	return arr.length=this._radiusWaveEffect=cnt;
 };
 p._radiusWaveEffect_setPos_x=function(id,val){
@@ -11364,7 +11407,7 @@ p._radiusWaveEffect_setFramesCurr=function(id,val){
 p._radiusWaveEffect_setFramesTotal=function(id,val){
 	return this.radiusWaveEffect_get(id)[6]=val;
 };
-p._radiusWaveEffect_setFramesTotalFradeOut=function(id,val){
+p._radiusWaveEffect_setFramesTotalFadeOut=function(id,val){
 	return this.radiusWaveEffect_get(id)[7]=val;
 };
 p._radiusWaveEffect_setPass2=function(id,val){
@@ -11391,7 +11434,7 @@ p._radiusWaveEffect_getFramesCurr=function(id){
 p._radiusWaveEffect_getFramesTotal=function(id){
 	return this.radiusWaveEffect_get(id)[6];
 };
-p._radiusWaveEffect_getFramesTotalFradeOut=function(id){
+p._radiusWaveEffect_getFramesTotalFadeOut=function(id){
 	return this.radiusWaveEffect_get(id)[7];
 };
 p._radiusWaveEffect_getPass2=function(id){
@@ -11416,13 +11459,17 @@ p.radiusWaveEffect_getPos=function(id){
 };
 p.radiusWaveEffect_getCssOpacity=function(id){
 	if(id>=this.radiusWaveEffect_size()) return;
-	const fo=this._radiusWaveEffect_getFramesTotalFradeOut(id);
-	const val=this._radiusWaveEffect_getFramesTotal(id)-this._radiusWaveEffect_getFramesCurr(id);
+	const inc=this._radiusWaveEffect_getRadiusInc(id);
+	const fo=this._radiusWaveEffect_getFramesTotalFadeOut(id);
+	const val=0<inc?this._radiusWaveEffect_getFramesTotal(id)-this._radiusWaveEffect_getFramesCurr(id):this._radiusWaveEffect_getFramesCurr(id);
 	return val<fo?val/fo||0:1;
 };
 p.radiusWaveEffect_getRadius=function(id){
 	if(id>=this.radiusWaveEffect_size()) return;
-	return this._radiusWaveEffect_getFramesCurr(id)*this._radiusWaveEffect_getRadiusInc(id)+this._radiusWaveEffect_getRadiusInit(id);
+	const inc=this._radiusWaveEffect_getRadiusInc(id);
+	let rtv=this._radiusWaveEffect_getRadiusInit(id)+this._radiusWaveEffect_getFramesCurr(id)*inc;
+	//if(inc<0) rtv+=this._radiusWaveEffect_getThickness(id);
+	return rtv;
 };
 p.radiusWaveEffect_getRadius_inner=function(id){
 	if(id>=this.radiusWaveEffect_size()) return;
@@ -11434,12 +11481,16 @@ p.radiusWaveEffect_getPass2=function(id){
 p.radiusWaveEffect_getAllTheWay=function(id){
 	return this._radiusWaveEffect_getAllTheWay(id);
 };
-p.radiusWaveEffect_gen=function(x,y,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
-	if(!(speed>=1)) speed=8;
+p.radiusWaveEffect_gen=function(x,y,thickness,speed,duration,fadingFrames,pass2,allTheWay,initRadius){
+	if(isNaN(speed)) speed=8;
 	if(!(thickness>=1)) thickness=64;
 	if(!(duration>=1)) duration=128+~~(Math.random()*32);
-	if(!(fadeOutFrames>=0)) fadeOutFrames=16+~~(Math.random()*4);
-	return this.radiusWaveEffect_push([x,y,0,speed,thickness,0,duration,fadeOutFrames,pass2,allTheWay]);
+	if(!(fadingFrames>=0)) fadingFrames=16+~~(Math.random()*4);
+	if(isNaN(initRadius)){
+		if(speed<0) initRadius=duration*-speed;
+		else initRadius=0;
+	}else initRadius+=thickness;
+	return this.radiusWaveEffect_push([x,y,initRadius||0,speed,thickness,0,duration,fadingFrames,pass2,allTheWay]);
 };
 }
 
@@ -11598,30 +11649,30 @@ t.tmpc2=document.createElement('canvas');
 }
 
 { const p=BattleManager;
-p.radiusWaveEffect_genAtBtlr=function f(btlr,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
+p.radiusWaveEffect_genAtBtlr=function f(btlr,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius){
 	if(btlr&&btlr.constructor===Array){
-		for(let x=0;x!==btlr.length;++x) f.call(this,btlr[x],dx,dy,thickness,speed,duration,fadeOutFrames,pass2);
+		for(let x=0;x!==btlr.length;++x) f.call(this,btlr[x],dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius);
 		return;
 	}
 	const sc=SceneManager._scene;
 	const sp=sc._btlr2sp&&sc._btlr2sp.get(btlr); if(!sp) return;
 	dx|=0; dy|=0;
-	return $gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
+	return $gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius);
 };
-p.radiusWaveEffect_genAtTarget=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
-	return this.radiusWaveEffect_genAtBtlr(this._targets,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
+p.radiusWaveEffect_genAtTarget=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius){
+	return this.radiusWaveEffect_genAtBtlr(this._targets,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius);
 };
-p.radiusWaveEffect_genAtSubject=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
-	return this.radiusWaveEffect_genAtBtlr(this._subject,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
+p.radiusWaveEffect_genAtSubject=function f(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius){
+	return this.radiusWaveEffect_genAtBtlr(this._subject,dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius);
 };
 }
 
 { const p=Game_Character.prototype;
-p.radiusWaveEffect_gen=function(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay){
+p.radiusWaveEffect_gen=function(dx,dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius){
 	const sc=SceneManager._scene;
 	const sp=sc._chr2sp&&sc._chr2sp.get(this); if(!sp) return;
 	dx|=0; dy|=0;
-	return $gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay);
+	return $gameScreen.radiusWaveEffect_gen(sp.x+dx,sp.y+dy,thickness,speed,duration,fadeOutFrames,pass2,allTheWay,initRadius);
 };
 }
 
@@ -12758,14 +12809,17 @@ r=p[k]; (p[k]=function f(){
 
 ﻿"use strict";
 /*:
- * @plugindesc trait: 被上某狀態A時，不會被上狀態A，並移除狀態B、上狀態C。
+ * @plugindesc trait: 被上/解除某狀態A時，不會被上狀態A，並移除狀態B、上狀態C。
  * @author agold404
  * @help note: <狀態新增變化ra:{"被上此狀態A時，不新增此狀態，並":{"移除":[id,id,...],"加入":[id,id,...]}}>
+ * <狀態解除變化ra:{"被解除此狀態A時，不解除此狀態，並":{"移除":[id,id,...],"加入":[id,id,...]}}>
  * json 格式
  * 
  * 範例：
  * <狀態新增變化ra:{"1":{"移除":[2,3,4,5,6,7,8,9],"加入":[22,23,24,25,26,27,28,29]}}>
  * <狀態新增變化ra:{"1":{"移除":[2,3,4,5,6,7,8,9],"加入":[22,23,24,25,26,27,28,29]},"101":{"移除":[112,113,114,115,116,117,118,119],"加入":[122,123,124,125,126,127,128,129]}}>
+ * <狀態解除變化ra:{"1":{"移除":[2,3,4,5,6,7,8,9],"加入":[22,23,24,25,26,27,28,29]}}>
+ * <狀態解除變化ra:{"1":{"移除":[2,3,4,5,6,7,8,9],"加入":[22,23,24,25,26,27,28,29]},"101":{"移除":[112,113,114,115,116,117,118,119],"加入":[122,123,124,125,126,127,128,129]}}>
  *
  * * 死亡狀態被新增再被拔掉，該角色HP會 = 1。
  *
@@ -12779,14 +12833,14 @@ if(!window.addEnum) window.addEnum=function(key){
 	return this;
 };
 
-(()=>{ let k,r,t;
+(()=>{ let k,r,t; for(let x=0,arr=[['新增','addState',],['解除','removeState',]];x!==arr.length;++x){
 
-const gbb=Game_BattlerBase,kwp='狀態新增',kw=kwp+'變化ra';
+const gbb=Game_BattlerBase,kwp='狀態'+arr[x][0],kw=kwp+'變化ra';
 const kwt='TRAIT_'+kw;
 const kwget="get_"+kw;
 const kwfilter="_"+kw+'_filter';
-const kwmain="_"+kw+'_main';
-const kwmain0="_"+kw+'_main0';
+const kwmain="_"+kwp+'_main';
+const kwmain0="_"+kwp+'_main0';
 const kwtemp="_"+kw+'_temp';
 
 if(!gbb._enumMax) gbb._enumMax=404;
@@ -12824,15 +12878,16 @@ p[kwget]=function(){ return this.traits(gbb[kwt]); };
 	if(!rtv) arr._map.set(dataId,rtv=arr.filter(f.tbl,dataId));
 	return rtv;
 }).tbl=function f(t){ return this===t.dataId; };
-k='addState';
+k=arr[x][1]; // k='addState'; k='removeState';
 r=p[k]; (p[k]=function f(stateId){
 	let rtv;
 	const ori=this[kwtemp];
-	if(!this[kwmain].apply(this,arguments)) rtv=f.ori.apply(this,arguments);
+	//if(!this[kwmain].apply(this,arguments)) rtv=f.ori.apply(this,arguments);
+	if(!this[kwmain](stateId,kwmain0,kwget,kwfilter,kwtemp)) rtv=f.ori.apply(this,arguments);
 	if(!ori) this[kwtemp]=ori;
 	return rtv;
 }).ori=r;
-(p[kwmain]=function f(stateId){
+if(!p[kwmain]) (p[kwmain]=function f(stateId,kwmain0,kwget,kwfilter,kwtemp){
 	let traits=this[kwtemp]; if(traits) return;
 	traits=this[kwtemp]=this[kwget]();
 	if(this[kwfilter](traits,stateId).length){
@@ -12840,7 +12895,7 @@ r=p[k]; (p[k]=function f(stateId){
 		let allAddedSerial=~~0;
 		const finalAdds=[],finalRms=[];
 		for(let currAdds=[stateId];currAdds.length;){
-			const res=this[kwmain0](traits,currAdds);
+			const res=this[kwmain0](traits,currAdds,kwfilter);
 			if(!res){
 				finalAdds.uniquePushContainer(currAdds);
 				break;
@@ -12873,7 +12928,7 @@ r=p[k]; (p[k]=function f(stateId){
 r:function(stateId){ this.removeState(stateId); },
 a:function(stateId){ this.addState(stateId); },
 };
-(p[kwmain0]=function f(traits,currAdds){
+if(!p[kwmain0]) (p[kwmain0]=function f(traits,currAdds,kwfilter){
 	// return: [removeListU,addListU]
 	const rtv=[[],[]];
 	let notFound=true;
@@ -12896,7 +12951,7 @@ a:function(stateId){ this.addState(stateId); },
 }).tbl=["移除","加入"];
 }
 
-})();
+} })();
 
 
 ﻿"use strict";
@@ -13982,7 +14037,7 @@ r=p[k]; (p[k]=function(name,src){
 	xhr.onload = function() {
 		if (xhr.status < 400) {
 			window[name] = JSON.parse(xhr.responseText);
-			DataManager.onLoad(window[name],name);
+			DataManager.onLoad(window[name],name,src);
 		}
 	};
 	xhr.onerror = this._mapLoader || function() {
@@ -14862,6 +14917,7 @@ p.constructor=a;
 k='initialize';
 cf(p,k,f=function f(){
 	f.tbl[1][f.tbl[0]].apply(this,arguments);
+	this._prevScene_store();
 	this._stat=0; // 0:cmd 1:txt
 	this._fc_endEdit=0;
 },[k,a.ori.prototype]);
@@ -14869,6 +14925,7 @@ cf(p,k,f=function f(){
 k='create';
 cf(p,k,f=function f(){
 	f.tbl[1][f.tbl[0]].apply(this,arguments);
+	this._prevScene_restore();
 	this.initResult();
 	this.createCommandWindow();
 	this.createTextareaBack();
@@ -14920,7 +14977,6 @@ function(){
 	else this._commandWindow.active();
 },
 function(){
-	this._stat=0;
 	this.node_cmdDom.focus();
 },
 ]);
@@ -15002,6 +15058,7 @@ cf(p,k,function f(){
 {
 onfocus:function(e){
 	if(e.target.style.display==="none") return;
+	this.ref._stat=0;
 	const cw=this.ref._commandWindow;
 	if(!cw.active){
 		this.ref._fc_endEdit=Graphics.frameCount;
@@ -15043,7 +15100,7 @@ cf(p,k,function f(){
 	st.top    =y+"px";
 },[
 t,
-'resize:none; white-space:pre; word-break:keep-all; text-justify:none; text-overflow:clip; background-color:rgba(0,0,0,0); color:#FFFFFF; ',
+'resize:none; white-space:pre; word-break:keep-all; text-justify:none; overflow:scroll; text-overflow:clip; background-color:rgba(0,0,0,0); color:#FFFFFF; ',
 ]);
 
 k='updatePos_cmdDom';
@@ -17313,7 +17370,7 @@ p.constructor=a;
 
 p.initialize=function f(){
 	Scene_MenuBase.prototype.initialize.apply(this,arguments);
-	const psc=this._prevScene=SceneManager._scene;
+	const psc=this._prevScene=SceneManager._scene; // from Scene_Skill , no need snap bg.
 	this._actor=psc&&psc._actor;
 };
 p.create=function f(){
@@ -18499,6 +18556,368 @@ new cfc(Game_Picture.prototype).add('effect_shake',function f(strengthXY,periodX
 })();
 
 
+﻿"use strict";
+/*:
+ * @plugindesc BossFightCounter
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=['BossFightCounter-',];
+t.push('-'+t[0]+'allKeys'); // 1
+t.push('-'+t[0]+'FinalGameTime'); // 2
+
+new cfc(BattleManager).add('addBossFightCounter',function f(key){
+	const fullkey=f.tbl[0]+key;
+	localStorage.setItem(fullkey,(localStorage.getItem(fullkey)|0)+1);
+	this._bossFightCounter_addKey(key);
+},t).add('getBossFightCounter',function f(key){
+	const fullkey=f.tbl[0]+key;
+	return localStorage.getItem(fullkey)|0;
+},t).add('delBossFightCounter',function f(key){
+	const fullkey=f.tbl[0]+key;
+	localStorage.removeItem(fullkey);
+	this._bossFightCounter_delKey(key);
+},t).add('delBossFightCounterAll',function f(key){
+	for(let x=0,arr=this._bossFightCounter_getKeys();x<arr.length;++x){
+		const fullkey=f.tbl[0]+arr[x];
+		localStorage.removeItem(fullkey);
+	}
+	this._bossFightCounter_delAllKeys();
+},t).add('_bossFightCounter_getKeys',function f(){
+	let allKeys;
+	try{
+		allKeys=JSON.parse(localStorage.getItem(f.tbl[1])||"[]");
+		if(!allKeys||allKeys.constructor!==Array) allKeys=[];
+	}catch(e){
+		allKeys=[];
+	}
+	return allKeys;
+},t).add('_bossFightCounter_setKeys',function f(keys){
+	try{
+		localStorage.setItem(f.tbl[1],JSON.stringify(keys));
+	}catch(e){
+		this._bossFightCounter_delAll();
+	}
+},t).add('_bossFightCounter_addKey',function f(key){
+	const allKeys=this._bossFightCounter_getKeys();
+	if(allKeys.indexOf(key)<0){
+		allKeys.push(key);
+		this._bossFightCounter_setKeys(allKeys);
+	}
+},t).add('_bossFightCounter_delKey',function f(key){
+	const idx=allKeys.indexOf(key);
+	if(idx>=0){
+		allKeys.splice(idx,1);
+		this._bossFightCounter_setKeys(allKeys);
+	}
+},t).add('_bossFightCounter_delAllKeys',function f(){
+	localStorage.removeItem(f.tbl[1]);
+},t);
+
+const loadTime=Date.now(),lastTime=localStorage.getItem(t[2])-0;
+if(1){
+	const dt=loadTime-lastTime;
+	if(dt<4567){ // supposed < 4.567 sec is F5
+		// keep count
+		console.log("keep "+t[0],dt);
+	}else{ // supposed close game and re-open
+		// reset
+		console.log("reset "+t[0],dt);
+		BattleManager.delBossFightCounterAll();
+	}
+	window.addEventListener("beforeunload", e=>{ localStorage.setItem(t[2],Date.now()); }, false);
+}
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 劇情對話文字回顧 flashbackText
+ * @author agold404
+ * @help SceneManager.push(Scene_FlashbackText);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const enableShortcutScenes=new Set([
+Scene_Map,
+Scene_Battle,
+Scene_Menu,
+Scene_Item,
+Scene_Skill,
+Scene_Equip,
+Scene_Status,
+]);
+
+{
+const a=function Scene_FlashbackText(){
+	this.initialize.apply(this, arguments);
+};
+a.ori=Scene_MenuBase;
+window[a.name]=a;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a;
+k='initialize';
+cf(p,k,function f(){
+	f.tbl[1][f.tbl[0]].apply(this,arguments);
+	this._prevScene_store();
+},[
+k,
+a.ori.prototype,
+function(){ Scene_Base.prototype.stop.call(this); },
+],true,true);
+k='create';
+cf(p,k,function f(){
+	f.tbl[1][f.tbl[0]].apply(this,arguments);
+	this.createWindows();
+	this._prevScene_restore();
+},[k,a.ori.prototype],true,true);
+new cfc(p).add('updateActor',function f(){
+	
+},undefined,true,true).add('createWindows',function f(){
+	this.createCommandWindow();
+	this.createFlashbackTextWindow();
+	this.loadImgs();
+}).add('createCommandWindow',function f(){
+	const wc=this._commandWindow=new Window_FlashbackText_command(0,0);
+	for(let x=0,arr=wc.makeCommandList.tbl;x!==arr.length;++x) wc.setHandler(arr[x].param[1], arr[x].func.bind(this));
+	this.addWindow(wc);
+},undefined,true,true).add('createFlashbackTextWindow',function f(){
+	const wt=this._flashbackTextWindow=new Window_FlashbackText();
+	wt.height=wt._windowHeight=Graphics.boxHeight-this._commandWindow.height;
+	wt.y=this._commandWindow.height;
+	this.addWindow(wt);
+}).add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._flashbackTextWindow.scrollBottom().open();
+	return rtv;
+}).add('loadImgs',function f(){
+	$gameTemp.flashbackText_getCont().forEach(f.tbl[0]);
+},[
+info=>{
+	const faceName=info&&info.face&&info.face.name;
+	if(faceName) ImageManager.loadFace(faceName);
+},
+]);
+}
+
+{
+const a=function Window_FlashbackText_command(){
+	this.initialize.apply(this, arguments);
+};
+a.ori=Window_HorzCommand;
+window[a.name]=a;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a;
+t=[
+{
+	param:["使用ESC或按此關閉","cancel",],
+	func:function f(){this.popScene();},
+},
+];
+new cfc(p).add('makeCommandList',function f(){
+	const wc=this;
+	for(let x=0,arr=f.tbl;x!==arr.length;++x){
+		wc.addCommand.apply(wc,arr[x].param);
+	}
+},t,true,true).add('itemWidth',function f(){
+	return ~~(this.contentsWidth()/f.tbl.length);
+},t,true,true).add('windowWidth',function f(){
+	return Graphics.boxWidth;
+},undefined,true,true);
+t=undefined;
+}
+
+{
+const a=function Window_FlashbackText(){
+	this.initialize();
+};
+a.ori=Window_Message;
+window[a.name]=a;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a;
+new cfc(p).add('initMembers',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._windowPauseSignSprite.visible=false;
+	this._lastRedrawFrame=Graphics.frameCount;
+	this._scrollTxtY=0;
+	this._shouldRedraw=false;
+	this._windowHeight=undefined;
+	this._scrollTxtY_max=undefined;
+	return rtv;
+}).add('update',function f(){
+	Window_Base.prototype.update.call(this);
+	this.redrawtxt();
+	this.processInputs();
+}).add('_update_calcHeights',function f(arr){
+	return this._redrawtxt(arr,true);
+}).add('windowHeight',function f(){
+	return isNaN(this._windowHeight)?Graphics.boxHeight:this._windowHeight;
+}).add('updatePlacement',function f(){
+	
+},undefined,true,true).add('createSubWindows',function f(){}).add('subWindows',function f(){
+	return f.tbl[0];
+},[
+[],
+]).add('_redrawtxt',function f(arr,isCalcH){
+	const bak_faceName=$gameMessage._faceName;
+	if(!isCalcH) this.contents.clear();
+	const ch=this.contentsHeight(),yInit=isCalcH?0:-this._scrollTxtY;
+	const textState={x:undefined,left:undefined,y:yInit,height:0,};
+	let clean=true,dy=0;
+	for(let x=0;x!==arr.length;++x){
+		if(x){
+			textState.y+=this.padding;
+			dy+=this.padding;
+		}
+		if(!isCalcH && textState.y>=ch) break;
+		if(textState.y+arr[x].height<0||(isCalcH&&arr[x].height!==undefined)){
+			// skip
+			textState.y+=arr[x].height;
+		}else{
+			clean=false;
+			const face=arr[x].face;
+			$gameMessage._faceName=face.name;
+			const y=isCalcH?0:textState.y;
+			if(!isCalcH && face.name) this.drawFace(face.name, face.idx, f.tbl[0].x, y);
+			;
+			this.drawTextEx(arr[x].txt,
+				textState.x=textState.left=this.newLineX(),y,
+				0,0,textState,
+			);
+			// calcTextHeight(txt,false) called when '\n' ; returns 1 line height at a time
+			arr[x].height=(textState.y+=textState.height)-y;
+			if(face.name) textState.y=(arr[x].height=Math.max(arr[x].height,Window_Base._faceHeight))+y;
+		}
+		dy+=arr[x].height;
+	}
+	if(isCalcH && !clean && this.contents) this.contents.clear();
+	$gameMessage._faceName=bak_faceName;
+	return dy;
+},[
+{x:0,},
+]).add('redrawtxt',function f(forced){
+	if(( !this._shouldRedraw ||
+		this._lastRedrawFrame===Graphics.frameCount ||
+		!this.isOpen() || 
+		!$gameTemp ||
+	false )&&!forced) return;
+	this._shouldRedraw=false;
+	this._lastRedrawFrame=Graphics.frameCount;
+	
+	const arr=$gameTemp.flashbackText_getCont();
+	this._update_calcHeights(arr);
+	const rtv=this._redrawtxt(arr);
+	if(this._scrollTxtY_max===undefined) this._scrollTxtY_max=Math.max(rtv-this.contentsHeight(),0);
+	return rtv;
+}).add('setScrollTxtY',function f(val){
+	if(val<0) val=0;
+	if(this._scrollTxtY_max<val) val=this._scrollTxtY_max;
+	if(this._scrollTxtY!==val){
+		this._scrollTxtY=val;
+		this._shouldRedraw=true;
+		if(!val) this.upArrowVisible=false;
+		if(val===this._scrollTxtY_max) this.downArrowVisible=false;
+	}
+}).add('scrollBottom',function f(){
+	if(!$gameTemp) return;
+	let val=this._update_calcHeights($gameTemp.flashbackText_getCont())-this.contentsHeight();
+	if(!(val>=0)) val=0;
+	this.setScrollTxtY(val);
+	return this;
+}).add('updateOpen',function f(){
+	const op=this._opening;
+	const rtv=f.ori.apply(this,arguments);
+	if(op && !this._opening) this._shouldRedraw=true;
+	return rtv;
+}).add('processInputs',function f(){
+	let delta=TouchInput.wheelY;
+	if(TouchInput.isPressed()){
+		const dy=TouchInput.y-this._lastTouchedY;
+		if(dy) delta-=dy;
+		this._lastTouchedY=TouchInput.y;
+	}
+	if(TouchInput.isReleased()){
+		const dy=TouchInput.y-this._lastTouchedY;
+		if(dy) delta-=dy;
+		this._lastTouchedY=undefined;
+	}
+	if(Input.isPressed('up'   ) || Input.isTriggered('up'   ) || Input.isLongPressed('up'   )) delta-=f.tbl[0];
+	if(Input.isPressed('down' ) || Input.isTriggered('down' ) || Input.isLongPressed('down' )) delta+=f.tbl[0];
+	if(Input.isTriggered('pageup'   ) || Input.isLongPressed('pageup'   )) delta-=this.contentsHeight();
+	if(Input.isTriggered('pagedown' ) || Input.isLongPressed('pagedown' )) delta+=this.contentsHeight();
+	if(Input.isTriggered('home')^Input.isTriggered('end')){
+		if(Input.isTriggered('home')) delta=-this._scrollTxtY;
+		else delta=this._scrollTxtY-this._scrollTxtY_max||0;
+	}
+	if(delta) SoundManager.playCursor();
+	this.setScrollTxtY(this._scrollTxtY+delta);
+},[16,]);
+t=()=>{};
+for(let x=0,arr=['_updateCursor','_updatePauseSign',];x!==arr.length;++x) cf(p,arr[x],t,undefined,true,true);
+t=undefined;
+}
+
+new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx){
+	if($gameSystem && $gameSystem._flashbackText_disabled) return;
+	this._flashbackText_getCont().push({txt:txt,face:{name:face,idx:fidx},y:undefined,height:undefined,});
+}).add('_flashbackText_getCont',function f(){
+	let rtv=this._flashbackTexts; if(!rtv) rtv=this._flashbackTexts=[];
+	return rtv;
+}).add('flashbackText_getCont',function f(){
+	return this._flashbackText_getCont();
+}).add('flashbackText_clearAll',function f(){
+	this.flashbackText_getCont().length=0;
+	return this;
+}).add('_flashbackText_getWindow',function f(){
+	const sc=SceneManager._scene;
+	let w=sc._window_flashbackText; if(!w) w=sc._window_flashbackText=new Window_FlashbackText(0,0,Graphics.boxWidth,Graphics.boxHeight);
+	return w;
+}).add('flashbackText_show',function f(){
+	return SceneManager.push(Scene_FlashbackText);
+	const w=this._flashbackText_getWindow();
+	SceneManager._scene.addWindow(w);
+	w.open();
+	w.scrollBottom()._shouldRedraw=true;
+	return w;
+}).add('flashbackText_isWindowClosed',function f(){
+	return this._flashbackText_getWindow().isClosed();
+});
+
+new cfc(Window_Message.prototype).add('startMessage',function f(){
+	if($gameTemp && $gameMessage) $gameTemp.flashbackText_add($gameMessage.allText(),$gameMessage.faceName(),$gameMessage.faceIndex());
+	return f.ori.apply(this,arguments);
+},t);
+
+if(!enableShortcutScenes.size) return;
+const key='r';
+key=>Input.keyMapper[key.charCodeAt()]=key.toLowerCase();
+const f=function(){
+	const sc=SceneManager._scene;
+	if(sc && sc.isActive() && $gameTemp && Input.isPressed(f.tbl[0]) && f.tbl[1].has(sc.constructor)) $gameTemp.flashbackText_show();
+};
+f.ori=undefined;
+f.tbl=[
+key,
+enableShortcutScenes,
+];
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(SceneManager.add_additionalUpdate) SceneManager.add_additionalUpdate(f.tbl[0],true);
+	return rtv;
+},[f]);
+
+})();
+
+
 ﻿
 
 
@@ -18617,6 +19036,9 @@ new cfc(Scene_Equip.prototype).add('createLayoutSlot',function f(){
 
 })(); // all
 
+
+
+
 // 建 search table
 (()=>{ let k,r;
 { const p=Scene_Boot.prototype,k='start';
@@ -18708,6 +19130,72 @@ r=p[k]; (p[k]=function f(func,isAfter){
 	const arr=isAfter?this.additionalUpdates_after():this.additionalUpdates_before();
 	arr.push(func);
 }).ori=r;
+}
+
+})();
+
+// dump data/*.json when testing
+(()=>{ let k,r,t;
+
+{ const p=DataManager;
+k='onLoad';
+r=p[k]; (p[k]=function f(obj,name,src){
+	const rtv=f.ori.apply(this,arguments);
+	try{
+		this.onLoad_dumpWhenIsTest(obj,name,src);
+	}catch(e){
+		console.warn("json dump error",name,src,obj);
+	}
+	return rtv;
+}).ori=r;
+k='onLoad_dumpWhenIsTest';
+r=p[k]; (p[k]=function f(obj,name,src){
+	if(!name || !Utils.isOptionValid('test')) return;
+	// https://stackoverflow.com/questions/2727167/
+	// https://nodejs.org/api/fs.html#fsreaddirsyncpath-options
+	// https://nodejs.org/api/fs.html#fsmkdirsyncpath-options
+	const dumpData_dir_root='_dumpedData';
+	const fs=require('fs');
+	{
+		const arr=f.tbl.entries_root=(f.tbl.entries_root||fs.readdirSync('.'));
+		if(arr.indexOf(dumpData_dir_root)<0){
+			fs.mkdirSync(dumpData_dir_root);
+			arr.push(dumpData_dir_root);
+		}
+	}
+	const tm=f.tbl.currTime=(f.tbl.currTime||f.tbl.getTime());
+	const path_dir=dumpData_dir_root+'/'+tm;
+	const entries=f.tbl.entries=(f.tbl.entries||fs.readdirSync(dumpData_dir_root));
+	if(entries.indexOf(tm)<0){
+		fs.mkdirSync(path_dir);
+		entries.push(tm);
+	}
+	const filename=f.tbl.useSrc.has(name)?src:f.tbl.mapName(name);
+	if(filename) name=filename;
+	name=f.tbl.trimPath(name);
+	return fs.writeFileSync(path_dir+'/'+name,JSON.stringify(obj));
+}).ori=r;
+p[k].tbl={
+currTime:undefined,
+entries:undefined,
+entries_root:undefined,
+getTime:()=>{
+	const D=new Date();
+	const y=D.getFullYear()+'';
+	const mon=D.getMonth()+1+'';
+	const d=D.getDate()+'';
+	const h=D.getHours()+'';
+	const min=D.getMinutes()+'';
+	const s=D.getSeconds()+'';
+	return y+'-'+mon.padStart(2,'0')+d.padStart(2,'0')+'-'+h.padStart(2,'0')+min.padStart(2,'0')+s.padStart(2,'0');
+},
+mapName:name=>{
+	const obj=DataManager._databaseFiles.find(obj=>obj.name===name);
+	return obj&&obj.src;
+},
+trimPath:name=>name.replace(/^data\//,'').replace(/[:\/\\~]/g,"_"),
+useSrc:new Set(['$dataMap',]),
+}; // f.tbl
 }
 
 })();
