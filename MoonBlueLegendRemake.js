@@ -12835,12 +12835,12 @@ if(!window.addEnum) window.addEnum=function(key){
 
 (()=>{ let k,r,t; for(let x=0,arr=[['新增','addState',],['解除','removeState',]];x!==arr.length;++x){
 
-const gbb=Game_BattlerBase,kwp='狀態'+arr[x][0],kw=kwp+'變化ra';
+const gbb=Game_BattlerBase,kwp='狀態'+arr[x][0],kwsuffix='變化ra',kw=kwp+kwsuffix;
 const kwt='TRAIT_'+kw;
 const kwget="get_"+kw;
 const kwfilter="_"+kw+'_filter';
-const kwmain="_"+kwp+'_main';
-const kwmain0="_"+kwp+'_main0';
+const kwmain="_"+kwsuffix+'_main';
+const kwmain0="_"+kwsuffix+'_main0';
 const kwtemp="_"+kw+'_temp';
 
 if(!gbb._enumMax) gbb._enumMax=404;
@@ -18914,6 +18914,24 @@ new cfc(Scene_Boot.prototype).add('start',function f(){
 	if(SceneManager.add_additionalUpdate) SceneManager.add_additionalUpdate(f.tbl[0],true);
 	return rtv;
 },[f]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
+}
 
 })();
 
