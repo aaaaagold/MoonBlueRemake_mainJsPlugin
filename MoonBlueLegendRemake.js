@@ -1373,6 +1373,17 @@ if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[k]=p[k];
 
 (()=>{ let k,r,t;
 
+// merge 與原廠相同內容的函式
+if(typeof Window_ItemListM!=='undefined'){
+[
+'makeItemList',
+].forEach(k=>{
+Window_ItemListM.prototype[k]=function f(){
+	return Window_ItemList.prototype[k].apply(this,arguments);
+};
+});
+}
+
 // 未先判斷是否已給bitmap
 if(typeof ActorStatusSkill!=='undefined'){ const p=ActorStatusSkill.prototype;
 k='refresh';
@@ -1722,7 +1733,7 @@ r=p[k]; (t=p[k]=function f(){
 }).ori=r;
 }
 
-if(typeof Window_ItemListM!=='undefined'){ const p=Window_ItemListM.prototype; p[k]=t; }
+//if(typeof Window_ItemListM!=='undefined'){ const p=Window_ItemListM.prototype; p[k]=t; }
 
 })();
 
@@ -2284,262 +2295,6 @@ rtv.pushAndHide=()=>{
 };
 
 return rtv;
-})();
-
-
-﻿"use strict";
-/*:
- * @plugindesc edit save name ; load from file ; export a save to a file
- * @author agold404
- *
- * @help this plugin adds 3 options in 'Window_Options':
- * 1. edit a save's name: The save file title will be: "game_title - your_custom_name".
- * 2. load from file: This is used when: you need to test multiple platform, but you don't want to play again to reach the save point.
- * 3. export a save: export a save to a file. This acts as a download.
- * 
- * This plugin can be renamed as you want.
- */
-
-// nameTheSavesAndExport
-
-(()=>{
-const d=document,ge=i=>d.getElementById(i),ce=t=>d.createElement(t),ga=(e,a)=>e.getAttribute(a);
-const ac=(a,c)=>a.appendChild(c)&&a||a,sa=(e,a,v)=>e.setAttribute(a,v)&&e||e,rc=a=>{
-	const c=a.childNodes;
-	while(c.length) a.removeChild(c[c.length-1]);
-	return a;
-},atxt=(a,t)=>a.appendChild(d.createTextNode(t))&&a||a,clearInputs=_=>{
-	Input.clear(); Input.update();
-	TouchInput.clear(); TouchInput.update();
-};
-let editing=0;
-
-// define a name field
-const fieldName='customName';
-// - JsonEx.parse(StorageManager.load(0))
-
-// draw player defined names
-
-{ const p=Window_SavefileList.prototype,k='drawGameTitle';
-const r=p[k];
-p[k]=function(info, x, y, width){
-	return (info.title && info[fieldName]) ? this.drawText(info.title+' - '+info[fieldName], x, y, width) : r.apply(this,arguments);
-};
-}
-
-// opt UI for defining names
-const scname="Scene_EdtSaveName",optKey='key-edtSaveName',optLoadLocal='key-loadLocal',optSaveLocal='key-saveLocal';
-const ENUM_SCTYPE_EDITNAME=0;
-const ENUM_SCTYPE_SAVELOCAL=1;
-let sctype=0;
-
-// - Window_Options
-{ const p=Window_Options.prototype;
-{ const k='makeCommandList';
-const r=p[k];
-(p[k]=function f(){
-	const rtv=f.ori.apply(this,arguments);
-	// edit save file name
-	this.addCommand("修改存檔名", optKey);
-	this.addCommand("讀取檔案", optLoadLocal);
-	this.addCommand("匯出存檔", optSaveLocal);
-	return rtv;
-}).ori=r;
-}
-{ const k='statusText';
-const r=p[k];
-(p[k]=function f(idx){
-	switch(this.commandSymbol(idx)){
-	case optKey:
-	case optLoadLocal: return '';
-	case optSaveLocal: return '';
-	default: return f.ori.apply(this,arguments);
-	}
-}).ori=r;
-}
-{ const k='processOk';
-const r=p[k];
-const input=document.createElement('input'),onload=e=>{
-	const self=e.target,backup={
-		tmp:$gameTemp,
-		sys:$gameSystem,
-		scr:$gameScreen,
-		tmr:$gameTimer,
-		msg:$gameMessage,
-		swi:$gameSwitches,
-		var:$gameVariables,
-		sss:$gameSelfSwitches,
-		atr:$gameActors,
-		prt:$gameParty,
-		trp:$gameTroop,
-		map:$gameMap,
-		plr:$gamePlayer,
-	};
-	try{
-		DataManager.createGameObjects();
-		DataManager.extractSaveContents(JsonEx.parse(LZString.decompressFromBase64(self.result)));
-		SoundManager.playLoad();
-		SceneManager._scene.fadeOutAll();
-		Scene_Load.prototype.reloadMapIfUpdated();
-		SceneManager.goto(Scene_Map);
-		$gameSystem.onAfterLoad();
-	}catch(e){
-		SoundManager.playBuzzer();
-		$gameTemp=backup.tmp;
-		$gameSystem=backup.sys;
-		$gameScreen=backup.scr;
-		$gameTimer=backup.tmr;
-		$gameMessage=backup.msg;
-		$gameSwitches=backup.swi;
-		$gameVariables=backup.var;
-		$gameSelfSwitches=backup.sss;
-		$gameActors=backup.atr;
-		$gameParty=backup.prt;
-		$gameTroop=backup.trp;
-		$gameMap=backup.map;
-		$gamePlayer=backup.plr;
-	}
-	self.value='';
-},onerr=e=>{
-	SoundManager.playBuzzer();
-};
-input.setAttribute('type','file');
-input.onchange=function(){
-	if(!this.files.length) return;
-	const reader=new FileReader();
-	reader.onload=onload;
-	reader.onerror=onerr;
-	reader.readAsText(this.files[0]); // testing beta...
-};
-(p[k]=function f(){
-	switch(this.commandSymbol(this.index())){
-	case optKey: SoundManager.playOk(); sctype=ENUM_SCTYPE_EDITNAME; return SceneManager.push(window[scname]);
-	case optLoadLocal:
-		SoundManager.playOk();
-		clearInputs();
-		input.value='';
-		input.click();
-		return;
-	case optSaveLocal: SoundManager.playOk(); sctype=ENUM_SCTYPE_SAVELOCAL; return SceneManager.push(window[scname]);
-	default: return f.ori.apply(this);
-	}
-}).ori=r;
-}
-} // END Window_Options
-
-// window[scname]
-{
-const a=window[scname]=function(){
-	this.initialize.apply(this,arguments);
-};
-const p=a.prototype=Object.create(Scene_File.prototype);
-p.constructor=a;
-{ const k='create';
-const r=p[k];
-(p[k]=function f(){
-	f.ori.apply(this,arguments);
-	this._listWindow.select(DataManager.latestSavefileId()-1);
-	this._gi=JSON.parse(StorageManager.load(0)||"[]");
-}).ori=r;
-}
-{ const k='onSavefileOk';
-p[k]=function(){
-	const id=this.savefileId();
-	let succ=1;
-	const obj=this._gi[id];
-	if(obj){
-		const gc=ge('GameCanvas');
-		if(gc){
-			const self=this;
-			const stl=ga(gc,'style');
-			let div,css;
-			{ const id='editSaveName';
-			div=ge(id);
-			if(div) rc(div).style.display="block";
-			else{
-				ac(gc.parentNode,sa(div=sa(ce('div'),'style',stl)),'id',id);
-				css=div.style;
-				css.zIndex=1<<12;
-				css.backgroundColor="rgba(255,255,255,0.75)";
-				css.fontSize="32px";
-			}
-			}
-			const input=sa(ce('input'),'style',"position:relative;display:block;left:0px;right:0px;font-size:32px;");
-			const btn=sa(atxt(ce('button'),'confirm'),'style','font-size:32px;'),backToLastWindow=_=>{
-				++editing;
-				btn.onclick=null;
-				css.display="none";
-				self.activateListWindow();
-			};
-			let infostring;
-			switch(sctype){
-			default: infostring='ERROR. please click "confirm"';
-				btn.onclick=backToLastWindow;
-			break;
-			case ENUM_SCTYPE_EDITNAME:
-				infostring="input save name for save "+id;
-				input.value=obj[fieldName]||'';
-				btn.onclick=function(){
-					obj[fieldName]=input.value;
-					StorageManager.save(0,JSON.stringify(self._gi));
-					backToLastWindow();
-					self._listWindow.refresh();
-				};
-			break;
-			case ENUM_SCTYPE_SAVELOCAL:
-				infostring='input a file name for download';
-				input.value="save-"+id+".rpgsave";
-				btn.onclick=function(){
-					sa(sa(sa(ce('a'),'download',input.value),'href',"data:application/plain,"+LZString.compressToBase64(StorageManager.load(id))),'target','_blank').click();
-					backToLastWindow();
-					self._listWindow.refresh();
-				};
-			break;
-			}
-			ac(
-				div,ac(
-					ac(
-						ac(
-							ce('div'),atxt(ce('div'),infostring)
-						),input
-					),btn
-				)
-			);
-			const clear=e=>{ e.preventDefault(); clearInputs(); };
-			input.onkeydown=e=>{
-				switch(e.keyCode){
-				case 13:
-					clear(e);
-					btn.click();
-				break;
-				case 27:
-					clear(e);
-					backToLastWindow();
-				break;
-				}
-			};
-			input.focus();
-		}else succ=0;
-	}else succ=0;
-	if(succ) return editing=1;
-	SoundManager.playBuzzer();
-	this.activateListWindow();
-};
-}
-} // END window[scname]
-
-// preventDefault
-{ const p=Input , k='_onKeyDown';
-const r=p[k];
-(p[k]=function f(){
-	return editing?(editing>1?(editing=0):0):f.ori.apply(this,arguments);
-}).ori=r;
-}
-
-// save count
-// DataManager.maxSavefiles
-
-
 })();
 
 
@@ -13380,6 +13135,12 @@ new Map(),
 
 (()=>{ let k,r,t;
 
+t=[
+'newThingFirst',
+'_newThingFirst',
+"新道具置頂",
+];
+
 { const p=Game_Party.prototype;
 k='_getGainLoggers';
 r=p[k]; (p[k]=function(){
@@ -13439,6 +13200,30 @@ r=p[k]; (p[k]=function f(item, amount, includeEquip){
 }).ori=r;
 }
 
+new cfc(ConfigManager).add('applyData',function f(config){
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[0]]=this.readFlag(config,f.tbl[0]);
+	return rtv;
+},t);
+
+new cfc(Window_Options.prototype).add('makeCommandList',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.addCommand(f.tbl[2], f.tbl[0]);
+	return rtv;
+},t);
+
+new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
+	let rtv=f.ori.apply(this,arguments);
+	if(ConfigManager[f.tbl[0]]){
+		const arr0=[],arr1=[];
+		for(let x=0,arr=this._data;x!==arr.length;++x) ($gameParty.gainLogger_isNew($gameParty.itemContainer(arr[x]),arr[x])?arr0:arr1).push(arr[x]);
+		for(let x=0;x!==arr1.length;++x) arr0.push(arr1[x]);
+		if(rtv===this._data) rtv=arr0;
+		this._data=arr0;
+	}
+	return rtv;
+},t);
+
 { const p=Window_Base.prototype;
 k='drawItemName';
 r=p[k]; (p[k]=function f(){
@@ -13473,9 +13258,11 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 }
 
-{ const p=Scene_Item.prototype;
-k='terminate';
-r=p[k]; (p[k]=function f(){
+new cfc(Scene_Item.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._itemWindow[f.tbl[1]]=ConfigManager[f.tbl[0]];
+	return rtv;
+},t).add('terminate',function f(){
 	const rtv=f.ori.apply(this,arguments),sm=SceneManager;
 	const nc=sm&&sm._nextScene;
 	if(nc && nc.constructor===Scene_Map){
@@ -13483,8 +13270,7 @@ r=p[k]; (p[k]=function f(){
 		$gameParty && $gameParty.gainLogger_clear();
 	}else $gameTemp.gainLogger_shouldClear=true;
 	return rtv;
-}).ori=r;
-}
+});
 
 { const p=Scene_Menu.prototype;
 k='terminate';
@@ -19048,6 +18834,262 @@ new cfc(Scene_Equip.prototype).add('createLayoutSlot',function f(){
 	if(ls_ori) ls_ori.visible  =isNormal;
 	if(ls_魔)  ls_魔 .visible =!isNormal;
 },t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc edit save name ; load from file ; export a save to a file
+ * @author agold404
+ *
+ * @help this plugin adds 3 options in 'Window_Options':
+ * 1. edit a save's name: The save file title will be: "game_title - your_custom_name".
+ * 2. load from file: This is used when: you need to test multiple platform, but you don't want to play again to reach the save point.
+ * 3. export a save: export a save to a file. This acts as a download.
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+// nameTheSavesAndExport
+
+(()=>{
+const d=document,ge=i=>d.getElementById(i),ce=t=>d.createElement(t),ga=(e,a)=>e.getAttribute(a);
+const ac=(a,c)=>a.appendChild(c)&&a||a,sa=(e,a,v)=>e.setAttribute(a,v)&&e||e,rc=a=>{
+	const c=a.childNodes;
+	while(c.length) a.removeChild(c[c.length-1]);
+	return a;
+},atxt=(a,t)=>a.appendChild(d.createTextNode(t))&&a||a,clearInputs=_=>{
+	Input.clear(); Input.update();
+	TouchInput.clear(); TouchInput.update();
+};
+let editing=0;
+
+// define a name field
+const fieldName='customName';
+// - JsonEx.parse(StorageManager.load(0))
+
+// draw player defined names
+
+{ const p=Window_SavefileList.prototype,k='drawGameTitle';
+const r=p[k];
+p[k]=function(info, x, y, width){
+	return (info.title && info[fieldName]) ? this.drawText(info.title+' - '+info[fieldName], x, y, width) : r.apply(this,arguments);
+};
+}
+
+// opt UI for defining names
+const scname="Scene_EdtSaveName",optKey='key-edtSaveName',optLoadLocal='key-loadLocal',optSaveLocal='key-saveLocal';
+const ENUM_SCTYPE_EDITNAME=0;
+const ENUM_SCTYPE_SAVELOCAL=1;
+let sctype=0;
+
+// - Window_Options
+{ const p=Window_Options.prototype;
+{ const k='makeCommandList';
+const r=p[k];
+(p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	// edit save file name
+	this.addCommand("修改存檔名", optKey);
+	this.addCommand("讀取檔案", optLoadLocal);
+	this.addCommand("匯出存檔", optSaveLocal);
+	return rtv;
+}).ori=r;
+}
+{ const k='statusText';
+const r=p[k];
+(p[k]=function f(idx){
+	switch(this.commandSymbol(idx)){
+	case optKey:
+	case optLoadLocal: return '';
+	case optSaveLocal: return '';
+	default: return f.ori.apply(this,arguments);
+	}
+}).ori=r;
+}
+{ const k='processOk';
+const r=p[k];
+const input=document.createElement('input'),onload=e=>{
+	const self=e.target,backup={
+		tmp:$gameTemp,
+		sys:$gameSystem,
+		scr:$gameScreen,
+		tmr:$gameTimer,
+		msg:$gameMessage,
+		swi:$gameSwitches,
+		var:$gameVariables,
+		sss:$gameSelfSwitches,
+		atr:$gameActors,
+		prt:$gameParty,
+		trp:$gameTroop,
+		map:$gameMap,
+		plr:$gamePlayer,
+	};
+	try{
+		DataManager.createGameObjects();
+		DataManager.extractSaveContents(JsonEx.parse(LZString.decompressFromBase64(self.result)));
+		SoundManager.playLoad();
+		SceneManager._scene.fadeOutAll();
+		Scene_Load.prototype.reloadMapIfUpdated();
+		SceneManager.goto(Scene_Map);
+		$gameSystem.onAfterLoad();
+	}catch(e){
+		SoundManager.playBuzzer();
+		$gameTemp=backup.tmp;
+		$gameSystem=backup.sys;
+		$gameScreen=backup.scr;
+		$gameTimer=backup.tmr;
+		$gameMessage=backup.msg;
+		$gameSwitches=backup.swi;
+		$gameVariables=backup.var;
+		$gameSelfSwitches=backup.sss;
+		$gameActors=backup.atr;
+		$gameParty=backup.prt;
+		$gameTroop=backup.trp;
+		$gameMap=backup.map;
+		$gamePlayer=backup.plr;
+	}
+	self.value='';
+},onerr=e=>{
+	SoundManager.playBuzzer();
+};
+input.setAttribute('type','file');
+input.onchange=function(){
+	if(!this.files.length) return;
+	const reader=new FileReader();
+	reader.onload=onload;
+	reader.onerror=onerr;
+	reader.readAsText(this.files[0]); // testing beta...
+};
+(p[k]=function f(){
+	switch(this.commandSymbol(this.index())){
+	case optKey: SoundManager.playOk(); sctype=ENUM_SCTYPE_EDITNAME; return SceneManager.push(window[scname]);
+	case optLoadLocal:
+		SoundManager.playOk();
+		clearInputs();
+		input.value='';
+		input.click();
+		return;
+	case optSaveLocal: SoundManager.playOk(); sctype=ENUM_SCTYPE_SAVELOCAL; return SceneManager.push(window[scname]);
+	default: return f.ori.apply(this);
+	}
+}).ori=r;
+}
+} // END Window_Options
+
+// window[scname]
+{
+const a=window[scname]=function(){
+	this.initialize.apply(this,arguments);
+};
+const p=a.prototype=Object.create(Scene_File.prototype);
+p.constructor=a;
+{ const k='create';
+const r=p[k];
+(p[k]=function f(){
+	f.ori.apply(this,arguments);
+	this._listWindow.select(DataManager.latestSavefileId()-1);
+	this._gi=JSON.parse(StorageManager.load(0)||"[]");
+}).ori=r;
+}
+{ const k='onSavefileOk';
+p[k]=function(){
+	const id=this.savefileId();
+	let succ=1;
+	const obj=this._gi[id];
+	if(obj){
+		const gc=ge('GameCanvas');
+		if(gc){
+			const self=this;
+			const stl=ga(gc,'style');
+			let div,css;
+			{ const id='editSaveName';
+			div=ge(id);
+			if(div) rc(div).style.display="block";
+			else{
+				ac(gc.parentNode,sa(div=sa(ce('div'),'style',stl)),'id',id);
+				css=div.style;
+				css.zIndex=1<<12;
+				css.backgroundColor="rgba(255,255,255,0.75)";
+				css.fontSize="32px";
+			}
+			}
+			const input=sa(ce('input'),'style',"position:relative;display:block;left:0px;right:0px;font-size:32px;");
+			const btn=sa(atxt(ce('button'),'confirm'),'style','font-size:32px;'),backToLastWindow=_=>{
+				++editing;
+				btn.onclick=null;
+				css.display="none";
+				self.activateListWindow();
+			};
+			let infostring;
+			switch(sctype){
+			default: infostring='ERROR. please click "confirm"';
+				btn.onclick=backToLastWindow;
+			break;
+			case ENUM_SCTYPE_EDITNAME:
+				infostring="input save name for save "+id;
+				input.value=obj[fieldName]||'';
+				btn.onclick=function(){
+					obj[fieldName]=input.value;
+					StorageManager.save(0,JSON.stringify(self._gi));
+					backToLastWindow();
+					self._listWindow.refresh();
+				};
+			break;
+			case ENUM_SCTYPE_SAVELOCAL:
+				infostring='input a file name for download';
+				input.value="save-"+id+".rpgsave";
+				btn.onclick=function(){
+					sa(sa(sa(ce('a'),'download',input.value),'href',"data:application/plain,"+LZString.compressToBase64(StorageManager.load(id))),'target','_blank').click();
+					backToLastWindow();
+					self._listWindow.refresh();
+				};
+			break;
+			}
+			ac(
+				div,ac(
+					ac(
+						ac(
+							ce('div'),atxt(ce('div'),infostring)
+						),input
+					),btn
+				)
+			);
+			const clear=e=>{ e.preventDefault(); clearInputs(); };
+			input.onkeydown=e=>{
+				switch(e.keyCode){
+				case 13:
+					clear(e);
+					btn.click();
+				break;
+				case 27:
+					clear(e);
+					backToLastWindow();
+				break;
+				}
+			};
+			input.focus();
+		}else succ=0;
+	}else succ=0;
+	if(succ) return editing=1;
+	SoundManager.playBuzzer();
+	this.activateListWindow();
+};
+}
+} // END window[scname]
+
+// preventDefault
+{ const p=Input , k='_onKeyDown';
+const r=p[k];
+(p[k]=function f(){
+	return editing?(editing>1?(editing=0):0):f.ori.apply(this,arguments);
+}).ori=r;
+}
+
+// save count
+// DataManager.maxSavefiles
+
 
 })();
 
