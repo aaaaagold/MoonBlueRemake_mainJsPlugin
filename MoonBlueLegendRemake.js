@@ -394,6 +394,8 @@ console.log("共計",$plugins.length,"個");
 console.log("實開",$plugins.filter(x=>x&&x.status).length,"個");
 console.groupEnd();
 
+console.log("之後的內容建議將 DevTools 調整成黑底模式，以便閱讀");
+
 console.group("%c 幸會！ ","color: rgba(234,234,234,0.75); font-size:64px; background-color: rgba(0,0,0,0.5);");
 
 console.log("%c 看來你也是喜歡直接改遊戲過關的同好！ ","color: rgba(234,234,234,0.75); font-size:32px; background-color: rgba(0,0,0,0.5);");
@@ -4091,8 +4093,7 @@ r=p[k]; (p[k]=function f(){
  * @plugindesc alwaysDash
  * @author agold404
  *
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
@@ -7814,7 +7815,10 @@ r=p[k]; (p[k]=function f(){
 }
 
 { const p=Input;
-t=p._金手指=function f(evt){
+k='_金手指';
+r=p[k];
+t=p[k]=function f(evt){
+	if(f.ori) f.ori.apply(this,arguments);
 	if(!currentlyEnabled && SceneManager._scene && SceneManager._scene.constructor===Scene_Title){
 		const kc=evt.keyCode;
 		if(kc===f.tbl[f.idx]){ if(f.tbl.length===++f.idx){
@@ -7829,7 +7833,40 @@ t=p._金手指=function f(evt){
 		}
 	}
 };
+t.ori=r;
 t.tbl=[38,38,40,40,37,39,37,39,66,65,];
+t.sameTo=[-1,];
+for(let i=0,x=1,s=t.tbl,st=t.sameTo;x<s.length;){
+	if(s[x]===s[i]) st[x++]=i++;
+	else{
+		if(i) i=st[i-1]+1;
+		else st[x++]=-1;
+	}
+}
+t.idx=0;
+k='_金手指';
+r=p[k];
+t=p[k]=function f(evt){
+	if(f.ori) f.ori.apply(this,arguments);
+	if(!$dataItems||!$gameParty) return;
+	const kc=evt.keyCode;
+	if(kc===f.tbl[f.idx]){ if(f.tbl.length===++f.idx){
+		if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
+		if(f.tbl.items.length){
+			AudioManager.playSe({name: "Ice4", volume: 75, pitch: 100});
+			for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],10);
+		}
+	} }else{
+		while(f.idx>=0 && kc!==f.tbl[f.idx]){
+			if(f.idx) f.idx=f.sameTo[f.idx-1]+1;
+			else f.idx=-1;
+		}
+		++f.idx;
+	}
+};
+t.ori=r;
+t.tbl=[76,70,50,190,78,69,84,];
+t.cmp=dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("鑽石")>=0;
 t.sameTo=[-1,];
 for(let i=0,x=1,s=t.tbl,st=t.sameTo;x<s.length;){
 	if(s[x]===s[i]) st[x++]=i++;
@@ -9504,8 +9541,7 @@ r=p[k]; (p[k]=function f(){
  * @plugindesc commandRemember
  * @author agold404
  *
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
@@ -9641,30 +9677,45 @@ if(typeof Window_ItemListM!=='undefined')(()=>{ let k,r,t;
 
 const kw="道具額外文字檔";
 
-{ const p=Scene_Item.prototype;
-k='create';
-r=p[k]; (p[k]=function f(){
+new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	const dw=this._detailWindow=new Window_Base(f.tbl.x,f.tbl.y,f.tbl.w,f.tbl.h);
+	this._toDetail_using=false;
+	this._detailWindow=undefined;
+	return rtv;
+}).add('toDetail_getAnchorWindow',function f(){
+	return undefined;
+}).add('toDetail_getItemWindow',function f(){
+	return undefined;
+}).add('toDetail_getAnchorY',function f(){
+	const w=this.toDetail_getAnchorWindow();
+	return w?w.y:0;
+}).add('toDetail_oncreate',function f(tbl){
+	const iw=this.toDetail_getItemWindow(); if(!iw) return;
+	this._toDetail_using=true;
+	tbl=tbl||f.tbl;
+	const dw=this._detailWindow=new Window_Base(tbl.x,tbl.y,tbl.w,tbl.h);
 	this.addChild(dw);
 	dw.alpha=0;
 	dw.processNormalCharacter=Window_Message.prototype.processNormalCharacter;
-	const iw=this._itemWindow,iwo=this._itemPosOrg;
+	
 	this._toDetail_ctr=0;
 	this._toDetail_ctrMax=32;
 	this._toDetail_stat=Input.isPressed('shift');
 	this._toDetail_pos={
-		x:f.tbl.ix,
-		y:iw.y,
+		x:tbl.ix,
+		y:this.toDetail_getAnchorY(),
 		x0:undefined,
 		y0:undefined,
 	};
 	this._toDetail_otherDxy=undefined;
 	this._toDetail_lastItem=undefined;
-	return rtv;
-}).ori=r;
-p[k].tbl={x:400,y:123,w:400,h:342,ix:12,};
-p.toDetail_loadDetail_jurl=(url,method,callback,onerr)=>{
+},{
+x:400,
+y:123,
+w:400,
+h:342,
+ix:12,
+}).add('toDetail_loadDetail_jurl',(url,method,callback,onerr)=>{
 	const xhr = new XMLHttpRequest();
 	const funcs={2:callback,4:onerr,5:onerr,};
 	xhr.onreadystatechange = function(){
@@ -9678,9 +9729,9 @@ p.toDetail_loadDetail_jurl=(url,method,callback,onerr)=>{
 	xhr.onerror=onerr;
 	xhr.open(method, url, true);
 	xhr.send(method === "GET" ? undefined : data);
-};
-(p.toDetail_loadDetail=function f(){
-	const iw=this._itemWindow; if(!iw.active) return;
+}).add('toDetail_loadDetail',function f(){
+	if(!this._toDetail_using) return;
+	const iw=this.toDetail_getItemWindow(); if(!iw||!iw.active) return;
 	const dw=this._detailWindow,item=iw.item();
 	if(this._toDetail_lastItem===item) return;
 	this._toDetail_lastItem=item;
@@ -9700,25 +9751,26 @@ p.toDetail_loadDetail_jurl=(url,method,callback,onerr)=>{
 	dw.drawTextEx(f.tbl.loading,dw.textPadding(),0);
 	this.toDetail_loadDetail_jurl(item.meta[kw],"GET",txt=>{
 		item.detailText={txt:txt,};
-		if(!iw.active || item!==this._itemWindow.item()) return;
+		if(!iw.active || item!==iw.item()) return;
 		const bm=dw.contents;
 		bm && bm.clear();
 		dw.drawTextEx(txt,dw.textPadding(),0);
 	},()=>{
-		if(!iw.active || item!==this._itemWindow.item()) return;
+		if(!iw.active || item!==iw.item()) return;
 		const bm=dw.contents;
 		bm && bm.clear();
 		dw.drawTextEx(f.tbl.loadFail,dw.textPadding(),0);
 	});
-}).tbl={
-	noFile:"無詳細資料",
-	loading:"讀取詳細資料中",
-	loadFail:"讀取詳細資料失敗",
-};
-p.toDetail_adjIwPos=function(lstPos){
-	const iw=this._itemWindow;
-	if(!iw.active || !this._toDetail_otherDxy) return;
-	if(this._toDetail_stat=Input.isPressed('shift')){
+},{
+noFile:"無詳細資料",
+loading:"讀取詳細資料中",
+loadFail:"讀取詳細資料失敗",
+}).add('toDetail_adjIwPos',function(lstPos){
+	if(!this._toDetail_using) return;
+	const dxy=this._toDetail_otherDxy;
+	if(!dxy) return;
+	const iw=this.toDetail_getItemWindow();
+	if(this._toDetail_stat=iw.active && Input.isPressed('shift')){
 		if(this._toDetail_ctr<this._toDetail_ctrMax) ++this._toDetail_ctr;
 		else this._toDetail_ctr=this._toDetail_ctrMax;
 	}else{
@@ -9726,41 +9778,93 @@ p.toDetail_adjIwPos=function(lstPos){
 		else this._toDetail_ctr=0;
 	}
 	const c=this._toDetail_ctrMax,a=this._toDetail_ctr,b=c-a;
-	const p=this._toDetail_pos,dxy=this._toDetail_otherDxy;
-	// cal. final dst , add effect shift
-	iw.x=(p.x*a+p.x0*b)/c+dxy.x;
-	iw.y=(p.y*a+p.y0*b)/c+dxy.y;
+	const p=this._toDetail_pos;
+	const aw=this.toDetail_getAnchorWindow();
+	if(aw && p){
+		// cal. final dst , add effect shift
+		aw.x=(p.x*a+p.x0*b)/c+dxy.x;
+		aw.y=(p.y*a+p.y0*b)/c+dxy.y;
+	}
 	// 
-	this._itemPosOrg[0]=(a*p.x+p.x0*b)/c;
-	this._itemPosOrg[1]=(a*p.y+p.y0*b)/c;
+	if(this._itemPosOrg){
+		this._itemPosOrg[0]=(a*p.x+p.x0*b)/c;
+		this._itemPosOrg[1]=(a*p.y+p.y0*b)/c;
+	}
 	// 
 	this._detailWindow.alpha=this._toDetail_ctr/this._toDetail_ctrMax;
-};
-k='updateItemWindow';
-r=p[k]; (p[k]=function f(){
-	const iw=this._itemWindow;
-	const x=iw.x,y=iw.y;
+}).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	const dxy=this._toDetail_otherDxy;
-	if(dxy){
-		dxy.x+=iw.x-x;
-		dxy.y+=iw.y-y;
-	}else if(!this._wani[0]){
-		this._toDetail_otherDxy={x:0,y:0,};
-		const p=this._toDetail_pos;
-		p.x0=iw.x;
-		p.y0=iw.y;
+	if(!this._toDetail_using){
+		if(this._detailWindow){
+			this._detailWindow.alpha=0;
+			this._toDetail_ctr=0;
+		}
+		return rtv;
 	}
-	return rtv;
-}).ori=r;
-k='update';
-r=p[k]; (p[k]=function f(){
-	const rtv=f.ori.apply(this,arguments);
 	this.toDetail_adjIwPos(this._lstPos_iw);
 	if(this._toDetail_ctr) this.toDetail_loadDetail();
 	return rtv;
-}).ori=r;
-}
+});
+
+new cfc(Scene_Item.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.toDetail_oncreate();
+	return rtv;
+}).add('updateItemWindow',function f(){ // for MOG
+	const aw=this.toDetail_getAnchorWindow();
+	const x=aw.x,y=aw.y;
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	if(!this._toDetail_using) return rtv;
+	const dxy=this._toDetail_otherDxy;
+	if(dxy){
+		dxy.x+=aw.x-x;
+		dxy.y+=aw.y-y;
+	}else if(!this._wani[0]){
+		this._toDetail_otherDxy={x:0,y:0,};
+		const p=this._toDetail_pos;
+		p.x0=aw.x;
+		p.y0=aw.y;
+	}
+	return rtv;
+}).add('toDetail_getAnchorWindow',function f(){
+	return this._itemWindow;
+},undefined,true,true).add('toDetail_getItemWindow',function(){
+	return this._itemWindow;
+},undefined,true,true);
+
+new cfc(Scene_Shop.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._dummyWindow.active=false;
+	this.toDetail_oncreate();
+	return rtv;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.toDetail_updatePos();
+	return rtv;
+}).add('toDetail_updatePos',function f(){
+	if(!this._toDetail_using) return;
+	if(!this._toDetail_otherDxy) this._toDetail_otherDxy={x:0,y:0,};
+	const ow=this.toDetail_showOnWindow(),dw=this._detailWindow;
+	if(dw.x!==ow.x) dw.x=ow.x;
+	if(dw.y!==ow.y) dw.y=ow.y;
+	if(dw.width!==ow.width) dw.width=ow.width;
+	if(dw.height!==ow.height) dw.height=ow.height;
+},undefined,true,true).add('toDetail_showOnWindow',function f(){
+	let rtv=this._statusWindow;
+	if(rtv.visible && rtv.alpha) return rtv;
+	rtv=this._sellWindow;
+	if(rtv.visible && rtv.alpha) return rtv;
+	return this._statusWindow;
+}).add('toDetail_getItemWindow',function f(){
+	const func=f.tbl[this._commandWindow.currentSymbol()];
+	return func?func.call(this):this._dummyWindow;
+},{
+null:function(){ return this._dummyWindow; },
+buy:function(){ return this._buyWindow; },
+sell:function(){ return this._sellWindow; },
+},true,true).add('toDetail_getAnchorWindow',function(){
+	return undefined;
+},undefined,true,true);
 
 })();
 
@@ -13204,6 +13308,10 @@ new cfc(ConfigManager).add('applyData',function f(config){
 	const rtv=f.ori.apply(this,arguments);
 	this[f.tbl[0]]=this.readFlag(config,f.tbl[0]);
 	return rtv;
+},t).add('makeData',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	rtv[f.tbl[0]]=this[f.tbl[0]]|0;
+	return rtv;
 },t);
 
 new cfc(Window_Options.prototype).add('makeCommandList',function f(){
@@ -13216,7 +13324,7 @@ new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
 	let rtv=f.ori.apply(this,arguments);
 	if(ConfigManager[f.tbl[0]]){
 		const arr0=[],arr1=[];
-		for(let x=0,arr=this._data;x!==arr.length;++x) ($gameParty.gainLogger_isNew($gameParty.itemContainer(arr[x]),arr[x])?arr0:arr1).push(arr[x]);
+		for(let x=0,arr=this._data;x!==arr.length;++x) (arr[x]&&$gameParty.gainLogger_isNew($gameParty.itemContainer(arr[x]),arr[x])?arr0:arr1).push(arr[x]);
 		for(let x=0;x!==arr1.length;++x) arr0.push(arr1[x]);
 		if(rtv===this._data) rtv=arr0;
 		this._data=arr0;
@@ -14610,13 +14718,123 @@ kw_main,
 
 ﻿"use strict";
 /*:
+ * @plugindesc popup msg
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const a=function Window_PopupMsg(){
+	this.initialize.apply(this,arguments);
+};
+a.ori=Window_Help;
+t=[a.ori.prototype];
+window[a.name]=a;
+const p=a.prototype=Object.create(t[0]);
+p.constructor=a;
+new cfc(p).add('initialize',function f(numLines,opt){
+	const rtv=f.tbl[0].initialize.apply(this,arguments);
+	this._currFrame=0;
+	if(opt){
+		// dur = show + fade
+		this._showFrame=opt.showFrame;
+		this._fadeFrame=opt.fadeFrame;
+	}
+	if(isNaN(this._showFrame)) this._showFrame=90;
+	if(isNaN(this._fadeFrame)) this._fadeFrame=30;
+	if(this._fadeFrame<0) this._fadeFrame=0;
+	this._isEnded=false;
+	return rtv;
+},t,false,true);
+new cfc(p).add('update',function f(){
+	const rtv=f.tbl[0].update.apply(this,arguments);
+	++this._currFrame;
+	if(this._currFrame>=this._showFrame){
+		if(this._currFrame>=this._showFrame+this._fadeFrame){
+			this.alpha=0;
+			this._isEnded=true;
+		}else this.alpha=(this._showFrame+this._fadeFrame-this._currFrame)/this._fadeFrame;
+	}
+	return rtv;
+},t,false,true);
+
+new cfc(Game_Temp.prototype).add('popupMsg',function f(msg,opt){
+	const root=this._popupMsg_getCont(); if(!root) return;
+	msg+='';
+	const lines=msg.split('\n');
+	const wnd=new Window_PopupMsg(lines.length);
+	wnd.width=root._maxWidth;
+	wnd.setText(msg);
+	root.addChild(wnd);
+}).add('_popupMsg_getCont',function f(){
+	let rtv=$gameTemp._popupMsgs;
+	if(!rtv){
+		rtv=$gameTemp._popupMsgs=new Sprite();
+		for(let k in f.tbl[0]) rtv[k]=f.tbl[0][k];
+		rtv.x=Graphics.boxWidth>>1;
+		rtv.y=0;
+		rtv._maxWidth=Graphics.boxWidth;
+		rtv._maxHeight=Graphics.boxHeight;
+	}
+	const sc=SceneManager._scene; if(sc && sc!==rtv.parent) sc.addChild(sc._popupMsgs=rtv);
+	return rtv;
+},[
+{
+update:function f(){
+	const rtv=Sprite.prototype.update.apply(this,arguments);
+	const arr=this.children; if(arr) for(let x=arr.length;x--;) if(arr[x]._isEnded) this.removeChildAt(x);
+	return rtv;
+},
+addChild:function f(c){
+	const arr=this.children;
+	const len=arr&&arr.length;
+	if(len){
+		if(c.height+this.children.back.y>=this._maxHeight) this.removeChildAt(len-1);
+		arr[0].y=c.height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x-1].height;
+	}
+	return Sprite.prototype.addChildAt.call(this,c,0);
+},
+removeChild:function (c){
+	return;
+}, // disabled
+},
+undefined,
+]);
+
+new cfc(SceneManager).add('onSceneChange',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	this.onSceneChange_popupMsgs();
+	return rtv;
+}).add('onSceneChange_popupMsgs',function f(){
+	return $gameTemp&&$gameTemp._popupMsg_getCont();
+});
+
+new cfc(Scene_Map.prototype).add('createDisplayObjects',function f(){
+	const msgs=this._popupMsgs;
+	if(msgs) this.removeChild(msgs);
+	const rtv=f.ori.apply(this,arguments);
+	if(msgs) this.addChild(msgs);
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 文字輸入
  * @author agold404
  * @help .
- * $gameTemp.scTxt={val:"",disabled:false,noCancel:false,readOnly:false,res:undefined,};
+ * $gameTemp.scTxt={val:"",disabled:false,noCancel:false,readOnly:false,res:undefined,onOk_eval:undefined,onOk_call:undefined};
  * SceneManager.push(Scene_HTML_textarea);
  * $gameTemp.scTxt.res
  * $gameTemp.scTxt.val
+ * $gameTemp.scTxt.onOk_call: called if it is a function ; 'this' is 'window' in the function
+ * $gameTemp.scTxt.onOk_eval: eval()ed if it is true-like ; use string to bypass note parsing
+ * * '$gameTemp.scTxt.onOk_call' is called first, then '$gameTemp.scTxt.onOk_eval' is evaluated.
  * 
  * This plugin can be renamed as you want.
  */
@@ -14749,8 +14967,35 @@ cf(p,k,function f(){
 k='command_ok';
 cf(p,k,function f(){
 	this.txt_set(this.node_txta.value,true);
+	if(typeof $gameTemp.scTxt.onOk_call==='function'){
+		const func=$gameTemp.scTxt.onOk_call;
+		$gameTemp.scTxt.onOk_call=undefined;
+		try{
+			func.call(null);
+			$gameTemp.popupMsg(f.tbl[0].ok);
+		}catch(e){
+			console.warn('Scene_HTML_textarea','onOk_call',e);
+			$gameTemp.popupMsg(f.tbl[0].fail);
+		}
+	}
+	if($gameTemp.scTxt.onOk_eval){
+		const s=$gameTemp.scTxt.onOk_eval;
+		$gameTemp.scTxt.onOk_eval=undefined;
+		try{
+			{ let f; { eval(s); } }
+			$gameTemp.popupMsg(f.tbl[0].ok);
+		}catch(e){
+			console.warn('Scene_HTML_textarea','onOk_eval',e);
+			$gameTemp.popupMsg(f.tbl[0].fail);
+		}
+	}
 	SceneManager.pop();
-});
+},[
+{
+fail:"執行失敗",
+ok:"執行成功",
+},
+]);
 
 k='command_cancel';
 cf(p,k,function f(){
@@ -18459,13 +18704,13 @@ cf(p,k,function f(){
 k,
 a.ori.prototype,
 function(){ Scene_Base.prototype.stop.call(this); },
-],true,true);
+]);
 k='create';
 cf(p,k,function f(){
 	f.tbl[1][f.tbl[0]].apply(this,arguments);
 	this.createWindows();
 	this._prevScene_restore();
-},[k,a.ori.prototype],true,true);
+},[k,a.ori.prototype]);
 new cfc(p).add('updateActor',function f(){
 	
 },undefined,true,true).add('createWindows',function f(){
@@ -18700,6 +18945,35 @@ new cfc(Scene_Boot.prototype).add('start',function f(){
 	if(SceneManager.add_additionalUpdate) SceneManager.add_additionalUpdate(f.tbl[0],true);
 	return rtv;
 },[f]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 戰鬥員技能動畫圖片預讀
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Battle.prototype).add('initialize',function f(){
+	this.loadBtlrsSkillsImgs();
+	return f.ori.apply(this,arguments);
+}).add('loadBtlrsSkillsImgs',function f(){
+	if(!$gameParty||!$gameTroop) return;
+	new Set($gameParty.members().concat($gameTroop.members()).map(f.tbl[0]).flat().map(f.tbl[1]).map(f.tbl[2]).flat()).forEach(info=>{ if(!info) return;
+		const idx=info.indexOf('-'); if(idx<0 || idx+1===info.length) return;
+		ImageManager.loadAnimation(info.slice(idx+1),Number(info.slice(0,idx)));
+	});
+},[
+btlr=>btlr.skills(),
+dataobj=>$dataAnimations[dataobj&&dataobj.animationId],
+dataobj=>dataobj&&[dataobj.animation1Name&&dataobj.animation1Hue+'-'+dataobj.animation1Name,dataobj.animation2Name&&dataobj.animation2Hue+'-'+dataobj.animation2Name,],
+]);
 
 })();
 
