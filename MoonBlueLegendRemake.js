@@ -9681,6 +9681,7 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._toDetail_using=false;
 	this._detailWindow=undefined;
+	this._toDetail_shouldShow=0;
 	return rtv;
 }).add('toDetail_getAnchorWindow',function f(){
 	return undefined;
@@ -9697,6 +9698,12 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	this.addChild(dw);
 	dw.alpha=0;
 	dw.processNormalCharacter=Window_Message.prototype.processNormalCharacter;
+	{
+		const k='standardFontSize';
+		const r=dw[k]; (dw[k]=function f(){
+			return (f.ori.apply(this,arguments)*3)>>2;
+		}).ori=r;
+	}
 	
 	this._toDetail_ctr=0;
 	this._toDetail_ctrMax=32;
@@ -9713,7 +9720,7 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 x:400,
 y:123,
 w:400,
-h:342,
+h:388,
 ix:12,
 }).add('toDetail_loadDetail_jurl',(url,method,callback,onerr)=>{
 	const xhr = new XMLHttpRequest();
@@ -9762,15 +9769,15 @@ ix:12,
 		dw.drawTextEx(f.tbl.loadFail,dw.textPadding(),0);
 	});
 },{
-noFile:"無詳細資料",
-loading:"讀取詳細資料中",
-loadFail:"讀取詳細資料失敗",
+noFile:"\\TXTCENTER:\"\\{此項目沒有說明。\"",
+loading:"\\TXTCENTER:\"\\{讀取說明中......\"",
+loadFail:"\\TXTCENTER:\"\\{讀取說明失敗。\"",
 }).add('toDetail_adjIwPos',function(lstPos){
 	if(!this._toDetail_using) return;
 	const dxy=this._toDetail_otherDxy;
 	if(!dxy) return;
 	const iw=this.toDetail_getItemWindow();
-	if(this._toDetail_stat=iw.active && Input.isPressed('shift')){
+	if(this._toDetail_stat=iw.active && this._toDetail_shouldShow){
 		if(this._toDetail_ctr<this._toDetail_ctrMax) ++this._toDetail_ctr;
 		else this._toDetail_ctr=this._toDetail_ctrMax;
 	}else{
@@ -9792,7 +9799,9 @@ loadFail:"讀取詳細資料失敗",
 	}
 	// 
 	this._detailWindow.alpha=this._toDetail_ctr/this._toDetail_ctrMax;
-}).add('update',function f(){
+});
+
+for(let x=0,arr=[Scene_Skill,Scene_MenuBase,];x!==arr.length;++x) new cfc(arr[x].prototype).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	if(!this._toDetail_using){
 		if(this._detailWindow){
@@ -9801,12 +9810,13 @@ loadFail:"讀取詳細資料失敗",
 		}
 		return rtv;
 	}
+	if(Input.isTriggered('shift')) this._toDetail_shouldShow^=1;
 	this.toDetail_adjIwPos(this._lstPos_iw);
 	if(this._toDetail_ctr) this.toDetail_loadDetail();
 	return rtv;
 });
 
-new cfc(Scene_Item.prototype).add('create',function f(){
+for(let x=0,arr=[Scene_Skill,Scene_Item,];x!==arr.length;++x) new cfc(arr[x].prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.toDetail_oncreate();
 	return rtv;
@@ -10687,12 +10697,23 @@ r=p[k]; (p[k]=function f(ts){
 }).ori=r;
 });
 { const p=Window_Base.prototype;
-p._textloc_measureWidth=(ts,ende)=>{
-	let t=Window_Base._tmp_drawTextEx; if(!t) (t=Window_Base._tmp_drawTextEx=new Window_Base(0,0,2048,64))._textloc_disabled=true;
+t=p._textloc_measureWidth=function f(ts,ende){
+	let t=Window_Base._tmp_drawTextEx;
+	if(!t){
+		(t=Window_Base._tmp_drawTextEx=new Window_Base(0,0,2048,64))._textloc_disabled=true;
+		t.standardFontSize=f.tbl[0];
+		t.standardFontFace=f.tbl[1];
+	}
+	t._ref=this;
 	let ts2={};
 	t.drawTextEx(ts.text.slice(ts.index,ende),0,0,undefined,undefined,ts2);
 	return ts2.maxX;
 };
+t.ori=undefined;
+t.tbl=[
+function(){ return this._ref.contents.fontSize; },
+function(){ return this._ref.contents.fontFace; },
+];
 k='processEscapeCharacter';
 r=p[k]; (p[k]=function f(code,ts){ if(this._textloc_disabled) return f.ori.apply(this,arguments);
 	if(this._CENTERTEXT_stat){
@@ -10722,7 +10743,7 @@ p[k].tbl={
 	re:re, // not used
 setLocv:[
 function(ts){ ts.x=ts.left; },
-function(ts,ende){ ts.x=(ts.left+this.contentsWidth()-this._textloc_measureWidth(ts,ende))/2; },
+function(ts,ende){ ts.x=(this.contentsWidth()-this._textloc_measureWidth(ts,ende))/2; },
 function(ts,ende){ ts.x=this.contentsWidth()-this._textloc_measureWidth(ts,ende)-1; },
 ],
 };
@@ -14776,7 +14797,7 @@ new cfc(Game_Temp.prototype).add('popupMsg',function f(msg,opt){
 		for(let k in f.tbl[0]) rtv[k]=f.tbl[0][k];
 		rtv.x=Graphics.boxWidth>>1;
 		rtv.y=0;
-		rtv._maxWidth=Graphics.boxWidth;
+		rtv._maxWidth=Graphics.boxWidth>>1;
 		rtv._maxHeight=Graphics.boxHeight;
 	}
 	const sc=SceneManager._scene; if(sc && sc!==rtv.parent) sc.addChild(sc._popupMsgs=rtv);
@@ -15545,12 +15566,69 @@ cf(p,'executeHpDamage',function f(trgt,val){
 
 const listPath="BLR_custom/Title/TitlePicsList.txt";
 
+t=[
+"titleCond",
+];
+
+new cfc(ConfigManager).add('titleCond_clear',function f(key){
+	this[f.tbl[0]]=undefined;
+	this._titleCond_keyMap_get().clear();
+},t).add('titleCond_get',function f(key){
+	const obj=this[f.tbl[0]];
+	return Number(obj&&obj[key])||0;
+},t).add('_titleCond_keyMap_get',function f(){
+	if(!this._titleCond_keyMap){
+		this._titleCond_keyMap=new Map();
+		const obj=this[f.tbl[0]];
+		if(obj) for(let k in obj) if(Object.prototype.hasOwnProperty.call(obj,k)) this._titleCond_keyMap.set(k,obj[k]);
+	}
+	return this._titleCond_keyMap;
+},t).add('titleCond_set',function f(key,val){
+	const rtv=Number(val);
+	if(isNaN(rtv)) return 0;
+	const m=this._titleCond_keyMap_get();
+	if(!this[f.tbl[0]]) this[f.tbl[0]]={};
+	m.set(''+key,this[f.tbl[0]][key]=''+val);
+	this.save();
+	return rtv;
+},t).add('titleCond_setMax',function f(key,val){
+	return this.titleCond_set(key,Math.max(this.titleCond_get(key),Number(val)||0));
+},t).add('makeData',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const m=this._titleCond_keyMap_get();
+	if(m.size) rtv[f.tbl[0]]=this[f.tbl[0]]; // don't set if empty
+	return rtv;
+},t).add('applyData',function f(){ // arg0 === config
+	const rtv=f.ori.apply(this,arguments);
+	this[f.tbl[0]]=arguments[0][f.tbl[0]];
+	this._titleCond_keyMap_get();
+	return rtv;
+},t);
+
+r=t;
+
 cf(Scene_Boot.prototype,'start',function f(){
 	ImageManager.otherFiles_addLoad(f.tbl[0]);
 	return f.ori.apply(this,arguments);
-},t=[listPath,function f(data){
+},t=[
+listPath,
+function f(data){
 	return data.replace(f.tbl[0][0],f.tbl[0][1]).split(f.tbl[1]).map(f.tbl[2]).filter(f.tbl[3]);
-}]);
+},
+"",
+function f(group){
+	if(!group) return false;
+	if(!group[2]) return true;
+	const cm=ConfigManager;
+	const m=cm._titleCond_keyMap_get();
+	try{
+		return f.tbl[0](group[2],cm[f.tbl[1]]||{});
+	}catch(e){
+		console.warn(group.join('\n'));
+	}
+	return true;
+}, // filter by condition
+]);
 
 t[1].ori=undefined;
 t[1].tbl=[
@@ -15560,14 +15638,21 @@ group=>group.split('\n').map((line,i)=>i<2?line.split("#")[0]:line),
 lines=>lines&&lines[0],
 ];
 
+t[3].ori=undefined;
+t[3].tbl=[
+(s,cond)=>eval(s),
+r[0],
+];
+
 cf(Scene_Title.prototype,'create',function f(){
-	if(!(f.tbl.length>=4)) f.tbl.push(f.tbl[1](ImageManager.otherFiles_getData(f.tbl[0])),"");
-	const ch=f.tbl[2].rnd1();
+	if(!(f.tbl.length>=5)) f.tbl.push( f.tbl[1](ImageManager.otherFiles_getData(f.tbl[0])) );
+	const ch=f.tbl[4].filter(f.tbl[3]).rnd1();
 	$dataSystem.title1Name=ch[0];
-	$dataSystem.title2Name=ch[1]||f.tbl[3];
+	$dataSystem.title2Name=ch[1]||f.tbl[2]; // ""
 	return f.ori.apply(this,arguments);
 },t);
 
+t=r=undefined;
 })();
 
 
@@ -19410,6 +19495,7 @@ r=p[k]; (p[k]=function f(){
 	$dataArmors  .forEach(f.tbl[0]);
 	const rtv=f.ori.apply(this,arguments);
 	console.log("MOG_Weather_EX.js is coded the worst I've ever seen.","So bad that you should directly edit it.");
+	if(Input.KeyMapperPKD){ console.log("不懂鍵盤編碼嗎? PKD_SimpleQuestSystem.js"); for(let x='a'.charCodeAt(),last='z'.charCodeAt();x<=last;++x) delete Input.KeyMapperPKD[x]; }
 	return rtv;
 }).ori=r;
 p[k].tbl=[
