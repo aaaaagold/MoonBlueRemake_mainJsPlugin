@@ -59,19 +59,27 @@ configurable: true},
 p.getnth=p.getObjAt=function(i){ return this[i]; };
 p.rnd1=function(){ return this[~~(Math.random()*this.length)]; };
 p.uniqueHas=function(obj){
-	if(!this._map) this._map=new Map();
+	if(!this._map){
+		this._map=new Map();
+		for(let x=0,xs=this.length;x!==xs;++x) this._map.set(this[x],x);
+	}
 	return this._map.has(obj);
 };
-p.uniquePush=function(obj){
-	if(this.uniqueHas(obj)) return;
-	this._map.set(obj,this.length);
-	this.push(obj);
+p.uniquePush=function( /* obj , ... */ ){
+	for(let x=0;x!==arguments.length;++x){
+		const obj=arguments[x];
+		if(this.uniqueHas(obj)) continue;
+		this._map.set(obj,this.length);
+		Array.prototype.push.call(this,obj);
+	}
+	return this.length;
 };
 p.uniquePushContainer=function(cont){
-	for(let x=0;x!==cont.length;++x) this.uniquePush(cont.getObjAt(x));
+	// push all cont's elements
+	for(let x=0,xs=cont.length;x!==xs;++x) this.uniquePush(cont.getObjAt(x));
 };
 p.uniquePop=function(obj){
-	if(!this._map) this._map=new Map();
+	if(!this.uniqueHas(obj)) return;
 	const res=this._map.get(obj); if(!(res>=0)) return;
 	this._map.delete(obj);
 	if(res+1!==this.length) this._map.set(this[res]=this.back,res);
@@ -194,17 +202,20 @@ ConfigManager.readVolume=function(config, name){ const value=config[name]; retur
 p._findChildren_r=function(f,rtv){ if(f(this)) rtv.push(this); for(let x=0,arr=this.children;x!==arr.length;++x) arr[x]._findChild_r(f,rtv); return rtv; };
 p.findChildren=function(f){ const rtv=[]; return this._findChild_r(f,rtv); };
 }
+//
 Sprite_Actor.prototype.damageOffsetY=()=>-32; // 角色身上的數字上shift
 { const p=SceneManager;
 p.isScene_battle =function(){ const sc=this._scene; return sc && sc.constructor===Scene_Battle; };
 p.isScene_map    =function(){ const sc=this._scene; return sc && sc.constructor===Scene_Map;    };
 }
+//
 SceneManager.getScConstructor=function(){ return this._scene && this._scene.constructor; };
 { const p=Window_BattleLog.prototype,k='displayAffectedStatus'; const r=p[k]; (p[k]=function(){}).ori=r; } // 月藍沒有用這個東西
 Graphics.getScale=function(){
 	const c=this._canvas;
 	return Math.min(c.scrollWidth/c.width,c.scrollHeight/c.height);
 };
+//
 let t;
 const undef=undefined,none=()=>{};
 const makeDummyWindowProto=t=function f(c,withContents,withCursor){
@@ -302,6 +313,7 @@ t._createAllParts_cursor = function(){
 	//this.addChild(this._upArrowSprite);
 	//this.addChild(this._windowPauseSignSprite);
 };
+//
 cf(cf(cf(cf(Input,'isTexting_set',function f(){
 	this._isTexting=true;
 }),'isTexting_clear',function f(){
@@ -312,6 +324,7 @@ cf(cf(cf(cf(Input,'isTexting_set',function f(){
 	if(this.isTexting()) return false;
 	return f.ori.apply(this,arguments);
 });
+//
 cf(cf(cf(Window_Selectable.prototype,'processCursorMove',t=function f(){
 	const idx=this.index();
 	const rtv=f.ori.apply(this,arguments);
@@ -359,6 +372,7 @@ t.tbl[0].forEach(info=>{
 	Input.keyMapper[info[0]]=info[1];
 });
 t=undefined;
+//
 new cfc(Scene_Base.prototype).add('_prevScene_store',function f(){
 	// called when 'scene.initialize'
 	this._lastBgBm=SceneManager.backgroundBitmap();
@@ -383,6 +397,16 @@ function(){ Scene_Base.prototype.stop.call(this); },
 	}
 	if(this._lastBgBm) SceneManager._backgroundBitmap=this._lastBgBm;
 },t,true,true);
+//
+new cfc(DataManager).add('isSkill',function f(item){
+	return item && $dataSkills.uniqueHas(item);
+}).add('isItem',function f(item){
+	return item && $dataItems.uniqueHas(item);
+}).add('isWeapon',function f(item){
+	return item && $dataWeapons.uniqueHas(item);
+}).add('isArmor',function f(item){
+	return item && $dataArmors.uniqueHas(item);
+});
 
 /*
 調皮
@@ -9682,7 +9706,37 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	this._toDetail_using=false;
 	this._detailWindow=undefined;
 	this._toDetail_shouldShow=0;
+	this._toDetail_showOnWindow_toPos=undefined;
+	this._toDetail_showOnWindow_deltaPos=undefined;
 	return rtv;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.toDetail_updatePos();
+	return rtv;
+}).add('toDetail_updatePos',function f(){
+	if(!this._toDetail_using) return;
+	const ow=this.toDetail_showOnWindow(),dw=this._detailWindow;
+	if(!ow||!dw) return;
+	if(!this._toDetail_otherDxy) this._toDetail_otherDxy={x:0,y:0,};
+	const pos={x:ow.x,y:ow.y,w:ow.width,h:ow.height,},keys=f.tbl[0];
+	{
+		const toPos=this._toDetail_showOnWindow_toPos;
+		if(toPos) for(let k=0;k!==keys.length;++k) if(!isNaN(toPos[keys[k]])) pos[keys[k]]=toPos[keys[k]];
+	}
+	{
+		const deltaPos=this._toDetail_showOnWindow_deltaPos;
+		if(deltaPos) for(let k=0;k!==keys.length;++k) if(!isNaN(deltaPos[keys[k]])) pos[keys[k]]+=deltaPos[keys[k]];
+	}
+	let editedSize=false;
+	if(dw.x!==pos.x){ dw.x=pos.x; }
+	if(dw.y!==pos.y){ dw.y=pos.y; }
+	if(dw.width!==pos.w){ dw.width=pos.w; editedSize=true; }
+	if(dw.height!==pos.h){ dw.height=pos.h; editedSize=true; }
+	if(editedSize && dw.contents) dw.createContents(); // re-create canvas with size w,h
+},[
+['x','y','w','h',],
+],true,true).add('toDetail_showOnWindow',function f(){
+	return undefined;
 }).add('toDetail_getAnchorWindow',function f(){
 	return undefined;
 }).add('toDetail_getItemWindow',function f(){
@@ -9801,7 +9855,7 @@ loadFail:"\\TXTCENTER:\"\\{讀取說明失敗。\"",
 	this._detailWindow.alpha=this._toDetail_ctr/this._toDetail_ctrMax;
 });
 
-for(let x=0,arr=[Scene_Skill,Scene_MenuBase,];x!==arr.length;++x) new cfc(arr[x].prototype).add('update',function f(){
+for(let x=0,arr=[Scene_Skill,Scene_MenuBase,Scene_Equip,];x!==arr.length;++x) new cfc(arr[x].prototype).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	if(!this._toDetail_using){
 		if(this._detailWindow){
@@ -9842,6 +9896,47 @@ for(let x=0,arr=[Scene_Skill,Scene_Item,];x!==arr.length;++x) new cfc(arr[x].pro
 	return this._itemWindow;
 },undefined,true,true);
 
+new cfc(Scene_Equip.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._statusWindow.active=false;
+	this.toDetail_oncreate();
+	const posTbl=Scene_MenuBase.prototype.toDetail_oncreate.tbl;
+	this._toDetail_showOnWindow_toPos={
+		w:posTbl.w,
+		h:posTbl.h,
+	};
+	// custom adjust
+	this._toDetail_showOnWindow_deltaPos={
+		y:-99,
+		h:99,
+	};
+	if(window.Imported && Imported.MOG_SceneEquip){
+		if(this._layoutHelp && this._helpWindow){
+			this.addChild(this._layoutHelp);
+			this.addChild(this._helpWindow);
+		}
+	}
+	return rtv;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.toDetail_updatePos();
+	return rtv;
+}).add('toDetail_showOnWindow',function f(){
+	return this._statusWindow;
+}).add('toDetail_getItemWindow',function f(){
+	let rtv=this._slotWindow;
+	if(rtv.active && rtv.visible && rtv.alpha) return rtv;
+	rtv=this._itemWindow;
+	if(rtv.active && rtv.visible && rtv.alpha) return rtv;
+	return this._statusWindow;
+},{
+null:function(){ return this._dummyWindow; },
+buy:function(){ return this._buyWindow; },
+sell:function(){ return this._sellWindow; },
+},true,true).add('toDetail_getAnchorWindow',function(){
+	return undefined;
+},undefined,true,true);
+
 new cfc(Scene_Shop.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._dummyWindow.active=false;
@@ -9851,15 +9946,7 @@ new cfc(Scene_Shop.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.toDetail_updatePos();
 	return rtv;
-}).add('toDetail_updatePos',function f(){
-	if(!this._toDetail_using) return;
-	if(!this._toDetail_otherDxy) this._toDetail_otherDxy={x:0,y:0,};
-	const ow=this.toDetail_showOnWindow(),dw=this._detailWindow;
-	if(dw.x!==ow.x) dw.x=ow.x;
-	if(dw.y!==ow.y) dw.y=ow.y;
-	if(dw.width!==ow.width) dw.width=ow.width;
-	if(dw.height!==ow.height) dw.height=ow.height;
-},undefined,true,true).add('toDetail_showOnWindow',function f(){
+}).add('toDetail_showOnWindow',function f(){
 	let rtv=this._statusWindow;
 	if(rtv.visible && rtv.alpha) return rtv;
 	rtv=this._sellWindow;
@@ -10091,7 +10178,7 @@ r=p[k]; (p[k]=function f(r,g,b,a){
 k='command355';
 r=p[k]; (p[k]=function f(){
 	let script = this.currentCommand().parameters[0];
-	while(this.nextEventCode() === 655){
+	while(f.tbl.has(this.nextEventCode())){
 		this._index++;
 		script+='\n';
 		script+=this.currentCommand().parameters[0];
@@ -10104,6 +10191,7 @@ r=p[k]; (p[k]=function f(){
 	}
 	return true;
 }).ori=r;
+p[k].tbl=new Set([355,655,]);
 }
 
 })();
@@ -13287,14 +13375,14 @@ r=p[k]; (p[k]=function(){
 	m.delete(this._armors);
 }).ori=r;
 k='gainLogger_update';
-r=p[k]; (p[k]=function(container,item,amount){
+r=p[k]; (p[k]=function(container,item,amount){ if(!item) return;
 	const m=this._getGainLoggers();
 	let L=m.get(container); if(!L) m.set(container,L={});
 	if(!L[item.id]) L[item.id]=0;
 	if(!((L[item.id]+=amount)>0)) L[item.id]=0;
 }).ori=r;
 k='gainLogger_isNew';
-r=p[k]; (p[k]=function(container,item){
+r=p[k]; (p[k]=function(container,item){ if(!item) return;
 	const m=this._getGainLoggers();
 	let L=m.get(container); if(!L) m.set(container,L={});
 	return L[item.id]>0;
@@ -13367,7 +13455,7 @@ r=p[k]; (p[k]=function f(){
 k='drawIcon';
 r=p[k]; (p[k]=function f(iconIndex, x, y, item){
 	const rtv=f.ori.apply(this,arguments);
-	if(this._gainLogger_new){ this._gainLogger_new=false; const pt=$gameParty; if(pt.gainLogger_isNew(pt.itemContainer(item),item)){
+	if(item && this._gainLogger_new){ this._gainLogger_new=false; const pt=$gameParty; if(pt.gainLogger_isNew(pt.itemContainer(item),item)){
 		this.drawText("new",x,y,Window_Base._iconWidth,'center');
 	} }
 	return rtv;
@@ -14952,6 +15040,7 @@ cf(p,k,f=function f(){
 	f.tbl[1][f.tbl[0]].apply(this,arguments);
 	this._prevScene_restore();
 	this.initResult();
+	this.createTitleWindow();
 	this.createCommandWindow();
 	this.createTextareaBack();
 	this.createDivRoot();
@@ -14971,10 +15060,21 @@ cf(p,k,f=function f(){
 	return f.tbl[1][f.tbl[0]].apply(this,arguments);
 },[k,a.ori.prototype]);
 
+k='createTitleWindow';
+cf(p,k,function f(){
+	const obj=this._txt_obj();
+	if(obj.title===undefined) return;
+	this._titleWindow=undefined;
+	const w=this._titleWindow=new Window_Help(1);
+	w.setText(obj.title);
+	this.addWindow(w);
+},[k,a.ori.prototype]);
+
 k='createCommandWindow';
 cf(p,k,function f(){
 	const cmdw=this._commandWindow=new Window_Command_scTxtarea(0, 0, undefined, undefined, {sc:this,});
 	for(let x=0,arr=f.tbl;x!==arr.length;++x) if(cmdw.isSymbolEnabled(arr[x])) cmdw.setHandler(arr[x],this['command_'+arr[x]].bind(this));
+	if(this._titleWindow) cmdw.y+=this._titleWindow.height;
 	this.addWindow(cmdw);
 },['edit','ok','cancel',]);
 
@@ -15038,7 +15138,9 @@ cf(p,k,function f(){
 	const cmdw=this._commandWindow;
 	const xy=cmdw.getGlobalPosition();
 	const x=xy.x+cmdw.scale.x*cmdw.windowWidth();
-	const bw=this._backWindow=new Window_Base(x, 0, Graphics.boxWidth-x,Graphics.boxHeight);
+	const y=this._titleWindow?this._titleWindow.height:0;
+	const h=Graphics.boxHeight-y;
+	const bw=this._backWindow=new Window_Base(x, y, Graphics.boxWidth-x,h);
 	makeDummyWindowProto(bw,true);
 	this.addWindow(bw);
 	bw.deactivate();
@@ -15172,7 +15274,7 @@ t,
 
 k='_txt_obj';
 cf(p,k,function f(txt){
-	if(!$gameTemp.scTxt) $gameTemp.scTxt={disabled:false,noCancel:false,res:undefined,val:"",};
+	if(!$gameTemp.scTxt) $gameTemp.scTxt={disabled:false,noCancel:false,res:undefined,val:"",title:undefined,};
 	return $gameTemp.scTxt;
 });
 
@@ -15917,7 +16019,7 @@ cf(cf(BattleManager,'endAction',function f(){
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if(0)(()=>{ let k,r,t;
 
 cf(Scene_Equip.prototype,'create',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -19065,18 +19167,89 @@ dataobj=>dataobj&&[dataobj.animation1Name&&dataobj.animation1Hue+'-'+dataobj.ani
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc 設定置頂道具，背包按T置頂。
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help 按T置頂
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
-{
-}
+new cfc(Game_System.prototype).add('favItems_getCont',function f(){
+	if(!this._favItems) this._favItems={_items:[],_weapons:[],_armors:[],};
+	return this._favItems;
+}).add('favItems_add',function f(item){ if(!item||!item.id) return;
+	const cont=Game_Party.prototype.itemContainer.call(this.favItems_getCont(),item);
+	if(cont) return cont.uniquePush(item.id);
+}).add('favItems_del',function f(item){ if(!item||!item.id) return;
+	const cont=Game_Party.prototype.itemContainer.call(this.favItems_getCont(),item);
+	if(cont) return cont.uniquePop(item.id);
+}).add('favItems_is',function f(item){ if(!item||!item.id) return;
+	const cont=Game_Party.prototype.itemContainer.call(this.favItems_getCont(),item);
+	return cont && cont.uniqueHas(item.id);
+});
+
+new cfc(Window_Base.prototype).add('drawIcon',function f(iconIndex, x, y, item){
+	if(this.contents && $gameSystem && $gameSystem.favItems_is(item)){
+		let ga,ctx;
+		if(ctx=this.contents.context){
+			ga=ctx.globalAlpha;
+			ctx.globalAlpha=ga*f.tbl[2];
+			this.drawIcon(f.tbl[1],x+f.tbl[0].dx,y+f.tbl[0].dy);
+			ctx.globalAlpha=ga;
+		}
+	}
+	return f.ori.apply(this,arguments);
+},[
+{dx:-4,dy:0,},
+92, // iconId
+0.75, // mulAplha
+]);
+
+new cfc(Window_Selectable.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._favItems_isCacheData=undefined;
+	return rtv;
+});
+
+new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
+	if(this._favItems_isCacheData){
+		if(!this._favItems_lastData || this._favItems_lastData.cat!==this._category){
+			if(!this._favItems_lastData) this._favItems_lastData={};
+			const lastData=this._favItems_lastData;
+			let rtv=f.ori.apply(this,arguments);
+			const arr0=[],arr1=[];
+			for(let x=0,arr=this._data;x!==arr.length;++x) (arr[x]&&$gameSystem.favItems_is(arr[x])?arr0:arr1).push(arr[x]);
+			if(arr0.length){
+				for(let x=0;x!==arr1.length;++x) arr0.push(arr1[x]);
+				if(rtv===this._data) rtv=arr0;
+				this._data=arr0;
+			}
+			lastData.cat  =this._category;
+			lastData.data =this._data;
+			lastData.rtv  =rtv;
+		}
+		this._data=this._favItems_lastData.data;
+		return this._favItems_lastData.rtv;
+	}
+	return f.ori.apply(this,arguments);
+},t);
+
+new cfc(Scene_Item.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._itemWindow._favItems_isCacheData=true;
+	this._itemWindow._favItems_lastData=undefined;
+	return rtv;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._itemWindow && this._itemWindow.active){ const item=this._itemWindow.item(); if(item && Input.isTriggered(f.tbl[0])){
+		if($gameSystem.favItems_is(item)) $gameSystem.favItems_del(item);
+		else $gameSystem.favItems_add(item);
+		this._itemWindow.redrawCurrentItem();
+	} }
+	return rtv;
+},['t']);
 
 })();
 
@@ -19463,7 +19636,13 @@ const r=p[k];
 { const p=Scene_Boot.prototype,k='start';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
-	[$dataActors,$dataArmors,$dataClasses,$dataEnemies,$dataItems,$dataMapInfos,$dataSkills,$dataStates,$dataTilesets,$dataTroops,$dataWeapons].forEach(arr=>arr.tbl=new Map( arr.map((x,i)=>[x,i]).filter(x=>x[0]) ));
+	const push=function(){ return Array.prototype.uniquePush.apply(this,arguments); };
+	const pop=function(){ return this.length && Array.prototype.uniquePop.call(this,this.back); };
+	[$dataActors,$dataArmors,$dataClasses,$dataEnemies,$dataItems,$dataMapInfos,$dataSkills,$dataStates,$dataTilesets,$dataTroops,$dataWeapons].forEach(arr=>{
+		arr.tbl=new Map( arr.map((x,i)=>[x,i]).filter(x=>x[0]) );
+		arr.push=push;
+		arr.pop=pop;
+	});
 	return rtv;
 }).ori=r;
 }
