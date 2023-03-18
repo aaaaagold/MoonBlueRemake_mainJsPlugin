@@ -407,6 +407,14 @@ new cfc(DataManager).add('isSkill',function f(item){
 }).add('isArmor',function f(item){
 	return item && $dataArmors.uniqueHas(item);
 });
+//
+new cfc(Game_Party.prototype).add('partyAbility_sumAll',function f(dataId){
+	return this.members().reduce(f.tbl[0].bind(dataId),0);
+},[
+function(r,btlr){
+	return r+btlr.traitsSum(Game_BattlerBase.TRAIT_PARTY_ABILITY,this);
+},
+]);
 
 /*
 調皮
@@ -3676,19 +3684,23 @@ p._numBoard_gen=function(w,h){
 p._numBoard_loc=function(bd,loc){
 	switch(loc){
 	case "DR":
+	case "RD":
 		bd.x=Graphics._boxWidth-bd.width;
 		bd.y=Graphics._boxHeight-bd.height;
 	break;
 	default:
+	case "UL":
 	case "LU":
 		bd.x=0;
 		bd.y=0;
 	break;
+	case "DL":
 	case "LD":
 		bd.x=0;
 		bd.y=Graphics._boxHeight-bd.height;
 	break;
 	case "UR":
+	case "RU":
 		bd.x=Graphics._boxWidth-bd.width;
 		bd.y=0;
 	break;
@@ -4341,15 +4353,16 @@ r=p[k]; (p[k]=function f(){
 
 { const p=BattleManager;
 p.clearDmgLog=t=>t._dmgLog=[];
-/*
+p.clearExeLog=function(s){ this.getExeLogger().delete(s); };
+p.getExeLogger=function(){
+	if(!this._exeLog) this._exeLog=new Map();
+	return this._exeLog;
+};
 k='startBattle';
 r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	$gameParty.members().forEach(f.forEach);
-	$gameTroop.members().forEach(f.forEach);
+	this.getExeLogger().clear();
+	return f.ori.apply(this,arguments);
 }).ori=r;
-p[k].forEach=p.clearDmgLog;
-*/
 p._calEleRatio=(info,ele)=>{
 	if(ele===undefined) return 1;
 	let elesCnt=0,eleCnt=0;
@@ -4366,13 +4379,23 @@ p._logDmg=(t,info,r,ele)=>{
 	eleObj.mp+=info.dmp*r;
 	eleObj.tp+=info.dtp*r;
 };
-p.logDmg=function(t,info){
+p.logDmg=function(t,info,s){
 	if(!this._phase) return;
 	if(!t._dmgLog) this.clearDmgLog(t);
 	t._dmgLog.push(info);
 	if(t._dmgLog.eles){
 		for(let x=0,arr=t._dmgLog.eles;x!==arr.length;++x){
 			this._logDmg(t,info,this._calEleRatio(info,arr[x]),arr[x]);
+		}
+	}
+	const m=this.getExeLogger();
+	let arr=m.get(s); if(!arr) m.set(s,arr=[]);
+	arr.push(info);
+	if(arr._byDataobj){
+		const precal=arr._byDataobj.get(info.item); if(precal){
+			precal.hp+=info.dhp;
+			precal.mp+=info.dmp;
+			precal.tp+=info.dtp;
 		}
 	}
 };
@@ -4401,6 +4424,35 @@ p.getDmgSum=function(t,type,ele){
 	}
 	return obj[type]||0;
 };
+p.getExeArr=function(s){
+	return this.getExeLogger().get(s);
+};
+new cfc(p).add('getExeSum',function f(s,dataobj,type){
+	const arr=this.getExeArr(s);
+	const func=f.tbl[0][type];
+	if(func && arr){
+		if(!arr._byDataobj) arr._byDataobj=new Map();
+		let precal=arr._byDataobj.get(dataobj); if(!precal){
+			precal={hp:0,mp:0,tp:0,};
+			for(let x=0,xs=arr.length;x!==xs;++x){ if(dataobj===arr[x].item){
+				precal.hp+=arr[x].dhp;
+				precal.mp+=arr[x].dmp;
+				precal.tp+=arr[x].dtp;
+			} }
+		}
+		return func(precal)||0;
+	}else return 0;
+},[
+{
+   hp:function(precal){
+	return precal.hp;
+ },mp:function(precal){
+	return precal.mp;
+ },tp:function(precal){
+	return precal.tp;
+ },
+},
+]);
 }
 
 { const p=Game_Action.prototype;
@@ -4417,7 +4469,8 @@ r=p[k]; (p[k]=function f(t){
 //		dmp:mp-t.mp,
 //		dtp:tp-t.tp,
 		eles:this._lastAllEles,
-	});
+		item:this.item(),
+	},this.subject());
 	t.accumulateGains_del();
 	return rtv;
 }).ori=r;
@@ -9693,6 +9746,7 @@ r=p[k]; (p[k]=function f(){
  * @plugindesc shift顯示道具額外資訊 // edit MOG_SceneItem.js
  * @author agold404
  * @help 道具、裝備 <道具額外文字檔:從遊戲根目錄(有index.html的資料夾)開始的相對路徑>
+ * <道具額外文字檔switch:[[開關id,"路徑"],[開關id,"路徑"] ,... ]>
  * 
  * This plugin can be renamed as you want.
  */
@@ -9700,6 +9754,25 @@ r=p[k]; (p[k]=function f(){
 if(typeof Window_ItemListM!=='undefined')(()=>{ let k,r,t;
 
 const kw="道具額外文字檔";
+const kw_switch="道具額外文字檔switch";
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{
+	const meta=dataobj&&dataobj.meta; if(!meta) return;
+	if(meta[kw_switch]) dataobj[kw_switch]=JSON.parse(meta[kw_switch]);
+},
+]);
 
 new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -9708,6 +9781,17 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	this._toDetail_shouldShow=0;
 	this._toDetail_showOnWindow_toPos=undefined;
 	this._toDetail_showOnWindow_deltaPos=undefined;
+	return rtv;
+}).add('toDetail_getPath',function f(item){
+	if(!item) return;
+	let rtv;
+	if($gameSwitches && item[kw_switch]){ for(let x=0,arr=item[kw_switch];x!==arr.length;++x){
+		if($gameSwitches.value(arr[x][0])){
+			rtv=arr[x][1];
+			break;
+		}
+	} }
+	if(rtv===undefined) rtv=item.meta[kw];
 	return rtv;
 }).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -9801,17 +9885,16 @@ ix:12,
 		bm && bm.clear();
 	}
 	if(!item) return;
-	if(item.detailText){
-		const txt=item.detailText.txt;
+	if(!item.detailTextMap) item.detailTextMap=new Map();
+	const path=this.toDetail_getPath(item); if(!path) return dw.drawTextEx(f.tbl.noFile,dw.textPadding(),0);
+	const detailTextCache=item.detailTextMap.get(path); if(detailTextCache){
+		const txt=detailTextCache.txt;
 		return dw.drawTextEx(txt,dw.textPadding(),0);
-	}
-	if(!item.meta[kw]){
-		return dw.drawTextEx(f.tbl.noFile,dw.textPadding(),0);
 	}
 	
 	dw.drawTextEx(f.tbl.loading,dw.textPadding(),0);
-	this.toDetail_loadDetail_jurl(item.meta[kw],"GET",txt=>{
-		item.detailText={txt:txt,};
+	this.toDetail_loadDetail_jurl(path,"GET",txt=>{
+		item.detailTextMap.set(path,{txt:txt,});
 		if(!iw.active || item!==iw.item()) return;
 		const bm=dw.contents;
 		bm && bm.clear();
@@ -19086,8 +19169,22 @@ t=undefined;
 
 new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx){
 	if($gameSystem && $gameSystem._flashbackText_disabled) return;
-	this._flashbackText_getCont().push({txt:txt,face:{name:face,idx:fidx},y:undefined,height:undefined,});
-}).add('_flashbackText_getCont',function f(){
+	this._flashbackText_getCont().push({txt:txt.replace(/(?<!(\\))((\\\\)*)(\\([VPNvpn])\[(\d+)\])/g,f.tbl[0]),face:{name:face,idx:fidx},y:undefined,height:undefined,});
+},[
+function f(){
+	if(!f.tbl){
+		f.tbl={
+			V:n=>$gameVariables.value(n),
+			P:Window_Base.prototype.partyMemberName,
+			N:Window_Base.prototype.actorName,
+		};
+		for(let x=0,s="VPN",xs=s.length;x!==xs;++x) f.tbl[s[x].toLowerCase()]=f.tbl[s[x]];
+	}
+	const slashes=arguments[2]||"",key=arguments[5],val=arguments[6];
+	if(key in f.tbl) return slashes+f.tbl[key](val);
+	return arguments[0];
+},
+]).add('_flashbackText_getCont',function f(){
 	let rtv=this._flashbackTexts; if(!rtv) rtv=this._flashbackTexts=[];
 	return rtv;
 }).add('flashbackText_getCont',function f(){
@@ -19250,6 +19347,208 @@ new cfc(Scene_Item.prototype).add('create',function f(){
 	} }
 	return rtv;
 },['t']);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 掉落數量上升
+ * @author agold404
+ * @help 有掉才++
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gp=Game_Party;
+
+const kwtxt='掉落數量上升';
+const kwtrait="ABILITY_"+kwtxt;
+
+if(!gp._enumMax) gp._enumMax=404;
+if(!gp.addEnum) gp.addEnum=window.addEnum;
+gp.addEnum(kwtrait);
+gp.addEnum('__END__');
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits;
+	const val=meta[kwtxt]-0;
+	if(!ts||!val) return;
+	ts.push({code:gbb.TRAIT_PARTY_ABILITY,dataId:gp[kwtrait],value:val,});
+},
+]);
+
+new cfc(Game_Troop.prototype).add('makeDropItems',function f(){
+	const rtv=[];
+	for(let x=0,arr=this.deadMembers(),xs=arr.length;x!==xs;++x) rtv.push(arr[x].makeDropItems());
+	if($gameParty){ const val=$gameParty.partyAbility_sumAll(f.tbl[0]); if(val>=1){
+		const arr=[rtv.flat(),];
+		for(let n=1;n<=val;++n) arr.push(arr[0]);
+		return arr.flat();
+	} }
+	return rtv.flat();
+},[
+gp[kwtrait],
+]);
+
+new cfc(Game_Enemy.prototype).add('makeDropItems',function f(){
+	return this.enemy().dropItems.reduce(f.tbl[0].bind(this), []);
+},[
+function(r, di){
+	const dataobj=this.itemObject(di.kind, di.dataId);
+	if(0<di.kind && Math.random()*di.denominator<this.dropItemRate(dataobj)) r.push(dataobj);
+	return r;
+},
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 抵抗 buff/debuff 被消除
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const kwtxt_buff='buff消除抵抗';
+const kwbase_buff=kwtxt_buff;
+const kwtrait_buff="TRAIT_"+kwbase_buff;
+const kwget_buff="get_"+kwbase_buff;
+
+const kwtxt_debuff='debuff消除抵抗';
+const kwbase_debuff=kwtxt_debuff;
+const kwtrait_debuff="TRAIT_"+kwbase_debuff;
+const kwget_debuff="get_"+kwbase_debuff;
+
+gbb.addEnum(kwtrait_buff);
+gbb.addEnum(kwtrait_debuff);
+
+t=[
+[gbb[kwtrait_buff],kwget_buff,],
+[gbb[kwtrait_debuff],kwget_debuff,],
+];
+
+const str2num={
+mhp:0,
+mmp:1,
+atk:2,
+def:3,
+mat:4,
+mdf:5,
+agi:6,
+luk:7,
+};
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits; if(!ts) ts=dataobj.traits=[];
+	if(meta[kwtxt_buff]){
+		const info=JSON.parse(meta[kwtxt_buff]);
+		for(let k in info){
+			const rate=info[k]-0; if(!rate) continue;
+			const id=isNaN(k)?((k in str2num)?str2num[k]:k):k-0;
+			ts.push({code:gbb[kwtrait_buff],dataId:id,value:rate,});
+		}
+	}
+	if(meta[kwtxt_debuff]){
+		const info=JSON.parse(meta[kwtxt_debuff]);
+		for(let k in info){
+			const rate=info[k]-0; if(!rate) continue;
+			const id=isNaN(k)?((k in str2num)?str2num[k]:k):k-0;
+			ts.push({code:gbb[kwtrait_debuff],dataId:id,value:rate,});
+		}
+	}
+},
+]);
+
+for(let x=0;x!==2;++x) new cfc(Game_BattlerBase.prototype).add(t[x][1],function f(paramId){
+	return this.traitsSum(f.tbl[0],paramId);
+},t[x]);
+
+new cfc(Game_Battler.prototype).add('removeBuff',function f(paramId){
+	if(this.removeBuff_isResist(paramId)) return false;
+	const ori=this._buffs[paramId];
+	f.ori.apply(this,arguments);
+	return ori && ori!==this._buffs[paramId];
+}).add('removeBuff_isResist',function f(paramId){
+	if(!this._buffs[paramId]) return true;
+	const rate=this._buffs[paramId]<0?this[f.tbl[1][1]](paramId):this[f.tbl[0][1]](paramId);
+	return Math.random()<rate;
+},t);
+
+new cfc(Game_Action.prototype).add('itemEffectRemoveBuff',function(target,effect){
+	if(target.isBuffAffected(effect.dataId)){
+		if(target.removeBuff(effect.dataId)){
+			this.makeSuccess(target);
+		}
+	}
+}).add('itemEffectRemoveDebuff',function(target,effect){
+	if(target.isDebuffAffected(effect.dataId)){
+		if(target.removeBuff(effect.dataId)){
+			this.makeSuccess(target);
+		}
+	}
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
+}
 
 })();
 
