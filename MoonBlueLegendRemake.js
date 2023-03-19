@@ -11304,7 +11304,7 @@ function f(sp){
 	return f.tbl.call(this,sp,rad);
 },
 0,
-function f(sprite){
+function f(sp){
 	// d4
 	const rad=Math.PI;
 	return f.tbl.call(this,sp,rad);
@@ -11315,7 +11315,7 @@ function f(sp){
 	// default
 },
 0,
-function f(sprite){
+function f(sp){
 	// d8
 	const rad=Math.PI*3/2;
 	return f.tbl.call(this,sp,rad);
@@ -19531,6 +19531,128 @@ new cfc(Game_Action.prototype).add('itemEffectRemoveBuff',function(target,effect
 		}
 	}
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 戰鬥平行執行 common event ; 改善 YEP BattleManager.actionCommonEvent
+ * @author agold404
+ * @help $gameTemp.reserveCommonEvent_battleParallel(id);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Temp.prototype).add('reserveParallelCommonEvent',function f(id){
+	q.push(id);
+}).add('_get_reservedParallelCommonEventQueue',function f(){
+	let q=this._reservedParallelCommonEventQueue; if(!q) q=this._reservedParallelCommonEventQueue=new Queue();
+	return q;
+}).add('reserveParallelCommonEvent_getFront',function f(){
+	return this._get_reservedParallelCommonEventQueue()[0];
+}).add('reserveParallelCommonEvent_pop',function f(){
+	const q=this._get_reservedParallelCommonEventQueue();
+	const rtv=q[0];
+	q.pop();
+	return rtv;
+});
+
+new cfc(Game_Troop.prototype).add('clear',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.parallelCommonEvent_clear();
+	return rtv;
+}).add('parallelCommonEvent_clear',function f(){
+	this.parallelCommonEvent_getCont().length=0;
+	this._itrpv_parallelCommonEvent=undefined;
+}).add('parallelCommonEvent_getCont',function f(){
+	let rtv=this._itrpv_parallelCommonEvent; if(!rtv) rtv=this._itrpv_parallelCommonEvent=[];
+	return rtv;
+}).add('parallelCommonEvent_replaceCont',function f(newCont){
+	this._itrpv_parallelCommonEvent=newCont;
+}).add('parallelCommonEvent_update',function f(){
+	const curr=this.parallelCommonEvent_getCont(),running=[];
+	const mainRunning=this._interpreter&&this._interpreter.isRunning();
+	let toMain;
+	this.parallelCommonEvent_setupByReserved();
+	for(let x=0,xs=curr.length;x!==xs;++x){ const itrp=curr[x]; if(itrp){
+		itrp.update(); if(itrp.isRunning()){
+			if(!itrp._toMain||mainRunning||toMain) running.push(itrp);
+			else toMain=itrp;
+		}
+	} }
+	this.parallelCommonEvent_replaceCont(running);
+	if(toMain) (this._interpreter=toMain)._toMain=undefined;
+}).add('parallelCommonEvent_setupByReserved',function f(willMergedToMainIfNotRunning){
+	const ce=$dataCommonEvents[$gameTemp.reserveParallelCommonEvent_pop()];
+	return ce&&this.parallelCommonEvent_setupByList(ce.list,willMergedToMainIfNotRunning);
+}).add('parallelCommonEvent_setupByList',function f(list,willMergedToMainIfNotRunning){
+	const itrp=new Game_Interpreter();
+	itrp._toMain=willMergedToMainIfNotRunning;
+	itrp.setup(list);
+	this.parallelCommonEvent_getCont().push(itrp);
+	return itrp;
+});
+
+new cfc(BattleManager).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	$gameTroop.parallelCommonEvent_update();
+	return rtv;
+}).add('actionCommonEvent',function f(id){
+	const t=$gameTroop;
+	const itrp=t&&t._interpreter;
+	const citrp=itrp&&itrp._childInterpreter;
+	const rtv=f.ori.apply(this,arguments);
+	if(itrp && itrp._childInterpreter!==citrp){
+		const pitrp=t.parallelCommonEvent_setupByList(itrp._childInterpreter._list,true);
+		itrp._childInterpreter=citrp;
+		this._actionList.unshift(["WAIT",[0]]);
+		this._actionList[0]._itrp=pitrp;
+	}
+	return rtv;
+}).add('processActionSequenceCheck',function f(){
+	if(this._actSeq._itrp && this._actSeq._itrp.isRunning()){
+		this._actionList.unshift(this._actSeq);
+		return false;
+	}
+	return f.ori.apply(this,arguments);
+}).add('actionConditionsMet',function f(){
+	if(this._actSeq._itrp && !this._actSeq._itrp.isRunning()) return false;
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc fix YEP
+ * @author agold404
+ * @help motion guard, wait for escape?fight?
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Sprite_Actor.prototype).add('refreshMotion',function f(){
+	const actr=this._actor; if(!actr) return;
+	if(f.tbl[0] === this._motion && !actr.isGuard()) this._motion=f.tbl[1];
+	return f.ori.apply(this,arguments);
+},[
+Sprite_Actor.MOTIONS['guard'],
+Sprite_Actor.MOTIONS['wait'],
+]);
+
+new cfc(Scene_Battle.prototype).add('commandFight',function f(){
+	const rtv=f.ori.apply(this,arguments),m=this._btlr2sp;
+	if(m) $gameParty.members().forEach(f.tbl[0],m);
+	return rtv;
+},[
+function(btlr){ const sp=this.get(btlr); if(sp && sp.refreshMotion) sp.refreshMotion(); },
+]);
 
 })();
 
