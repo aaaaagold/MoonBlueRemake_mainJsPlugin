@@ -448,6 +448,7 @@ console.group("%c"+(++id)+". 此插件的作者表示: 這遊戲好難喔，不�
 	console.log("$gameParty._actors.forEach(i=>{ let a=$gameActors.actor(i); a.gainExp(1e11); a._tp=a._mp=a._hp=1e4; });");
 	console.log("[215,304].forEach(i=>$gameParty.gainItem($dataItems[i],1e3));");
 	console.log("[15,16,21,39,44,47,50,128,170,174,187,207,210,].forEach(i=>$gameParty.gainItem($dataWeapons[i],1e3));");
+	console.log("[$dataItems,$dataWeapons,$dataArmors,].forEach(arr=>arr.forEach(dataobj=>dataobj.name&&$gameParty.gainItem(dataobj,1e3)));");
 	console.log("%c效果就留給你自己嘗試啦",normal);
 console.groupEnd();
 console.log("");
@@ -14954,24 +14955,40 @@ new cfc(p).add('update',function f(){
 },t,false,true);
 
 new cfc(Game_Temp.prototype).add('popupMsg',function f(msg,opt){
-	const root=this._popupMsg_getCont(); if(!root) return;
+	// opt = {loc:"LU/LD/RU/RD/UL/DL/UR/DR"}
+	opt=opt||f.tbl[0];
+	const root=this._popupMsg_getCont(opt); if(!root) return;
 	msg+='';
 	const lines=msg.split('\n');
 	const wnd=new Window_PopupMsg(lines.length);
 	wnd.width=root._maxWidth;
 	wnd.setText(msg);
 	root.addChild(wnd);
-}).add('_popupMsg_getCont',function f(){
+},[
+{loc:"UR",},
+]).add('_popupMsg_getCont',function f(opt){
+	// opt = {loc:"LU/LD/RU/RD/UL/DL/UR/DR"}
+	if(!f.tbl[1]){ f.tbl[1]={
+		UR:"UR",
+		RU:"UR",
+		DR:"DR",
+		RD:"DR",
+		UL:"UL",
+		LU:"UL",
+		DL:"DL",
+		LD:"DL",
+	}; }
+	const loc=f.tbl[1][opt&&opt.loc]; // false-like: global root
 	let rtv=$gameTemp._popupMsgs;
 	if(!rtv){
 		rtv=$gameTemp._popupMsgs=new Sprite();
-		for(let k in f.tbl[0]) rtv[k]=f.tbl[0][k];
-		rtv.x=Graphics.boxWidth>>1;
-		rtv.y=0;
-		rtv._maxWidth=Graphics.boxWidth>>1;
-		rtv._maxHeight=Graphics.boxHeight;
+		const rmc=f.tbl[0].removeChild; if(rmc) rtv.removeChild=rmc;
 	}
 	const sc=SceneManager._scene; if(sc && sc!==rtv.parent) sc.addChild(sc._popupMsgs=rtv);
+	if(loc){
+		if(!rtv[loc]) rtv=rtv[loc]=f.tbl[2][loc](f.tbl,rtv);
+		else rtv=rtv[loc];
+	}
 	return rtv;
 },[
 {
@@ -14984,14 +15001,80 @@ addChild:function f(c){
 	const arr=this.children;
 	const len=arr&&arr.length;
 	if(len){
-		if(c.height+this.children.back.y>=this._maxHeight) this.removeChildAt(len-1);
-		arr[0].y=c.height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x-1].height;
+		if(this._atBtm){
+			if(this.children.back.y+this.children.back.height<c.height) this.removeChildAt(len-1);
+			c.y=this._maxHeight-c.height;
+			arr[0].y=c.y-arr[0].height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x].height;
+		}else{
+			if(c.height+this.children.back.y>=this._maxHeight) this.removeChildAt(len-1);
+			c.y=0;
+			arr[0].y=c.height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x-1].height;
+		}
 	}
 	return Sprite.prototype.addChildAt.call(this,c,0);
 },
 removeChild:function (c){
 	return;
 }, // disabled
+},
+undefined,
+{
+UR:function(tbl,sp){
+	let rtv=sp._UR;
+	if(!rtv){
+		rtv=sp._UR=new Sprite();
+		rtv._atBtm=false;
+		for(let k in tbl[0]) rtv[k]=tbl[0][k];
+		rtv.x=Graphics.boxWidth>>1;
+		rtv.y=0;
+		rtv._maxWidth=Graphics.boxWidth>>1;
+		rtv._maxHeight=Graphics.boxHeight;
+		sp.addChild(rtv);
+	}
+	return rtv;
+},
+DR:function(tbl,sp){
+	let rtv=sp._DR;
+	if(!rtv){
+		rtv=sp._DR=new Sprite();
+		rtv._atBtm=true;
+		for(let k in tbl[0]) rtv[k]=tbl[0][k];
+		rtv.x=Graphics.boxWidth>>1;
+		rtv.y=0;
+		rtv._maxWidth=Graphics.boxWidth>>1;
+		rtv._maxHeight=Graphics.boxHeight;
+		sp.addChild(rtv);
+	}
+	return rtv;
+},
+UL:function(tbl,sp){
+	let rtv=sp._UL;
+	if(!rtv){
+		rtv=sp._UL=new Sprite();
+		rtv._atBtm=false;
+		for(let k in tbl[0]) rtv[k]=tbl[0][k];
+		rtv.x=0;
+		rtv.y=0;
+		rtv._maxWidth=Graphics.boxWidth>>1;
+		rtv._maxHeight=Graphics.boxHeight;
+		sp.addChild(rtv);
+	}
+	return rtv;
+},
+DL:function(tbl,sp){
+	let rtv=sp._DL;
+	if(!rtv){
+		rtv=sp._DL=new Sprite();
+		rtv._atBtm=true;
+		for(let k in tbl[0]) rtv[k]=tbl[0][k];
+		rtv.x=0;
+		rtv.y=0;
+		rtv._maxWidth=Graphics.boxWidth>>1;
+		rtv._maxHeight=Graphics.boxHeight;
+		sp.addChild(rtv);
+	}
+	return rtv;
+},
 },
 undefined,
 ]);
@@ -15001,6 +15084,7 @@ new cfc(SceneManager).add('onSceneChange',function f(){
 	this.onSceneChange_popupMsgs();
 	return rtv;
 }).add('onSceneChange_popupMsgs',function f(){
+	// addChild
 	return $gameTemp&&$gameTemp._popupMsg_getCont();
 });
 
@@ -19169,7 +19253,8 @@ t=undefined;
 
 new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx){
 	if($gameSystem && $gameSystem._flashbackText_disabled) return;
-	this._flashbackText_getCont().push({txt:txt.replace(/(?<!(\\))((\\\\)*)(\\([VPNvpn])\[(\d+)\])/g,f.tbl[0]),face:{name:face,idx:fidx},y:undefined,height:undefined,});
+	if(!f.tbl[0].re) f.tbl[0].re=/(?<!(\\))((\\\\)*)(\\([VPNvpn])\[(\d+)\])/g;
+	this._flashbackText_getCont().push({txt:txt.replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},y:undefined,height:undefined,});
 },[
 function f(){
 	if(!f.tbl){
@@ -19653,6 +19738,92 @@ new cfc(Scene_Battle.prototype).add('commandFight',function f(){
 },[
 function(btlr){ const sp=this.get(btlr); if(sp && sp.refreshMotion) sp.refreshMotion(); },
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 技能消耗(HP|MP|TP)時額外依照消耗比例額外消耗(HP|MP|TP)
+ * @author agold404
+ * @help <技能消耗(HP|MP|TP)時額外依照消耗比例額外消耗(HP|MP|TP):數字>
+ * e.g. <技能消耗MP時額外依照消耗比例額外消耗HP:數字>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+const energies=[ "HP","MP","TP", ];
+
+const kwbase="技能消耗時額外依照消耗比例額外消耗";
+const kwtrait="TRAIT_"+kwbase;
+gbb.addEnum(kwtrait);
+const kwget="get_"+kwbase;
+const kwtxts=[undefined,];
+t=[
+{},
+kwget,
+gbb[kwtrait],
+];
+for(let co=0,arr=energies,sz=arr.length;co!==sz;++co){ const part=t[0][arr[co]]={}; for(let ca=0;ca!==sz;++ca){
+	part[arr[ca]]=kwtxts.length;
+	kwtxts.push("技能消耗"+arr[co]+"時額外依照消耗比例額外消耗"+arr[ca]);
+} }
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits; if(!ts) ts=dataobj.traits=[];
+	for(let x=1,xs=kwtxts.length;x!==xs;++x){
+		const val=meta[kwtxts[x]]-0; if(!val) continue;
+		ts.push({code:gbb[kwtrait],dataId:x,value:val,});
+	}
+},
+]);
+
+new cfc(Game_BattlerBase.prototype).add(t[1],function f(dataId){
+	return this.traitsSum(f.tbl[2],dataId);
+},t).add('paySkillCost',function f(){
+	let dhp=this.hp,dmp=this.mp,dtp=this.tp;
+	const rtv=f.ori.apply(this,arguments);
+	dhp-=this.hp;
+	dmp-=this.mp;
+	dtp-=this.tp;
+	if(dhp){
+		this._hp-=this[f.tbl[1]](f.tbl[0].HP.HP)*dhp;
+		this._mp-=this[f.tbl[1]](f.tbl[0].HP.MP)*dhp;
+		this._tp-=this[f.tbl[1]](f.tbl[0].HP.TP)*dhp;
+	}
+	if(dmp){
+		this._hp-=this[f.tbl[1]](f.tbl[0].MP.HP)*dmp;
+		this._mp-=this[f.tbl[1]](f.tbl[0].MP.MP)*dmp;
+		this._tp-=this[f.tbl[1]](f.tbl[0].MP.TP)*dmp;
+	}
+	if(dtp){
+		this._hp-=this[f.tbl[1]](f.tbl[0].TP.HP)*dtp;
+		this._mp-=this[f.tbl[1]](f.tbl[0].TP.MP)*dtp;
+		this._tp-=this[f.tbl[1]](f.tbl[0].TP.TP)*dtp;
+	}
+	return rtv;
+},t);
 
 })();
 
