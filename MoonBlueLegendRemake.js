@@ -448,7 +448,7 @@ console.group("%c"+(++id)+". 此插件的作者表示: 這遊戲好難喔，不�
 	console.log("$gameParty._actors.forEach(i=>{ let a=$gameActors.actor(i); a.gainExp(1e11); a._tp=a._mp=a._hp=1e4; });");
 	console.log("[215,304].forEach(i=>$gameParty.gainItem($dataItems[i],1e3));");
 	console.log("[15,16,21,39,44,47,50,128,170,174,187,207,210,].forEach(i=>$gameParty.gainItem($dataWeapons[i],1e3));");
-	console.log("[$dataItems,$dataWeapons,$dataArmors,].forEach(arr=>arr.forEach(dataobj=>dataobj.name&&$gameParty.gainItem(dataobj,1e3)));");
+	console.log("[$dataItems,$dataWeapons,$dataArmors,].forEach(arr=>arr&&arr.forEach(dataobj=>dataobj&&dataobj.name&&$gameParty.gainItem(dataobj,1e3)));");
 	console.log("%c效果就留給你自己嘗試啦",normal);
 console.groupEnd();
 console.log("");
@@ -2791,8 +2791,9 @@ p.refresh=function(){
 			}
 		}
 	}else{
-		this.drawTextEx(this._text, this.textPadding(), this._dy||0, undefined,undefined, this._txtStat={})
-		this._maxShiftWidth=this._txtStat.maxX-this._txtStat.left-this.contentsWidth();
+		const padX=this.textPadding();
+		this.drawTextEx(this._text, padX, this._dy||0, undefined,undefined, this._txtStat={})
+		this._maxShiftWidth=(padX<<1)+(this._txtStat.maxX-this._txtStat.left)-this.contentsWidth();
 		this._strtDrawnFrame=Graphics.frameCount;
 	}
 	this._lastDrawnFrame=Graphics.frameCount;
