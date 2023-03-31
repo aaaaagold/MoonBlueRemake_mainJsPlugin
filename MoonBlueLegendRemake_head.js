@@ -239,6 +239,75 @@ addFunc(p,'clearEquipments',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc refine btlr states
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const cf=(p,k,f,tbl,is_putDeepest,is_notUsingOri)=>{
+	if(is_putDeepest && p[k] && p[k].ori){
+		let fp=p[k],fc=p[k].ori;
+		do{
+			if(fc.ori){
+				fp=fc;
+				fc=fc.ori;
+			}else break;
+		}while(fc);
+		(fp.ori=f).ori=fc;
+	}else{
+		const r=p[k];
+		p[k]=f;
+		f.ori=is_notUsingOri?undefined:r;
+	}
+	f.tbl=tbl;
+	return p;
+};
+function cfc(p){
+	if(this===window || (typeof globalThis!=='undefined'&&this===globalThis)) throw new Error('call a constructor without new');
+	this._p=p;
+}
+cfc.prototype.constructor=cfc;
+cfc.prototype.add=function(key,f,t,d,u){
+	cf(this._p,key,f,t,d,u);
+	return this;
+};
+
+t=[
+(id1,id2)=>$dataStates[id2].priority-$dataStates[id1].priority||id1-id2,
+id=>$dataStates[id],
+];
+
+new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
+	if(this._states.uniquePop(stateId)===undefined) return false;
+	delete this._stateTurns[stateId];
+	return true;
+},t,true,true).add('addNewState',function f(stateId){
+	if(this._states.uniqueHas(stateId)) return false;
+	if(stateId===this.deathStateId()){
+		this.die();
+	}
+	const restricted=this.isRestricted();
+	this._states.uniquePush(stateId);
+	//this.sortStates();
+	if(!restricted && this.isRestricted()) {
+		this.onRestrict();
+	}
+	return true;
+},t,true,true).add('states',function f(){
+	return this._states.slice().sort(f.tbl[0]).map(f.tbl[1]);
+},t,true,true).add('isStateAffected',function f(stateId){
+	return this._states.uniqueHas(stateId);
+},t,true,true);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明

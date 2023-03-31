@@ -85,6 +85,12 @@ p.uniquePop=function(obj){
 	if(res+1!==this.length) this._map.set(this[res]=this.back,res);
 	return this.pop();
 };
+(p.uniqueSort=function f(){
+	const arr=this.slice();
+	this.uniqueClear();
+	arr.sort.apply(this,arguments).forEach(f.tbl[0],this);
+	return this;
+}).tbl=function(x){ this.uniquePush(x); };
 p.uniqueClear=function(){
 	if(!this._map) this._map=new Map();
 	this._map.clear();
@@ -5441,8 +5447,9 @@ p[k].applyAlways=(dataobj)=>{ if(!dataobj) return;
 k='update';
 r=p[k]; (p[k]=function f(){
 	this._updateSerial|=0; ++this._updateSerial; this._updateSerial&=0x7FFF;
-	f.ori.apply(this,arguments);
+	const rtv=f.ori.apply(this,arguments);
 	if(!this.isBattleEnd()) $gameTroop.updateParallel();
+	return rtv;
 }).ori=r;
 }
 
@@ -5459,6 +5466,7 @@ k='clear';
 r=p[k]; (p[k]=function f(){
 	(this._pendAlways=[]).s=new Set();
 	this._itrpv=undefined;
+	this._toBeSetPageSetTick=this._toBeSetPageIdx=undefined;
 	return f.ori.apply(this,arguments);
 }).ori=r;
 k='updateParallel';
@@ -5479,18 +5487,31 @@ p[k].forEach=function(pg,i){
 	tmp.tpgid=i;
 	this.push(tmp);
 };
+k='setupBattleEventPendedByActionSequence';
+r=p[k]; (p[k]=function f(){
+	if(this._toBeSetPageIdx>=0){
+		const itrp=this._interpreter; if(!itrp.isRunning()){
+			const p=this._toBeSetPageIdx,pgs=this.troop().pages;
+			this._toBeSetPageIdx=undefined;
+			itrp.setup(pgs[p].list);
+			itrp._pageId=p;
+			if(pgs[p].span<=1) this._eventFlags[p]=true;
+			return true;
+		}
+	}
+}).ori=r;
 k='setupBattleEvent';
 r=p[k]; (p[k]=function f(){
 	const itrp=this._interpreter;
-	if(!itrp.isRunning()){
+	if(!itrp.isRunning() && this._toBeSetPageIdx===undefined){
 		if(itrp.setupReservedCommonEvent()) return;
-		const pgs = this.troop().pages ;
+		const pgs=this.troop().pages;
 		itrp._pageId=undefined;
 		for(let p=0;p!==pgs.length;++p){
 			if(!this._eventFlags[p] && this.meetsConditions(pgs[p])){
-				itrp.setup(pgs[p].list);
-				itrp._pageId=p;
-				if(pgs[p].span <= 1) this._eventFlags[p]=true;
+				this._toBeSetPageIdx=p;
+				if(f.tbl[0].has(BattleManager._phase)) BattleManager._actionList.push(['EVAL',['$gameTroop.setupBattleEventPendedByActionSequence()',]]);
+				else this.setupBattleEventPendedByActionSequence();
 				break;
 			}
 		}
@@ -5505,12 +5526,15 @@ r=p[k]; (p[k]=function f(){
 		}else if(arr.us!==us){
 			arr.us=us;
 			arr.s.clear();
-			arr.forEach(f.forEach,this._eventFlags);
+			arr.forEach(f.tbl[1],this._eventFlags);
 			arr.length=0;
 		}
 	}
 }).ori=r;
-p[k].forEach=function(i){ this[i]=false; };
+p[k].tbl=[
+new Set(['actionList','actionTargetList',]),
+function(i){ this[i]=false; },
+];
 }
 
 })();
@@ -19825,6 +19849,32 @@ new cfc(Game_BattlerBase.prototype).add(t[1],function f(dataId){
 	}
 	return rtv;
 },t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc MOG wtf = =
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(typeof _alias_mog_bhud_eraseState!=='undefined') (()=>{ let k,r,t;
+
+new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
+	const had=this._states.uniqueHas(stateId);
+	const rtv=f.ori.apply(this,arguments);
+	this.need_refresh_bhud_states = had&&!this._states.uniqueHas(stateId);
+	return rtv;
+}).add('addNewState',function f(stateId){
+	const had=this._states.uniqueHas(stateId);
+	const rtv=f.ori.apply(this,arguments);
+	this.need_refresh_bhud_states = !had&&this._states.uniqueHas(stateId);
+	return rtv;
+});
 
 })();
 
