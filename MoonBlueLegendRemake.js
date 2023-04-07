@@ -188,6 +188,7 @@ cf(Game_System.prototype,'initialize',function f(){
 	return rtv;
 });
 Game_Timer.prototype.onExpire=()=>{}; // not abort battle
+Game_Troop.prototype.makeUniqueNames=()=>{}; // not set letter
 new cfc(Game_Action.prototype).add('applyGlobal',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.applyGlobal_javascript();
@@ -426,6 +427,7 @@ function(r,btlr){
 調皮
 */
 try{
+const commonBgcolor='background-color: rgba(0,0,0,0.5);';
 console.group("用到的插件");
 console.table($plugins);
 console.log("共計",$plugins.length,"個");
@@ -434,12 +436,12 @@ console.groupEnd();
 
 console.log("之後的內容建議將 DevTools 調整成黑底模式，以便閱讀");
 
-console.group("%c 幸會！ ","color: rgba(234,234,234,0.75); font-size:64px; background-color: rgba(0,0,0,0.5);");
+console.group("%c 幸會！ ","color: rgba(234,234,234,0.75); font-size:64px;"+commonBgcolor);
 
-console.log("%c 看來你也是喜歡直接改遊戲過關的同好！ ","color: rgba(234,234,234,0.75); font-size:32px; background-color: rgba(0,0,0,0.5);");
+console.log("%c 看來你也是喜歡直接改遊戲過關的同好！ ","color: rgba(234,234,234,0.75); font-size:32px;"+commonBgcolor);
 console.log("");
-{ const normal="color: rgba(234,234,234,0.75); font-size:16px;",
-	enhance="color: rgba(234,123,123,0.75); font-size:16px;"
+{ const normal="color: rgba(234,234,234,0.75); font-size:16px;"+commonBgcolor,
+	enhance="color: rgba(234,123,123,0.75); font-size:16px;"+commonBgcolor
 	;
 console.log("%c在這裡要提醒你一些事情，避免改完發生%c憾事",normal,enhance);
 console.log("");
@@ -460,10 +462,10 @@ console.groupEnd();
 console.log("");
 }
 
-{ const normal="color: rgba(234,234,234,0.75); font-size:20px;",
-	enhance="color: rgba(234,234,123,0.75); font-size:20px;"
+{ const normal="color: rgba(234,234,234,0.75); font-size:20px;"+commonBgcolor,
+	enhance="color: rgba(234,234,123,0.75); font-size:20px;"+commonBgcolor
 	;
-console.group("%c好好享受遊戲。這個插件拔走全部或部分我都沒意見，只要%c不說是你原創%c，以及%c不暗示是你原創%c，我都沒意見。符合上述情形之下，你可以%c不%c把由此插件而來的部分寫進credit",normal,enhance,normal,enhance,normal,enhance,normal);
+console.group("%c好好享受遊戲。這個插件拔走全部或部分我都沒意見，只要%c不說是你原創%c，以及%c不暗示是你原創%c，我都沒意見，但拿去\"賣插件\"賺錢的話記得要分我，賠錢我不負責。符合上述情形之下，你可以%c不%c把由此插件而來的部分寫進credit",normal,enhance,normal,enhance,normal,enhance,normal);
 console.log("要寫 credit 就寫作者是 agold404 。不寫進 credit 的話，你要在其中一個會載入的 js 檔案中，留下這段 group 起來的程式碼。(即至少這列及上一列，建議是這個scope，連變數一起，比較方便)");
 console.groupEnd();
 }
@@ -2708,7 +2710,7 @@ k='startAction';
 r=p[k]; (p[k]=function f(){
 	const s=this._subject;
 	const rtv=f.ori.apply(this,arguments);
-	this._logItemUsed(this._action.item(),s);
+	if(this._action) this._logItemUsed(this._action.item(),s);
 	return rtv;
 }).ori=r;
 }
@@ -5510,7 +5512,7 @@ r=p[k]; (p[k]=function f(){
 		for(let p=0;p!==pgs.length;++p){
 			if(!this._eventFlags[p] && this.meetsConditions(pgs[p])){
 				this._toBeSetPageIdx=p;
-				if(f.tbl[0].has(BattleManager._phase)) BattleManager._actionList.push(['EVAL',['$gameTroop.setupBattleEventPendedByActionSequence()',]]);
+				if(0&&f.tbl[0].has(BattleManager._phase)) BattleManager._actionList.push(['EVAL',['$gameTroop.setupBattleEventPendedByActionSequence()',]]);
 				else this.setupBattleEventPendedByActionSequence();
 				break;
 			}
@@ -6702,6 +6704,7 @@ r=p[k]; (p[k] = function f(stage){
 }).ori=r;
 p[k].forEach=function(f){ f.call(this); };
 if(!p.renderOtherEffects) p.renderOtherEffects=()=>{};
+if(!p.renderEffects_sortCanvas) p.renderEffects_sortCanvas=()=>{};
 
 t=p.renderNoiseEffect_h=function f(){
 	// light weight: 1/4 width , 1/4 height. and that's the limit
@@ -6718,6 +6721,7 @@ t=p.renderNoiseEffect_h=function f(){
 		d.body.appendChild(gc2);
 		gc2.width=w;
 		gc2.height=h;
+		this.renderEffects_sortCanvas();
 	}
 	if(!($gameScreen.noiseEffect()&2)){
 		let ret=1;
@@ -6827,6 +6831,7 @@ t=p.renderNoiseEffect_v=function f(){
 		d.body.appendChild(gc2);
 		gc2.width=w;
 		gc2.height=h;
+		this.renderEffects_sortCanvas();
 	}
 	if(!($gameScreen.noiseEffect()&4)){
 		let ret=1;
@@ -6937,6 +6942,7 @@ t=p.renderNoiseEffect_s=function f(){
 		d.body.appendChild(gc2);
 		gc2.width=w;
 		gc2.height=h;
+		this.renderEffects_sortCanvas();
 	}
 	if(!($gameScreen.noiseEffect()&8)){
 		let ret=1;
@@ -11592,6 +11598,7 @@ t=p.renderRadiusWaveEffect=function f(){
 		d.body.appendChild(gc2);
 		gc2.width =w;
 		gc2.height=h;
+		this.renderEffects_sortCanvas();
 	}
 	const effCnt=$gameScreen.radiusWaveEffect_size();
 	gc2.style.display=effCnt?'':'none';
@@ -19875,6 +19882,327 @@ new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
 	this.need_refresh_bhud_states = !had&&this._states.uniqueHas(stateId);
 	return rtv;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 文字顯示途中播音效
+ * @author agold404
+ * @help \AUDIO_SE"path|vol|pitch|pan|pos"
+ * \AUDIO_SE \AUDIO_ME \AUDIO_BGS \AUDIO_BGM
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+k={
+STATE_NEXTSTART:0,
+STATE_SLASH1:1,
+FUNC_ISSCENEMSGWND:self=>{
+	const sc=SceneManager._scene;
+	return sc&&sc._messageWindow===self;
+},
+FUNC_PARSEINFO:(state,txt,strt,arr)=>{
+	if(txt[strt]!=='"') return strt-1;
+	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\AUDIO_* format error');
+	state.x=last;
+	if(strt===last) return last; // empty info
+	if(arr){
+		const info=txt.slice(strt,last).split("|");
+		arr.push({name:info[0],volume:isNaN(info[1])?90:info[1]-0,pitch:isNaN(info[2])?100:info[2]-0,pan:info[3]-0||0,pos:info[4]-0||0,});
+		state.txt+="AUDIO";
+		state.txt+=arr._key;
+		state.txt+='[';
+		state.txt+=arr.length-1;
+		state.txt+=']';
+	}
+	return last;
+},
+FUNCS_SLASH1:{
+BG:function(state,text,x,isScMsgWnd,func_parseInfo){
+	let newx;
+	switch(text[x+2]){
+	case "M":
+		if(isScMsgWnd && !this._audioInfo_bgm) (this._audioInfo_bgm=[])._key="BGM";
+		newx=func_parseInfo(state,text,x+3,this._audioInfo_bgm);
+		if(newx<x+3) newx=x;
+		break;
+	case "S":
+		if(isScMsgWnd && !this._audioInfo_bgs) (this._audioInfo_bgs=[])._key="BGS";
+		newx=func_parseInfo(state,text,x+3,this._audioInfo_bgs);
+		if(newx<x+3) newx=x;
+		break;
+	default:
+		newx=x;
+		break;
+	}
+	return newx;
+},
+ME:function(state,text,x,isScMsgWnd,func_parseInfo){
+	if(isScMsgWnd && !this._audioInfo_me) (this._audioInfo_me=[])._key="ME";
+	let newx=func_parseInfo(state,text,x+2,this._audioInfo_me);
+	if(newx<x+2) newx=x;
+	return newx;
+},
+SE:function(state,text,x,isScMsgWnd,func_parseInfo){
+	if(isScMsgWnd && !this._audioInfo_se) (this._audioInfo_se=[])._key="SE";
+	let newx=func_parseInfo(state,text,x+2,this._audioInfo_se);
+	if(newx<x+2) newx=x;
+	return newx;
+},
+},
+STR_AUDIOPREFIX:"AUDIO_",
+};
+t=[];
+t[k.STATE_NEXTSTART]=function f(state,text){
+	// next start
+	if(text[state.x]==='\\') state.fsm=f.tbl.STATE_SLASH1;
+	else state.txt+=text[state.x];
+	++state.x;
+};
+t[k.STATE_SLASH1]=function f(state,text){
+	// slash*1
+	state.fsm=f.tbl.STATE_NEXTSTART;
+	state.txt+='\\';
+	if(text[state.x]==='\\') state.txt+='\\';
+	else{
+		let x=f.tbl.STR_AUDIOPREFIX.length+state.x;
+		if(f.tbl.STR_AUDIOPREFIX===text.slice(state.x,x)){
+			const func=f.tbl.FUNCS_SLASH1[text.slice(x,x+2)];
+			if(func && x<func.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this),f.tbl.FUNC_PARSEINFO)) return ++state.x; // matched
+		}
+		state.txt+=text[state.x];
+	}
+	++state.x;
+};
+t.forEach(f=>f.tbl=f.ori=k);
+
+new cfc(Window_Base.prototype).add('convertEscapeCharacters',function f(text){
+	const state={x:0,fsm:0,txt:'',},xs=text.length;
+	while(state.x<xs) f.tbl[state.fsm].call(this,state,text);
+	if(arguments && arguments[0]) arguments[0]=state.txt;
+	return f.ori.apply(this,arguments);
+},t);
+
+new cfc(Window_Message.prototype).add('processEscapeCharacter',function f(code,textState){
+	const func=f.tbl[code];
+	return func?func.call(this,textState):f.ori.apply(this,arguments);
+},{
+AUDIOBGM:function(textState){
+	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_bgm,textState);
+	if(info) AudioManager.playBgm(info);
+},
+AUDIOBGS:function(textState){
+	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_bgs,textState);
+	if(info) AudioManager.playBgs(info);
+},
+AUDIOME:function(textState){
+	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_me,textState);
+	if(info) AudioManager.playMe(info);
+},
+AUDIOSE:function(textState){
+	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_se,textState);
+	if(info) AudioManager.playSe(info);
+},
+}).add('processEscapeCharacter_getAudioInfo',function f(arr,textState){
+	return arr&&arr[this.obtainEscapeParam(textState)];
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 全畫面複視特效 fullScreenDiplopiaEffect
+ * @author agold404
+ * @help cx cy alpha dScaleX dScaleY dShiftX dShiftY dur fadeOutDur fadeInDur
+ * dScale_: 0略 ; >0放大 ; <0縮小 ; scale._+=dScale_
+ * dShift_: unit: pixels/frame
+ * _dur: unit: frames
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Screen.prototype).add('fullScreenDiplopiaEffect_getCont',function f(){
+	let rtv=this._fullScreenDiplopiaEffects; if(!rtv) rtv=this._fullScreenDiplopiaEffects=[];
+	return rtv;
+}).add('_fullScreenDiplopiaEffect_gen',function f(info){
+	this.fullScreenDiplopiaEffect_getCont().push(info);
+}).add('fullScreenDiplopiaEffect_gen',function f(cx,cy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur){
+	if(cx===undefined) cx=Graphics.boxWidth  >>1;
+	if(cy===undefined) cy=Graphics.boxHeight >>1;
+	cx=cx-0||0;
+	cy=cy-0||0;
+	alpha=alpha-0||0;
+	dScaleX=dScaleX-0||0;
+	dScaleY=dScaleY-0||0;
+	dShiftX=dShiftX-0||0;
+	dShiftY=dShiftY-0||0;
+	dur|=0; if(dur<0) dur=0;
+	fadeOutDur|=0; if(fadeOutDur<0) fadeOutDur=0;
+	fadeInDur|=0; if(fadeInDur<0) fadeInDur=0;
+	if(!(alpha>=0)||!(dur+fadeOutDur+fadeInDur)) return;
+	this._fullScreenDiplopiaEffect_gen({
+		dur:{c:0,i:fadeInDur,o:fadeOutDur,s:dur,},
+		alpha:alpha,
+		c:{x:cx,y:cy,},
+		scale:{x:1,y:1,},
+		dScale:{x:dScaleX,y:dScaleY,},
+		shift:{x:0,y:0,},
+		dShift:{x:dShiftX,y:dShiftY,},
+	});
+}).add('fullScreenDiplopiaEffect_update',function f(frames){
+	frames|=0; if(frames<0) return;
+	let i=0,arr=this.fullScreenDiplopiaEffect_getCont();
+	for(let j=0,sz=arr.length;j!==sz;++j){
+		const e=arr[j]; if(!((e.dur.c+=frames)<e.dur.i+e.dur.o+e.dur.s)) continue;
+		e.scale.x+=e.dScale.x*frames;
+		e.scale.y+=e.dScale.y*frames;
+		e.shift.x+=e.dShift.x*frames;
+		e.shift.y+=e.dShift.y*frames;
+		arr[i++]=e;
+	}
+	arr.length=i;
+});
+
+new cfc(Graphics).add('renderOtherEffects',function f(){
+	this.renderFullScreenDiplopiaEffect();
+	return f.ori.apply(this,arguments);
+}).add('renderFullScreenDiplopiaEffect',function f(){
+	if(!$gameScreen) return;
+	const canvasId='fullScreenDiplopiaEffect',d=document;
+	const c=this._canvas;
+	const shrinkBits=f.tbl.shrinkBits;
+	const blurPx=f.tbl.blurPx;
+	const w=c.width>>shrinkBits,h=c.height>>shrinkBits;
+	
+	let gc2=f.gc2||d.getElementById(canvasId);
+	if(!gc2){
+		gc2=f.gc2=d.createElement('canvas');
+		gc2.setAttribute('id',canvasId);
+		gc2.setAttribute('style',c.getAttribute('style'));
+		d.body.appendChild(gc2);
+		gc2.width =w;
+		gc2.height=h;
+		this.renderEffects_sortCanvas();
+	}
+	const infos=$gameScreen.fullScreenDiplopiaEffect_getCont();
+	gc2.style.display=infos.length?'':'none';
+	if(gc2.width !==w) gc2.width =w;
+	if(gc2.height!==h) gc2.height=h;
+	if(gc2._blurPx!==blurPx){
+		gc2._blurPx=blurPx;
+		gc2.style.filter=blurPx?"blur("+blurPx+"px)":"";
+	}
+	
+	if(gc2.style.width!==c.style.width) gc2.style.width=c.style.width;
+	if(gc2.style.height!==c.style.height) gc2.style.height=c.style.height;
+	const fc=this.frameCount;
+	const dfc=fc-f.tbl.fc||0;
+	f.tbl.fc=fc;
+	if(!dfc) return; // NaN||0 not inited yet or too eager
+	
+	const ctx2=gc2.getContext('2d'); ctx2.clearRect(0,0,w,h);
+	for(let x=infos.length
+		,dur
+		,alpha
+		,cxy,scale,shift
+		,tmpc=f.tbl.tmpc
+		,tmpctx=f.tbl.tmpc.getContext('2d')
+		,padw=(c.width<<shrinkBits<<1)-1,padh=(c.height<<shrinkBits<<1)-1
+		,srcw,srch
+		,dstw,dsth
+		,dstx,dsty
+		;x--;){
+		
+		dur=infos[x].dur;
+		if(dur.c<dur.i) alpha=infos[x].alpha*dur.c/dur.i;
+		else if(dur.c<dur.i+dur.s) alpha=infos[x].alpha;
+		else alpha=infos[x].alpha*(dur.i+dur.s+dur.o-dur.c)/dur.o;
+		if(!alpha) continue;
+		
+		scale=infos[x].scale;
+		dstw=(c.width  *scale.x)>>shrinkBits;
+		dsth=(c.height *scale.y)>>shrinkBits;
+		
+		cxy=infos[x].c;
+		shift=infos[x].shift;
+		dstx=((cxy.x*(1-scale.x)+shift.x+padw)>>shrinkBits)-(padw>>shrinkBits);
+		dsty=((cxy.y*(1-scale.y)+shift.y+padh)>>shrinkBits)-(padh>>shrinkBits);
+		
+		// edit w,h will clear canvas
+		tmpc.width=c.width>>shrinkBits; tmpc.height=c.height>>shrinkBits;
+		tmpctx=tmpc.getContext('2d');
+		tmpctx.globalCompositeOperation='source-over';
+		tmpctx.fillStyle="rgba(0,0,0,"+alpha+")";
+		tmpctx.fillRect(0,0,tmpc.width,tmpc.height);
+		tmpctx.globalCompositeOperation="source-atop";
+		tmpctx.drawImage(c,0,0,c.width,c.height,0,0,tmpc.width,tmpc.height);
+		ctx2.drawImage(tmpc,0,0,tmpc.width,tmpc.height,dstx,dsty,dstw,dsth);
+	}
+	$gameScreen.fullScreenDiplopiaEffect_update(dfc);
+},{
+frameCount:0, // W/R
+blurPx:0, // R
+shrinkBits:2, // R
+tmpc:document.createElement('canvas'), // key:R ; obj:W/R
+});
+
+new cfc(BattleManager).add('fullScreenDiplopiaEffect_genAtBtlr',function f(btlr,dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur){
+	if(btlr&&btlr.constructor===Array){
+		for(let x=0;x!==btlr.length;++x) f.call(this,btlr[x],dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur);
+		return;
+	}
+	const sc=SceneManager._scene;
+	const sp=sc._btlr2sp&&sc._btlr2sp.get(btlr); if(!sp) return;
+	dx|=0; dy|=0;
+	return $gameScreen.fullScreenDiplopiaEffect_gen(sp.x+dx,sp.y+dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur);
+}).add('fullScreenDiplopiaEffect_genAtTarget',function f(dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur){
+	return this.fullScreenDiplopiaEffect_genAtBtlr(this._targets,dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur);
+}).add('fullScreenDiplopiaEffect_genAtSubject',function f(dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur){
+	return this.fullScreenDiplopiaEffect_genAtBtlr(this._subject,dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur);
+});
+
+new cfc(Game_Character.prototype).add('fullScreenDiplopiaEffect_gen',function f(dx,dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur){
+	const sc=SceneManager._scene;
+	const sp=sc._chr2sp&&sc._chr2sp.get(this); if(!sp) return;
+	dx|=0; dy|=0;
+	return $gameScreen.fullScreenDiplopiaEffect_gen(sp.x+dx,sp.y+dy,alpha,dScaleX,dScaleY,dShiftX,dShiftY,dur,fadeOutDur,fadeInDur);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 給予YEP強力譴責
+ * @author agold404
+ * @help 好意思把BattleManager._phase==='aborting'蓋成'battleEnd'以外的東西?
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const setter=function f(rhs){
+	if(this._phase===f.tbl[1] && rhs!==f.tbl[2]){
+		console.warn('[WARNING] setting battle phase other than \',f.tbl[2],\' when \',f.tbl[1],\'. open DevTools before this message appears to see who messed up.');
+		return this[f.tbl[0]];
+	}else return this[f.tbl[0]]=rhs;
+};
+const getter=function f(){return this[f.tbl[0]];}
+getter.tbl=getter.ori=setter.tbl=setter.ori=['__phase','aborting','battleEnd',];
+Object.defineProperty(BattleManager,'_phase',{
+	set:setter,
+	get:getter,
+	configurable:false,
+});
+console.log('戰鬥插件亂設定戰鬥狀態真的笑死');
 
 })();
 
