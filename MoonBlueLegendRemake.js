@@ -21,8 +21,10 @@ tuneFunc(Window_Options.prototype,'volumeOffset',function f(){
 const _isDebug=!!($plugins&&$plugins.filter&&$plugins.filter(p=>p.name.indexOf("debug")>=0&&p.status).length);
 const cf=(p,k,f,tbl,is_putDeepest,is_notUsingOri)=>{
 	if(is_putDeepest && p[k] && p[k].ori){
-		let fp=p[k],fc=p[k].ori;
+		let fp=p[k],fc=p[k].ori,fs=new Set();
 		do{
+			if(fs.has(fc)) throw new Error('f.ori repeated');
+			fs.add(fc);
 			if(fc.ori){
 				fp=fc;
 				fc=fc.ori;
@@ -32,8 +34,9 @@ const cf=(p,k,f,tbl,is_putDeepest,is_notUsingOri)=>{
 	}else{
 		const r=p[k];
 		p[k]=f;
-		f.ori=is_notUsingOri?undefined:r;
+		f.ori=r;
 	}
+	if(is_notUsingOri) f.ori=undefined;
 	f.tbl=tbl;
 	return p;
 };
@@ -1151,10 +1154,9 @@ sp=>sp.update(),
 } // 處理傷害數字lag
 
 
-{ // $dataAnimations[n].timings
+{ // $dataAnimations[n].timings ; update _duration
 
-{ const p=Sprite_Animation.prototype;
-cf(cf(p,'findTimingData',function f(frameIndex){
+new cfc(Sprite_Animation.prototype).add('findTimingData',function f(frameIndex){
 	const tms=this._animation.timings;
 	if(!tms._map) tms.forEach(f.tbl[0],tms._map=new Map());
 	return tms._map.get(frameIndex);
@@ -1163,7 +1165,7 @@ function(timing){
 	let arr=this.get(timing.frame); if(!arr) this.set(timing.frame,arr=[]);
 	arr.push(timing);
 },
-]),'updateFrame',function f(){
+]).add('updateFrame',function f(){
 	if(this._duration>0){
 		const frameIndex = this.currentFrameIndex();
 		this.updateAllCellSprites(this._animation.frames[frameIndex]);
@@ -1172,8 +1174,18 @@ function(timing){
 	}
 },[
 function(timing){ this.processTimingData(timing); },
-]);
-}
+]).add('updateMain',function f(){
+	if(this.isPlaying()){
+		if(0<this._delay) --this._delay;
+		else{
+			--this._duration;
+			if(this.isReady()){
+				this.updatePosition();
+				if(this._duration % this._rate === 0) this.updateFrame();
+			}
+		}
+	}
+},true,true);
 
 } // $dataAnimations[n].timings
 
@@ -12792,19 +12804,26 @@ r=p[k]; (p[k]=function f(targets,animationId,mirror,argv){
 	if(!$dataAnimations[animationId]) return -1;
 	f.tbl.argv0=arguments;
 	f.tbl.argv1=argv||this._aniArgv;
-	targets.forEach(f.tbl);
+	targets.forEach(f.tbl,this);
 	f.tbl.argv1=f.tbl.argv0=undefined;
 }).ori=r;
-t=p[k].tbl=function f(trgt){ trgt.startAnimation(f.argv0[1],f.argv0[2],0,f.argv1&&f.argv1[2]); };
+t=p[k].tbl=function f(trgt){
+	const res=trgt.startAnimation(f.argv0[1],f.argv0[2],0,f.argv1&&f.argv1[2]);
+	this.startAnimation_onsuccess(res,trgt);
+};
 t.argv1=t.argv0=undefined;
+k='startAnimation_onsuccess';
+p[k]=function f(addedCnt,trgt){};
+p[k].tbl=p[k].ori=undefined;
 }
 
 { const p=Game_Battler.prototype;
 k='startAnimation';
 r=p[k]; (p[k]=function f(animationId,mirror,delay,rate){
 	const prelen=this._animations.length;
-	const rtv=f.ori.apply(this,arguments);
-	if(prelen<this._animations.length) this._animations.back.rate=rate;
+	f.ori.apply(this,arguments);
+	const rtv=this._animations.length-prelen;
+	if(rtv) this._animations.back.rate=rate;
 	return rtv;
 }).ori=r;
 p.animationRequested_length=function(){ return this._animations.length; };
@@ -20209,18 +20228,123 @@ console.log('戰鬥插件亂設定戰鬥狀態真的笑死');
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc 自行施放之技能/道具之action sequenceㄉ動畫將跟著該seqㄉ時間：動就動；暫停就暫停。
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
-{
-}
+new cfc(BattleManager).add('actionActionAnimation',function f(){
+	const lw=this._logWindow;
+	const actAniSubject_ori=lw&&lw._actAniSubject;
+	const actAniList_ori=lw&&lw._actAniList;
+	if(lw){
+		lw._actAniSubject=this._subject;
+		lw._actAniList=this._actionList;
+	}
+	const rtv=f.ori.apply(this,arguments);
+	if(lw){
+		lw._actAniSubject=actAniSubject_ori;
+		lw._actAniList=actAniList_ori;
+	}
+	return rtv;
+}).add('startBattle',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.actSeqFrameMap_clearCont();
+	return rtv;
+}).add('actSeqFrameMap_getCont',function f(){
+	let rtv=this._actSeqFrameMap; if(!rtv) rtv=this._actSeqFrameMap=new Map();
+	return rtv;
+}).add('actSeqFrameMap_clearCont',function f(){
+	this.actSeqFrameMap_getCont().clear();
+}).add('actSeqFrameMap_getFrame',function f(btlr){
+	return this.actSeqFrameMap_getCont().get(btlr)|0;
+}).add('actSeqFrameMap_incFrame',function f(btlr){
+	const m=this.actSeqFrameMap_getCont();
+	const val=(m.get(btlr)|0)+1;
+	m.set(btlr,val);
+	return val;
+}).add('updateActionList',function f(){
+	const prelen=this._actionList.length;
+	const rtv=f.ori.apply(this,arguments);
+	if(this._actionList.length<prelen){
+		this._actionList._curr=this._actSeq;
+		this.actSeqFrameMap_incFrame(this._subject);
+	}
+	return rtv;
+}).add('updateActionTargetList',function f(){
+	const prelen=this._actionList.length;
+	const rtv=f.ori.apply(this,arguments);
+	if(this._actionList.length<prelen){
+		this._actionList._curr=this._actSeq;
+		this.actSeqFrameMap_incFrame(this._subject);
+	}
+	return rtv;
+}).add('processActionSequence',function f(){
+	if(arguments[0]===f.tbl[0]) return;
+	return f.ori.apply(this,arguments);
+},[
+'WAIT FOR ANIMATION',
+]).add('setPreForceActionSettings',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	rtv.actionList=this._actionList;
+	return rtv;
+});
+
+new cfc(Window_BattleLog.prototype).add('startAnimation_onsuccess',function f(addedCnt,trgt){
+	const rtv=f.ori.apply(this,arguments);
+	this.startAnimation_onsuccess_setActAniSubject(addedCnt,trgt);
+	return rtv;
+}).add('startAnimation_onsuccess_setActAniSubject',function f(addedCnt,trgt){
+	if(!addedCnt||!trgt) return;
+	const arr=trgt._animations;
+	for(let x=arr.length-addedCnt;x<arr.length;++x){
+		if(!arr[x].opt) arr[x].opt={};
+		const opt=arr[x].opt;
+		opt.actAniList=this._actAniList;
+		opt.actAniFrame=BattleManager.actSeqFrameMap_getFrame(opt.actAniSubject=this._actAniSubject);
+		opt.actAniLost=0;
+	}
+});
+
+new cfc(Sprite_Base.prototype).add('startAnimation',function f(ani,mir,dly,r,opt){
+	const rtv=f.ori.apply(this,arguments);
+	this._animationSprites.back._opt=opt;
+	return rtv;
+});
+
+new cfc(Sprite_Animation.prototype).add('updateMain',function f(){
+	return this.updateMain_checkActSeqSubjectPaused()||f.ori.apply(this,arguments);
+}).add('updateMain_checkActSeqSubjectPaused',function f(){
+	let rtv=false;
+	if(this._opt && this._opt.actAniList && this._opt.actAniList.length){
+		rtv=true;
+		const bm=BattleManager;
+		const val=bm.actSeqFrameMap_getFrame(this._opt.actAniSubject);
+		if(this._opt.actAniLost||this._opt.actAniFrame!==val){
+			if(this._opt.actAniLost){
+				--this._opt.actAniLost;
+				this._opt.actAniLost+=val-this._opt.actAniFrame;
+			}else this._opt.actAniLost+=val-this._opt.actAniFrame-1;
+			this._opt.actAniFrame=val;
+			rtv=false;
+		}else{
+			if(this._opt.actAniList._curr && this._opt.actAniList._curr[0].match(f.tbl[2]) && this._opt.actAniWait!==this._opt.actAniList._curr){
+				this._opt.actAniWait=this._opt.actAniList._curr;
+				this._opt.actAniLost+=Math.max(this._opt.actAniList._curr[1][0]-1,0);
+				rtv=false;
+			}
+		}
+	}
+	return rtv;
+},[
+new Set(['actionList','actionTargetList',]),
+function(setting){ return setting && this===setting.subject; },
+/^wait$/i,
+]);
 
 })();
 
