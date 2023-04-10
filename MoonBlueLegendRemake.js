@@ -1185,7 +1185,19 @@ function(timing){ this.processTimingData(timing); },
 			}
 		}
 	}
-},true,true);
+},true,true).add('setupRate',function f(settingData){
+	this._rate=this.calcRate(settingData);
+},true,true).add('calcRate',function f(settingData){
+	let rtv=settingData&&settingData.rate;
+	if(isNaN(rtv)) rtv=4;
+	return rtv-0;
+}).add('calcDuration',function f(settingData){
+	const ani=$dataAnimations[settingData.animationId];
+	if(!ani) return 0;
+	return ani.frames.length * this.calcRate(settingData) + 1;
+}).add('calcTotalFrames',function f(settingData){
+	return settingData.delay+this.calcDuration(settingData);
+});
 
 } // $dataAnimations[n].timings
 
@@ -12835,6 +12847,7 @@ p.animationRequested_clear=function(){ this._animations.length=0; };
 k='setupAnimation';
 r=p[k]; (p[k]=function(){
 	const prelen=this._animationSprites.length;
+	const settingDatav=[];
 	for(let x=0,xs=this._battler.animationRequested_length(),data,ani,mir,dly,r,opt;x!==xs;++x){
 		data=this._battler.animationRequested_getn(x);
 		ani = $dataAnimations[data.animationId];
@@ -12842,11 +12855,13 @@ r=p[k]; (p[k]=function(){
 		dly = ani.position === 3 ? 0 : data.delay;
 		r = data.rate;
 		opt = data.opt;
+		settingDatav.push(data);
 		this.startAnimation(ani, mir, dly, r, opt);
 	}
 	this._battler.animationRequested_clear();
 	for(let z=prelen,zs=this._animationSprites.length,sp;z!==zs;++z){
 		sp = this._animationSprites[z];
+		sp._settingData=settingDatav[z-prelen];
 		sp.visible = this._battler.isSpriteVisible();
 	}
 }).ori=r;
@@ -14270,7 +14285,7 @@ r=p[k]; (p[k]=function(x, y, d) {
 	if (this.isThrough() || this.isDebugThrough()) {
 		return true;
 	}
-	if (!this.canPassOutOfMap() && !this.isMapPassable(x, y, d)) {
+	if(this.canPassOutOfMap()?$gameMap.isValid(x2, y2)&&!this.isMapPassable(x, y, d):!this.isMapPassable(x, y, d)){
 		return false;
 	}
 	if (this.isCollidedWithCharacters(x2, y2)) {
@@ -20237,25 +20252,45 @@ console.log('戰鬥插件亂設定戰鬥狀態真的笑死');
 
 (()=>{ let k,r,t;
 
-new cfc(BattleManager).add('actionActionAnimation',function f(){
-	const lw=this._logWindow;
-	const actAniSubject_ori=lw&&lw._actAniSubject;
-	const actAniList_ori=lw&&lw._actAniList;
-	if(lw){
-		lw._actAniSubject=this._subject;
-		lw._actAniList=this._actionList;
-	}
-	const rtv=f.ori.apply(this,arguments);
-	if(lw){
-		lw._actAniSubject=actAniSubject_ori;
-		lw._actAniList=actAniList_ori;
-	}
-	return rtv;
-}).add('startBattle',function f(){
+new cfc(BattleManager).add('startBattle',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.actSeqFrameMap_clearCont();
 	return rtv;
-}).add('actSeqFrameMap_getCont',function f(){
+}).add('_createActions',function f(retPhase,key){
+	this._returnPhase=retPhase;
+	const item=this._action.item();
+	(this._actionList=item[key].slice())._item=item;
+}).add('createSetupActions',function f(){
+	$gameTemp.clearActionSequenceSettings();
+	return this._createActions(f.tbl[0],f.tbl[1]);
+},[
+'setup',
+'setupActions',
+],true,true).add('createWholeActions',function f(){
+	return this._createActions(f.tbl[0],f.tbl[1]);
+},[
+'whole',
+'wholeActions',
+],true,true).add('createTargetActions',function f(){
+	this.setTargets([this._individualTargets[0]]);
+	const rtv=this._createActions(f.tbl[0],f.tbl[1]);
+	this._phase=f.tbl[2];
+	return rtv;
+},[
+'target',
+'targetActions',
+'actionTargetList',
+],true,true).add('createFollowActions',function f(){
+	return this._createActions(f.tbl[0],f.tbl[1]);
+},[
+'follow',
+'followActions',
+],true,true).add('createFinishActions',function f(){
+	return this._createActions(f.tbl[0],f.tbl[1]);
+},[
+'finish',
+'finishActions',
+],true,true).add('actSeqFrameMap_getCont',function f(){
 	let rtv=this._actSeqFrameMap; if(!rtv) rtv=this._actSeqFrameMap=new Map();
 	return rtv;
 }).add('actSeqFrameMap_clearCont',function f(){
@@ -20268,31 +20303,68 @@ new cfc(BattleManager).add('actionActionAnimation',function f(){
 	m.set(btlr,val);
 	return val;
 }).add('updateActionList',function f(){
+	this.updateAction_actAniInfo();
 	const prelen=this._actionList.length;
 	const rtv=f.ori.apply(this,arguments);
-	if(this._actionList.length<prelen){
-		this._actionList._curr=this._actSeq;
-		this.actSeqFrameMap_incFrame(this._subject);
-	}
+	this.updateAction_actSeqFrame(prelen);
 	return rtv;
 }).add('updateActionTargetList',function f(){
+	this.updateAction_actAniInfo();
 	const prelen=this._actionList.length;
 	const rtv=f.ori.apply(this,arguments);
+	this.updateAction_actSeqFrame(prelen);
+	return rtv;
+}).add('updateAction_actAniInfo',function f(){
+	const lw=this._logWindow;
+	if(lw){
+		lw._actAniSubject=this._subject;
+		lw._actAniList=this._actionList;
+	}
+}).add('updateAction_actSeqFrame',function f(prelen){
 	if(this._actionList.length<prelen){
 		this._actionList._curr=this._actSeq;
 		this.actSeqFrameMap_incFrame(this._subject);
 	}
-	return rtv;
 }).add('processActionSequence',function f(){
-	if(arguments[0]===f.tbl[0]) return;
+	if(arguments[0]===f.tbl[0]){
+		this._actSeq=[f.tbl[1],[this.registedPlayingAnimationSprite_getMax(this._actionList._anis)-f.tbl[2],]];
+		arguments[0]=this._actSeq[0];
+		arguments[1]=this._actSeq[1];
+	}
 	return f.ori.apply(this,arguments);
 },[
 'WAIT FOR ANIMATION',
+'WAIT',
+0,
 ]).add('setPreForceActionSettings',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	rtv.actionList=this._actionList;
+	if(this._logWindow){
+		rtv.waitCount=this._logWindow._waitCount;
+		this._logWindow._waitCount=0;
+	}else rtv.waitCount=0;
 	return rtv;
-});
+}).add('resetPreForceActionSettings',function f(setting){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._logWindow) this._logWindow._waitCount=setting.waitCount;
+	return rtv;
+}).add('registedPlayingAnimationSprite_add',function f(data){
+	const actList=data&&data.opt&&data.opt.actAniList;
+	if(actList){
+		if(!actList._anis) actList._anis=new Set();
+		actList._anis.add(data);
+	}
+}).add('registedPlayingAnimationSprite_del',function f(data){
+	const actList=data&&data.opt&&data.opt.actAniList;
+	if(actList && actList._anis) actList._anis.delete(data);
+}).add('registedPlayingAnimationSprite_getMax',function f(anis){
+	if(!anis) return;
+	const rtv=[0,];
+	anis.forEach(f.tbl[0].bind(rtv));
+	return rtv[0];
+},[
+function(data){ if(data) this[0]=Math.max(this[0],data._usedBy?data._usedBy._delay+data._usedBy._duration:Sprite_Animation.prototype.calcTotalFrames(data)); },
+]);
 
 new cfc(Window_BattleLog.prototype).add('startAnimation_onsuccess',function f(addedCnt,trgt){
 	const rtv=f.ori.apply(this,arguments);
@@ -20307,34 +20379,44 @@ new cfc(Window_BattleLog.prototype).add('startAnimation_onsuccess',function f(ad
 		opt.actAniList=this._actAniList;
 		opt.actAniFrame=BattleManager.actSeqFrameMap_getFrame(opt.actAniSubject=this._actAniSubject);
 		opt.actAniLost=0;
+		BattleManager.registedPlayingAnimationSprite_add(arr[x]);
 	}
 });
 
 new cfc(Sprite_Base.prototype).add('startAnimation',function f(ani,mir,dly,r,opt){
 	const rtv=f.ori.apply(this,arguments);
-	this._animationSprites.back._opt=opt;
+	const sp=this._animationSprites.back;
+	sp._opt=opt;
 	return rtv;
 });
 
 new cfc(Sprite_Animation.prototype).add('updateMain',function f(){
-	return this.updateMain_checkActSeqSubjectPaused()||f.ori.apply(this,arguments);
-}).add('updateMain_checkActSeqSubjectPaused',function f(){
+	if(!this.updateMain_checkActSeqSubjectPaused()){
+		const rtv=f.ori.apply(this,arguments);
+		if(!this.isPlaying()) BattleManager.registedPlayingAnimationSprite_del(this._settingData);
+		return rtv;
+	}
+}).add('updateMain_checkActSeqSubjectPaused',function f(dontChange){
 	let rtv=false;
 	if(this._opt && this._opt.actAniList && this._opt.actAniList.length){
 		rtv=true;
 		const bm=BattleManager;
 		const val=bm.actSeqFrameMap_getFrame(this._opt.actAniSubject);
 		if(this._opt.actAniLost||this._opt.actAniFrame!==val){
-			if(this._opt.actAniLost){
-				--this._opt.actAniLost;
-				this._opt.actAniLost+=val-this._opt.actAniFrame;
-			}else this._opt.actAniLost+=val-this._opt.actAniFrame-1;
-			this._opt.actAniFrame=val;
+			if(!dontChange){
+				if(this._opt.actAniLost){
+					--this._opt.actAniLost;
+					this._opt.actAniLost+=val-this._opt.actAniFrame;
+				}else this._opt.actAniLost+=val-this._opt.actAniFrame-1;
+				this._opt.actAniFrame=val;
+			}
 			rtv=false;
 		}else{
 			if(this._opt.actAniList._curr && this._opt.actAniList._curr[0].match(f.tbl[2]) && this._opt.actAniWait!==this._opt.actAniList._curr){
-				this._opt.actAniWait=this._opt.actAniList._curr;
-				this._opt.actAniLost+=Math.max(this._opt.actAniList._curr[1][0]-1,0);
+				if(!dontChange){
+					this._opt.actAniWait=this._opt.actAniList._curr;
+					this._opt.actAniLost+=Math.max(this._opt.actAniList._curr[1][0]-1,0);
+				}
 				rtv=false;
 			}
 		}
