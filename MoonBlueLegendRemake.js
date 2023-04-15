@@ -80,6 +80,7 @@ p.uniquePush=function( /* obj , ... */ ){
 p.uniquePushContainer=function(cont){
 	// push all cont's elements
 	for(let x=0,xs=cont.length;x!==xs;++x) this.uniquePush(cont.getObjAt(x));
+	return this;
 };
 p.uniquePop=function(obj){
 	if(!this.uniqueHas(obj)) return;
@@ -1174,15 +1175,14 @@ function(timing){
 	}
 },[
 function(timing){ this.processTimingData(timing); },
-]).add('updateMain',function f(){
+],true,true).add('updateMain',function f(){
 	if(this.isPlaying()){
 		if(0<this._delay) --this._delay;
 		else{
 			--this._duration;
-			if(this.isReady()){
-				this.updatePosition();
-				if(this._duration % this._rate === 0) this.updateFrame();
-			}
+			//if(this.isReady()) ;
+			this.updatePosition();
+			if(this._duration % this._rate === 0) this.updateFrame();
 		}
 	}
 },true,true).add('setupRate',function f(settingData){
@@ -14204,9 +14204,10 @@ r=p[k]; (p[k]=function(name,src){
 window.$dataMap=null;
 k='onLoad_map_preload';
 r=p[k]; (p[k]=function f(){
-	const collect={ani:new Set(),};
+	const collect={ani:new Set(),se:new Set(),};
 	$dataMap.events.forEach(f.tbl[2],collect);
 	collect.ani.forEach(f.tbl[3]);
+	collect.se.forEach(f.tbl[5]);
 }).ori=r;
 t=p[k].tbl=[
 function f(cmd){ if(cmd && cmd.code===212){ const ani=$dataAnimations[cmd.parameters[1]]; if(ani){
@@ -14214,11 +14215,17 @@ function f(cmd){ if(cmd && cmd.code===212){ const ani=$dataAnimations[cmd.parame
 		// ImageManager.loadAnimation(ani[n],ani[p+"Hue"]);
 		this.ani.add(ani[n]);
 	} }
+	ani.timings.forEach(f.tbl[4],this);
 } } },
 function f(pg){ pg.list.forEach(f.tbl[0],this); },
 function f(evtd){ evtd && evtd.pages.forEach(f.tbl[1],this); },
 aniName=>ImageManager.loadAnimation(aniName,0),
-]; t.forEach(f=>f.tbl=t); t=undefined;
+function f(timing){ timing.se && this.se.add(timing.se.name); },
+seName=>jurl(
+	AudioManager._path+'se/'+seName+(Decrypter.hasEncryptedAudio?Decrypter.extToEncryptExt(AudioManager.audioFileExt()):AudioManager.audioFileExt()),
+	"GET",0,0,'arraybuffer',
+),
+]; t.forEach(f=>f.tbl=f.ori=t); t=undefined;
 
 k='onLoad_after_map';
 r=p[k]; (p[k]=function f(obj){
@@ -19395,20 +19402,30 @@ new cfc(Scene_Boot.prototype).add('start',function f(){
 
 (()=>{ let k,r,t;
 
+t=[
+btlr=>btlr.skills(),
+dataobj=>$dataAnimations[dataobj&&dataobj.animationId],
+dataobj=>dataobj&&[dataobj.animation1Name&&dataobj.animation1Hue+'-'+dataobj.animation1Name,dataobj.animation2Name&&dataobj.animation2Hue+'-'+dataobj.animation2Name,],
+info=>{ if(!info) return;
+	const idx=info.indexOf('-'); if(idx<0 || idx+1===info.length) return;
+	ImageManager.loadAnimation(info.slice(idx+1),Number(info.slice(0,idx)));
+},
+];
+
 new cfc(Scene_Battle.prototype).add('initialize',function f(){
 	this.loadBtlrsSkillsImgs();
 	return f.ori.apply(this,arguments);
 }).add('loadBtlrsSkillsImgs',function f(){
 	if(!$gameParty||!$gameTroop) return;
-	new Set($gameParty.members().concat($gameTroop.members()).map(f.tbl[0]).flat().map(f.tbl[1]).map(f.tbl[2]).flat()).forEach(info=>{ if(!info) return;
-		const idx=info.indexOf('-'); if(idx<0 || idx+1===info.length) return;
-		ImageManager.loadAnimation(info.slice(idx+1),Number(info.slice(0,idx)));
-	});
-},[
-btlr=>btlr.skills(),
-dataobj=>$dataAnimations[dataobj&&dataobj.animationId],
-dataobj=>dataobj&&[dataobj.animation1Name&&dataobj.animation1Hue+'-'+dataobj.animation1Name,dataobj.animation2Name&&dataobj.animation2Hue+'-'+dataobj.animation2Name,],
-]);
+	const skills=this.loadBtlrsSkillsImgs_getSkills();
+	new Set(skills.map(f.tbl[1]).map(f.tbl[2]).flat()).forEach(f.tbl[3]);
+	this.loadBtlrsSkillsImgs_byNote(skills);
+},t).add('loadBtlrsSkillsImgs_getSkills',function f(){
+	if(!$gameParty||!$gameTroop) return;
+	return [].uniquePushContainer($gameParty.members().concat($gameTroop.members()).map(f.tbl[0]).flat());
+},t).add('loadBtlrsSkillsImgs_byNote',function f(skills){
+	; // TODO: general perpose (pre)load: simply send load req
+},t);
 
 })();
 
@@ -20358,7 +20375,7 @@ new cfc(BattleManager).add('startBattle',function f(){
 	const actList=data&&data.opt&&data.opt.actAniList;
 	if(actList && actList._anis) actList._anis.delete(data);
 }).add('registedPlayingAnimationSprite_getMax',function f(anis){
-	if(!anis) return;
+	if(!anis) return 0;
 	const rtv=[0,];
 	anis.forEach(f.tbl[0].bind(rtv));
 	return rtv[0];
@@ -20427,6 +20444,24 @@ new Set(['actionList','actionTargetList',]),
 function(setting){ return setting && this===setting.subject; },
 /^wait$/i,
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
+}
 
 })();
 
