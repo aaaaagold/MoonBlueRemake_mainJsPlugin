@@ -308,6 +308,29 @@ new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
 
 ﻿"use strict";
 /*:
+ * @plugindesc YEP又在搞 ( Game_Battler._damagePopup MV預設boolean，YEP改Array(當queue)，init那邊沒改 )
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{ const p=Game_Battler.prototype;
+k='initMembers';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.clearDamagePopup();
+	return rtv;
+}).ori=r;
+}
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
