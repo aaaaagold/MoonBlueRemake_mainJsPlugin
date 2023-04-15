@@ -562,6 +562,75 @@ window.jurl=(url, method, header, data, resType, callback, callback_all_h, timeo
 	xhttp.send(data);
 	return xhttp;
 };
+new cfc(DataManager).add('sendLoadReq_common',(opt,isEncrypted,path_without_ext,ext, http_opt, callback, callback_all_h, timeout_ms)=>jurl(
+	path_without_ext+(isEncrypted?Decrypter.extToEncryptExt(ext):ext),
+	"GET",0,0,'arraybuffer',
+)).add('sendLoadReq_audio',function(opt,path_without_ext,ext, http_opt, callback, callback_all_h, timeout_ms){
+	this.sendLoadReq_common(opt,Decrypter.hasEncryptedAudio  ,path_without_ext,ext, http_opt, callback, callback_all_h, timeout_ms);
+}).add('sendLoadReq_image',function(opt,path_without_ext,ext, http_opt, callback, callback_all_h, timeout_ms){
+	this.sendLoadReq_common(opt,Decrypter.hasEncryptedImages ,path_without_ext,ext, http_opt, callback, callback_all_h, timeout_ms);
+}).add('parseTagScopes',function f(tagName,txt){
+	// tagName is case sensitive, [A-Za-z0-9_]+, expected: <tagName> ... </tagName> , no nested
+	const rtv=[]; if(!tagName||!tagName.match||!tagName.match(f.tbl[0])) return rtv;
+	const funcs=f.tbl[1],stat={rtv:rtv,stat:0,tagB:"<"+tagName+">",tagE:"</"+tagName+">",txt:txt,txtIdx:0,};
+	while(stat.txtIdx<stat.txt.length) funcs[stat.stat](stat);
+	return rtv;
+},[
+/^[A-Za-z0-9_]+$/,
+[
+function(stat){
+	// inited
+	const idx=stat.txt.indexOf(stat.tagB,stat.txt,);
+	if(idx>=0){
+		stat.stat=1;
+		stat.txtIdx=idx+stat.tagB.length;
+	}else stat.txtIdx=stat.txt.length;
+},
+function(stat){
+	// find end and add
+	const idx=stat.txt.indexOf(stat.tagE,stat.txtIdx,);
+	if(idx>=0){
+		stat.stat=0;
+		stat.rtv.push(stat.txt.slice(stat.txtIdx,idx));
+		stat.txtIdx=idx+stat.tagE.length;
+	}else throw new Error('tag format error: no close tag '+stat.tagE);
+},
+],
+]).add('sendLoadReq_byNote',function f(note){
+	const preload_files_jsons=DataManager.parseTagScopes(f.tbl[0],note);
+	const preload_files_a=[],preload_files_o=[],preload_files_i=[];
+	const preload_files_tbl={
+		a:[preload_files_a,DataManager.sendLoadReq_audio,],
+		i:[preload_files_i,DataManager.sendLoadReq_image,],
+	},keys=f.tbl[1];
+	for(let j=0,js=preload_files_jsons.length;j<js;++j){
+		const json=JSON.parse(preload_files_jsons[j]);
+		for(let x=0,xs=json.length;x<xs;++x){
+			const s=preload_files_tbl[json[x][0]];
+			if(s) s[0].uniquePush(json[x][1]);
+			else preload_files_o.uniquePush(json[x][1]);
+		}
+	}
+	for(let k=0,ks=keys.length;k!==ks;++k){
+		const info=preload_files_tbl[keys[k]];
+		const arr=info[0],func=info[1];
+		for(let x=0,xs=arr.length;x!==xs;++x){
+			const uqh=ImageManager.splitUrlQueryHash(arr[x]);
+			let idx=uqh[0].lastIndexOf('.');
+			if(!(idx>=0)) idx=uqh[0].length;
+			func.call(DataManager,undefined,	uqh[0].slice(0,idx),uqh[0].slice(idx),);
+		}
+	}
+	for(let x=0,arr=preload_files_o,xs=arr.length;x!==xs;++x){
+		const uqh=ImageManager.splitUrlQueryHash(arr[x]);
+		let idx=uqh[0].lastIndexOf('.');
+		if(!(idx>=0)) idx=uqh[0].length;
+		DataManager.sendLoadReq_common(undefined,false,	uqh[0].slice(0,idx),uqh[0].slice(idx),);
+	}
+},[
+'preload_files_json',
+['a','i',],
+]);
 
 
 
@@ -1222,6 +1291,17 @@ t=function f(sc){
 t.ori=SceneManager.goto;
 t=undefined;
 }
+
+
+{ // traits
+new cfc(Game_BattlerBase.prototype).add('traitsSet',function f(code){
+	// 會重複就ㄅ叫setㄌ好ㄇ
+	return [].uniquePushContainer(this.traits(code).map(f.tbl[0]));
+},[
+t=>t.dataId,
+],true,true);
+} // traits
+
 
 { const p=Game_Battler.prototype;
 k='isStateAddable';
@@ -14171,7 +14251,7 @@ r=p[k]; (p[k]=function f(val_curr,val_max){
 
 ﻿"use strict";
 /*:
- * @plugindesc 更換地圖時預讀動畫圖片
+ * @plugindesc 更換地圖時預讀動畫圖片 ; 自行指定預讀資料
  * @author agold404
  * @help .
  * 
@@ -14208,6 +14288,7 @@ r=p[k]; (p[k]=function f(){
 	$dataMap.events.forEach(f.tbl[2],collect);
 	collect.ani.forEach(f.tbl[3]);
 	collect.se.forEach(f.tbl[5]);
+	f.tbl[6]($dataMap.note);
 }).ori=r;
 t=p[k].tbl=[
 function f(cmd){ if(cmd && cmd.code===212){ const ani=$dataAnimations[cmd.parameters[1]]; if(ani){
@@ -14225,6 +14306,7 @@ seName=>jurl(
 	AudioManager._path+'se/'+seName+(Decrypter.hasEncryptedAudio?Decrypter.extToEncryptExt(AudioManager.audioFileExt()):AudioManager.audioFileExt()),
 	"GET",0,0,'arraybuffer',
 ),
+note=>DataManager.sendLoadReq_byNote(note),
 ]; t.forEach(f=>f.tbl=f.ori=t); t=undefined;
 
 k='onLoad_after_map';
@@ -19403,13 +19485,14 @@ new cfc(Scene_Boot.prototype).add('start',function f(){
 (()=>{ let k,r,t;
 
 t=[
-btlr=>btlr.skills(),
+btlr=>btlr.skills().concat($dataSkills[btlr.attackSkillId()]),
 dataobj=>$dataAnimations[dataobj&&dataobj.animationId],
 dataobj=>dataobj&&[dataobj.animation1Name&&dataobj.animation1Hue+'-'+dataobj.animation1Name,dataobj.animation2Name&&dataobj.animation2Hue+'-'+dataobj.animation2Name,],
 info=>{ if(!info) return;
 	const idx=info.indexOf('-'); if(idx<0 || idx+1===info.length) return;
 	ImageManager.loadAnimation(info.slice(idx+1),Number(info.slice(0,idx)));
 },
+dataobj=>dataobj&&DataManager.sendLoadReq_byNote(dataobj.note),
 ];
 
 new cfc(Scene_Battle.prototype).add('initialize',function f(){
@@ -19424,7 +19507,7 @@ new cfc(Scene_Battle.prototype).add('initialize',function f(){
 	if(!$gameParty||!$gameTroop) return;
 	return [].uniquePushContainer($gameParty.members().concat($gameTroop.members()).map(f.tbl[0]).flat());
 },t).add('loadBtlrsSkillsImgs_byNote',function f(skills){
-	; // TODO: general perpose (pre)load: simply send load req
+	skills.forEach(f.tbl[4]);
 },t);
 
 })();
