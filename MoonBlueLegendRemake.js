@@ -3051,6 +3051,7 @@ p[_k+'Tp']=function(){
  * @help <addEle:額外第1種屬性id,額外第2種屬性id,...>
  * <屬性傷害倍率:[[屬性id,倍率]]>
  * <屬性傷害倍率:[[屬性id_1,倍率1],[屬性id_2,倍率2],...,[屬性id_n,倍率n]]>
+ * <屬性吸收:[屬性id_1,屬性id_2,...,屬性id_n]>
  * 
  * This plugin can be renamed as you want.
  */
@@ -3064,28 +3065,31 @@ if(!window.addEnum) window.addEnum=function(key){
 
 (()=>{ let k,r,t;
 
-const gbb=Game_BattlerBase,kw='屬性傷害倍率';
+const gbb=Game_BattlerBase,kw='屬性傷害倍率',kw2='屬性吸收';
 const kwt='TRAIT_'+kw;
+const kwt2='TRAIT_'+kw2;
 
 if(!gbb._enumMax) gbb._enumMax=404;
 if(!gbb.addEnum) gbb.addEnum=window.addEnum;
 gbb.
 	addEnum(kwt).
+	addEnum(kwt2).
 	addEnum('__END__');
 
-{ const p=Scene_Boot.prototype;
-k='start';
-r=p[k]; (p[k]=function f(){
+new cfc(Scene_Boot.prototype).add('start',function f(){
 	// order: editor menu
-	$dataActors.forEach(f.forEach);
-	$dataClasses.forEach(f.forEach);
-	$dataWeapons.forEach(f.forEach);
-	$dataArmors.forEach(f.forEach);
-	$dataEnemies.forEach(f.forEach);
-	$dataStates.forEach(f.forEach);
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[1]);
+	$dataItems   .forEach(f.tbl[1]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
 	return f.ori.apply(this,arguments);
-}).ori=r;
-p[k].forEach=dataobj=>{ if(!dataobj) return;
+},[
+dataobj=>{ if(!dataobj||!dataobj.meta||!dataobj.traits) return;
 	const meta=dataobj.meta;
 	if(meta[kw]){
 		const kvv=JSON.parse(meta[kw]);
@@ -3094,27 +3098,24 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 			if(kv[1]-0!==1) dataobj.traits.push({code:gbb[kwt],dataId:kv[0],value:kv[1]||0});
 		}
 	}
-};
-}
-
-{ const p=Scene_Boot.prototype;
-const tune=dataobj=>{ if(!dataobj) return;
+	if(meta[kw2]){
+		const kv=JSON.parse(meta[kw2]);
+		for(let x=0;x!==kv.length;++x) dataobj.traits.push({code:gbb[kwt2],dataId:kv[x],value:1,});
+	}
+},
+dataobj=>{ if(!dataobj) return;
 	const meta=dataobj.meta;
 	if(meta.addEle) dataobj.addEle=meta.addEle.split(',').map(x=>Number(x));
 	else dataobj.addEle=undefined;
-};
-k='start';
-r=p[k]; (p[k]=function f(){
-	// order: editor menu
-	$dataItems.forEach(tune);
-	$dataSkills.forEach(tune);
-	f.ori.apply(this,arguments);
-}).ori=r;
-}
+},
+]);
 
 { const p=Game_Battler.prototype;
 p.elementDmgRate=function(id){
 	return this.traitsPi(Game_BattlerBase[kwt],id);
+};
+p.isElementAbsorbed=function(id){
+	return this.traitsSet(Game_BattlerBase[kwt2]).uniqueHas(id);
 };
 }
 
@@ -3127,14 +3128,18 @@ p.getAllElements=function(item,itemOnly){
 	];
 };
 p.calcElementRate=function f(target){
-	const subject=this.subject() , allEles=this._lastAllEles=this.getAllElements() , tmp={} ;
+	const isRecover=this.isRecover() , subject=this.subject() , allEles=this._lastAllEles=this.getAllElements() , tmp={} , tmpDmg={};
 	let rtv=0,eleCnt=0;
 	for(let a=0;a!==allEles.length;++a){
 		if(!allEles[a]) continue;
 		eleCnt+=allEles[a].length;
 		for(let x=0,arr=allEles[a];x!==arr.length;++x){
-			if(tmp[arr[x]]===undefined) tmp[arr[x]]=target.elementRate(arr[x]);
-			rtv+=tmp[arr[x]]*subject.elementDmgRate(arr[x]);
+			if(tmp[arr[x]]===undefined){
+				tmp[arr[x]]=target.elementRate(arr[x]);
+				if(!isRecover && 0<tmp[arr[x]] && target.isElementAbsorbed(arr[x])) tmp[arr[x]]*=-1;
+			}
+			if(tmpDmg[arr[x]]===undefined) tmpDmg[arr[x]]=subject.elementDmgRate(arr[x]);
+			rtv+=tmp[arr[x]]*tmpDmg[arr[x]];
 		}
 	}
 	return eleCnt?rtv/eleCnt:1;
@@ -3998,8 +4003,12 @@ p.closeNumBoard=function(id){
 		this._strt-=(this._strt>=this._data.length)*this._data.length;
 		return true;
 	};
-	p.shift=r;
 	p.pop_front=r;
+	p.shift=function f(){
+		const rtv=this[0];
+		this.pop_front();
+		return rtv;
+	};
 	p.pop_back=function(){
 		if(this._ende===this._strt) return false;
 		if(0===--this._len){ this.clear(); return true; }
@@ -14103,7 +14112,7 @@ k='setData';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	let tmp;
-	if($dataMap && this._mapData===$dataMap.data){
+	if($dataMap && this._mapData===$dataMap.data && $dataMap.meta){
 		if(this.constructor===Tilemap) tmp=~~Number($dataMap.meta.canvasAniCnt);
 		if(!(0<tmp)) tmp=~~Number($dataMap.meta.aniCnt);
 	}
@@ -20533,6 +20542,26 @@ function(setting){ return setting && this===setting.subject; },
 
 ﻿"use strict";
 /*:
+ * @plugindesc ㄏㄏYEPㄏㄏ ( BattleManager._forceActionQueue 都不用存進遊戲存檔了還敢不手刻queue啊 )
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(BattleManager).add('initMembers',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._forceActionQueue=new Queue(this._forceActionQueue);
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -20718,7 +20747,7 @@ const r=p[k];
 (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	// edit save file name
-	this.addCommand("修改存檔名", optKey);
+	this.addCommand("修改存標記", optKey);
 	this.addCommand("讀取檔案", optLoadLocal);
 	this.addCommand("匯出存檔", optSaveLocal);
 	return rtv;
@@ -20982,6 +21011,67 @@ dataobj=>{ if(!dataobj || !dataobj.description) return;
 },
 ];
 }
+})();
+
+// Window_Option.makeCommandList filter
+(()=>{ let k,r,t;
+
+t=[
+"BLR_custom/OptionMenu/items.txt",
+/\r/g,
+'\n',
+function f(line){
+	if(!f.tbl) f.tbl=f.ori=[/^(#|\/\/)/,];
+	return line&&!line.match(tbl[0]);
+},
+item=>[item.symbol,item],
+];
+
+{ const p=Scene_Options.prototype;
+k='initialize';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.loadEnabledOptions();
+	return rtv;
+}).ori=r;
+k='loadEnabledOptions';
+(p[k]=function f(){
+	if(Utils.isOptionValid('test')) ImageManager.otherFiles_delData(f.tbl[0]);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+}).ori=undefined;
+p[k].tbl=t;
+}
+
+{ const p=Window_Options.prototype;
+k='makeCommandList';
+r=p[k]; (p[k]=function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.makeCommandList_filter();
+	return rtv;
+}).ori=r;
+p[k].tbl=t;
+k='makeCommandList_getItemListInfo';
+r=p[k]; (p[k]=function f(){
+	const txt=ImageManager.otherFiles_getData(f.tbl[0]);
+	if(txt===undefined) return;
+	return txt.replace(f.tbl[1],'').split(f.tbl[2]); // .filter(f.tbl[3]);
+}).ori=r;
+p[k].tbl=t;
+k='makeCommandList_filter';
+r=p[k]; (p[k]=function f(){
+	const arr=f.ori&&f.ori.apply(this,arguments)||this._list,info=this.makeCommandList_getItemListInfo();
+	if(!info) return arr;
+	const itemMap=new Map(arr.map(f.tbl[4]));
+	const rtv=[];
+	for(let x=0,xs=info.length;x!==xs;++x){
+		const item=itemMap.get(info[x]);
+		if(item) rtv.push(item);
+	}
+	return this._list=rtv;
+}).ori=r;
+p[k].tbl=t;
+}
+
 })();
 
 // scUpdate-additional

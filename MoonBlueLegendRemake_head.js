@@ -93,7 +93,8 @@ r=p[k]; (p[k]=function(paramId,turns){
 
 (()=>{ let k,r,t;
 
-Game_BattlerBase.prototype.traitsMap_sum=function f(code){
+{ const p=Game_BattlerBase.prototype;
+p.traitsMap_sum=function f(code){
 	const rtv=new Map();
 	for(let x=0,arr=this.traits(code);x!==arr.length;++x){
 		const id=arr[x].dataId;
@@ -101,6 +102,15 @@ Game_BattlerBase.prototype.traitsMap_sum=function f(code){
 	}
 	return rtv;
 };
+p.param=function(paramId){
+	return Math.round(
+		(this.paramBase(paramId)+this.paramPlus(paramId)).clamp(
+			this.paramMin(paramId),
+			this.paramMax(paramId)
+		)*this.paramRate(paramId)*this.paramBuffRate(paramId)
+	)
+};
+}
 
 Game_Battler.prototype.onDamageMp=(val,subject)=>{};
 
