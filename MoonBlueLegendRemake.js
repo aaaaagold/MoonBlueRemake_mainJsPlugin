@@ -9978,8 +9978,11 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	this._toDetail_using=true;
 	tbl=tbl||f.tbl;
 	const dw=this._detailWindow=new Window_Base(tbl.x,tbl.y,tbl.w,tbl.h);
+	this.toDetail_resetTxtOffsetY.call(dw);
 	this.addChild(dw);
 	dw.alpha=0;
+	dw.update=f.tbl.update;
+	dw.drawTextExTop=f.tbl.drawTextExTop;
 	dw.processNormalCharacter=Window_Message.prototype.processNormalCharacter;
 	{
 		const k='standardFontSize';
@@ -9987,6 +9990,7 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 			return (f.ori.apply(this,arguments)*3)>>2;
 		}).ori=r;
 	}
+	dw.toDetail_resetTxtOffsetY=this.toDetail_resetTxtOffsetY;
 	
 	this._toDetail_ctr=0;
 	this._toDetail_ctrMax=32;
@@ -10000,12 +10004,54 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	this._toDetail_otherDxy=undefined;
 	this._toDetail_lastItem=undefined;
 },{
+update:function f(){
+	const rtv=Window_Base.prototype.update.apply(this,arguments);
+	if(++this._txtOffsetYWait>=this._txtOffsetYWaitMax){
+		if(this._txtOffsetYLast!==this._txtOffsetY && this._txtOffsetYFcLast!==Graphics.frameCount){
+			const bm=this.contents; bm && bm.clear();
+			this.drawTextExTop(this._txt,this.textPadding(),this._txtOffsetY);
+		}
+		if(this._txtOffsetHeight>=this.contentsHeight()) this._txtOffsetY-=this._txtOffsetYSpeed;
+		else if(++this._txtOffsetYWait2>=this._txtOffsetYWait2Max){
+			this.toDetail_resetTxtOffsetY(this._txt);
+			this.drawTextExTop(this._txt,this.textPadding(),this._txtOffsetY);
+			if(this._txtOffsetHeight>=this.contentsHeight()) this._txtOffsetY+=this._txtOffsetY-=this._txtOffsetYSpeed;
+		}
+	}
+	return rtv;
+},
+drawTextExTop:function f(txt,x,y){
+	this._txt=txt;
+	if(!this.alpha) return;
+	const res={} , bm=this.contents; bm && bm.clear();
+	const rtv=this.drawTextEx(txt,x,y,undefined,undefined,res);
+	this._txtOffsetYLast=this._txtOffsetY;
+	this._txtOffsetYFcLast=Graphics.frameCount;
+	this._txtOffsetHeight=res.y+res.height;
+},
 x:400,
 y:123,
 w:400,
 h:388,
 ix:12,
-}).add('toDetail_loadDetail_jurl',(url,method,callback,onerr)=>{
+}).add('toDetail_resetTxtOffsetY',function f(txt){
+	this._txt=txt||f.tbl[0];
+	this._txtLineHeight=0;
+	this._txtOffsetHeight=0;
+	this._txtOffsetY=0;
+	this._txtOffsetYLast=-1;
+	this._txtOffsetYFcLast=Graphics.frameCount;
+	this._txtOffsetYWait=0;
+	this._txtOffsetYWait2=0;
+	this._txtOffsetYWaitMax=f.tbl[1];
+	this._txtOffsetYWait2Max=f.tbl[2];
+	this._txtOffsetYSpeed=f.tbl[3];
+},[
+'',
+90,
+120,
+1,
+]).add('toDetail_loadDetail_jurl',(url,method,callback,onerr)=>{
 	const xhr = new XMLHttpRequest();
 	const funcs={2:callback,4:onerr,5:onerr,};
 	xhr.onreadystatechange = function(){
@@ -10031,11 +10077,9 @@ ix:12,
 	}
 	if(!item) return;
 	if(!item.detailTextMap) item.detailTextMap=new Map();
-	const path=this.toDetail_getPath(item); if(!path) return dw.drawTextEx(f.tbl.noFile,dw.textPadding(),0);
-	const detailTextCache=item.detailTextMap.get(path); if(detailTextCache){
-		const txt=detailTextCache.txt;
-		return dw.drawTextEx(txt,dw.textPadding(),0);
-	}
+	dw.toDetail_resetTxtOffsetY();
+	const path=this.toDetail_getPath(item); if(!path) return dw.drawTextExTop(f.tbl.noFile,dw.textPadding(),0);
+	const detailTextCache=item.detailTextMap.get(path); if(detailTextCache) return dw.drawTextExTop(detailTextCache.txt,dw.textPadding(),0);
 	
 	dw.drawTextEx(f.tbl.loading,dw.textPadding(),0);
 	this.toDetail_loadDetail_jurl(path,"GET",txt=>{
@@ -10043,12 +10087,15 @@ ix:12,
 		if(!iw.active || item!==iw.item()) return;
 		const bm=dw.contents;
 		bm && bm.clear();
-		dw.drawTextEx(txt,dw.textPadding(),0);
+		const res={};
+		dw._txt=txt;
+		dw.drawTextExTop(txt,dw.textPadding(),0,undefined,undefined,res);
 	},()=>{
 		if(!iw.active || item!==iw.item()) return;
 		const bm=dw.contents;
 		bm && bm.clear();
-		dw.drawTextEx(f.tbl.loadFail,dw.textPadding(),0);
+		dw._txt=f.tbl.loadFail;
+		dw.drawTextExTop(f.tbl.loadFail,dw.textPadding(),0);
 	});
 },{
 noFile:"\\TXTCENTER:\"\\{此項目沒有說明。\"",
@@ -13556,7 +13603,11 @@ r=p[k]; (p[k]=function f(text, x, y, maxWidth, align){
 	if(text && text.constructor===String && text.slice(0,f.tbl[0].length)===f.tbl[0]){
 		const txtStat={},c=this.constructor;
 		if(this.contents&&this.contents._context){
-			let t=f.tbl[1].get(c); if(!t) f.tbl[1].set(c,t=new c(0,0,Graphics.boxWidth,this.lineHeight()<<2));
+			let t=f.tbl[1].get(c); if(!t){
+				const custom=f.tbl[2].get(c);
+				if(custom) t=custom.call(this,f.tbl);
+				else f.tbl[1].set(c,t=new c(0,0,Graphics.boxWidth,this.lineHeight()<<2));
+			}
 			t.drawTextEx(text.slice(f.tbl[0].length), 0, 0, undefined, undefined, txtStat);
 			const wsrc=~~(txtStat.maxX+1),hsrc=txtStat.height;
 			this.contents._context.drawImage(t.contents._context.canvas,0,0,wsrc,hsrc,x,y,rtv=Math.min(wsrc,maxWidth),hsrc);
@@ -13570,6 +13621,13 @@ r=p[k]; (p[k]=function f(text, x, y, maxWidth, align){
 p[k].tbl=[
 "\\STYLEDTEXT.",
 new Map(),
+new Map([
+[Window_ShopBuy,function f(tbl){
+	const rtv=new Window_ShopBuy(0,0,Graphics.boxWidth,[]);
+	rtv.width=this.width; rtv.createContents();
+	return rtv;
+}],
+])
 ];
 }
 
@@ -20556,6 +20614,238 @@ new cfc(BattleManager).add('initMembers',function f(){
 	this._forceActionQueue=new Queue(this._forceActionQueue);
 	return rtv;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc Window_Options txt 設定 x,y,w,h
+ * @author agold404
+ * @help txt 路徑：BLR_custom/OptionMenu/loc.txt 格式：
+ * x=?
+ * y=?
+ * w=?
+ * h=?
+ * 
+ * 沒填即預設值即不修改
+ *
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+'BLR_custom/OptionMenu/loc.txt',
+/\r/g,
+'\n',
+];
+
+new cfc(Scene_Options.prototype).add('initialize',function f(){
+	if(Utils.isOptionValid('test')) ImageManager.otherFiles_delData(f.tbl[0]);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},t);
+
+new cfc(Window_Options.prototype).add('initialize',function f(){
+	this.initInitLocMembers();
+	this.updatePlacement_byTxt();
+	this.initInitLocMembers();
+	Window_Command.prototype.initialize.call(this, isNaN(this._initX)?0:this._initX, isNaN(this._initY)?0:this._initY, );
+	this.updatePlacement();
+	if(!isNaN(this._initX)) this.x=this._initX;
+	if(!isNaN(this._initY)) this.y=this._initY;
+},undefined,true,true).add('initInitLocMembers',function f(){
+	this._initX-=0;
+	this._initY-=0;
+	this._windowWidth  -=0;
+	this._windowHeight -=0;
+}).add('updatePlacement_byTxt',function f(){
+	const raw=ImageManager.otherFiles_getData(f.tbl[0]); if(!raw) return;
+	raw.replace(f.tbl[1],'').split(f.tbl[2]).forEach(this.updatePlacement_setByLine,this);
+},t).add('updatePlacement_setByLine',function f(line){
+	const p=line.split(f.tbl[0]); if(!p[1]) return;
+	const key=f.tbl[3].get(p[0].replace(f.tbl[1],f.tbl[2])),value=p[1]-0; if(!key||isNaN(value)) return;
+	this[key]=value;
+},[
+/[ \t]*=[ \t]*/,
+/^[ \t]*/,
+'',
+new Map([
+['x','_initX',],
+['y','_initY',],
+['w','_windowWidth',],
+['h','_windowHeight',],
+]),
+]).add('windowWidth',function f(){
+	return isNaN(this._windowWidth  )?f.ori.apply(this,arguments):this._windowWidth  ;
+}).add('windowHeight',function f(){
+	return isNaN(this._windowHeight )?f.ori.apply(this,arguments):this._windowHeight ;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc Window_Options txt 設定額外背景
+ * @author agold404
+ * @help txt 路徑：BLR_custom/OptionMenu/backgrounds.txt 格式：JSON
+ * {"backgrounds":[
+ *  {
+ *   "isBelowWindow":boolean,
+ *   "path":path_to_image_file,
+ *   "x":x_coord_top_left_corner,
+ *   "y":x_coord_top_left_corner,
+ *   "sx":scale_x,
+ *   "sy":scale_y,
+ *   "alpha":alpha,
+ *   "updateFunc":""
+ *  },
+ *   . . . . . .
+ * ],"window":{
+ *  "backgroundTone":[0,0,0,0],
+ *  "backgroundType":0_1_2,
+ *  "backgroundAlpha":0_to_1,
+ *  "borderAlpha":0_to_1,
+ *  "updateFunc":""
+ * }}
+ * 
+ * JSON 可以怎麼換行或加空格或加其他屬性就怎麼做。預期缺項要沒事。
+ * x,y沒填當0；sx,sy沒填當1。
+ * 先出現在陣列中的在最上面。
+ * 
+ * compressed example: "LAKABA3gRARghgYwNYHMBOB7ArgOwCYDOUAXANqhiQWVQCWBAQgKYA2GA7gOq34ckBmcFgSYAaamCgAHOABcAFiToBbFAHpZtWSyYEAjGoAqWnQH0GLLEwCyGDDgAyTFE3wAlJsrhImAJgB0UjgoUOLgNAAeJAAMYZSSAJ4xcTQEUcR6KZIESRlZUEJS8nAx/r4ArPlYUnhyTABiuAhKABT8TZr2YPwtAJQQYGoAVGAAOjhgQ2qUw2Oyk9O0PQr0/qYwKACSOFoAvPu4eEz8PEx4/YMj4wszV/NTt3M3KwRrG9t7A7PXD5dPv997tM/qMgWAIsQXv4IqIQRMAXcbiCwcibglIfJVglYd94cDAUiCQ8AL4AbjhhMRCP+0yh6xQAGFZGg9LtouTcZSaWBiRTqaCbgBqQV0jZMlnkpYtUWM5l6AB8uwAnNFor0wDLxXoALTK1Ucq54x4Ch4IewEeZm5TKey7axyeT+AAKmyGviGmrlBrGRtRDyhEV2Mo+smhgvtCn8BB4LStNpwaj0AA41W7ygA2b0/fFU2mY14JIP5t5bHahhLaiOO6M4WMYa32NQAZlVvSG5T0vizvqJedWmFkdV2ccbABZfOy+dNib0oNRiSkIBI6IxWBxuLx2CRmVZ8jIFEpaKoNCZdL4NBh7TxAsFQsv0r49E38rlfG/8mkSM/lzkv/lCsUpQVFUNR1I0ODNMQUDtBBnQTD0/SeiyAA+bLksKSF6OSUIAXAuwtDqVb+GaBDSsW9Jamo6bptEQxES6bq9L0ajutE/gAOzlIKbEVKSxJzuEC7UEu4SSPQzBsFwPB4HwkJoLuy77ooUFHuomjaLoBjGBp5iWDYdiOM4rh4B4Xg+DeIT5Ok2qjtESYviQ2pNp2H4Ph+r7/iwRQlMQPGVMu1S1LIDRNEoAmUMSFAALqiFA7DSbJIk0PAyDoNg+CGPYTAkKQFSVHloixNEMXULAiCoJghyGAkUjZXkpUpRV6V4AAgl5gH1eEsAYGgRxoG13mlP5XWBWBoVQeFxKRSAQAAA=="
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+'BLR_custom/OptionMenu/backgrounds.txt',
+function f(){
+	const rtv=Sprite.prototype.update.apply(this,arguments);
+	if((typeof f)===(typeof this._customUpdate)) this._customUpdate();
+	return rtv;
+},
+];
+
+new cfc(Scene_Options.prototype).add('initialize',function f(){
+	if(Utils.isOptionValid('test')) ImageManager.otherFiles_delData(f.tbl[0]);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},t).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.create_applyConfig();
+	return rtv;
+}).add('create_applyConfig',function f(){
+	const raw=ImageManager.otherFiles_getData(f.tbl[0]); if(!raw) return;
+	const info=JSON.parse(raw);
+	this.create_applyConfig_window(info);
+	this.create_applyConfig_backgrounds(info);
+},t).add('create_applyConfig_backgrounds',function f(info){
+	const ow=this._optionsWindow;
+	const idx=ow.children.indexOf(ow._windowCursorSprite);
+	const bw=this._customBackgrounds_belowWindow=new Sprite();
+	const bt=this._customBackgrounds_belowText=new Sprite();
+	ow.addChildAt(bt,ow.children.indexOf(ow._windowCursorSprite));
+	bt.x=-ow.x; bt.y=-ow.y;
+	this.addChildAt(bw,this.children.indexOf(this._windowLayer));
+	const bgs=info.backgrounds; if(!bgs) return;
+	for(let x=bgs.length;x--;){
+		if(!bgs[x]||!bgs[x].path||!(bgs[x].alpha-=0)||!(bgs[x].sx-=0)||!(bgs[x].sy-=0)) continue;
+		const p=bgs[x].isBelowWindow?bw:bt;
+		const sp=new Sprite(ImageManager.loadNormalBitmap(bgs[x].path));
+		sp.x=bgs[x].x-ow.x||0;
+		sp.y=bgs[x].y-ow.y||0;
+		sp.alpha=bgs[x].alpha;
+		const scl=sp.scale;
+		scl.x=bgs[x].sx;
+		scl.y=bgs[x].sy;
+		if(bgs[x].updateFunc && (bgs[x].updateFunc=eval(bgs[x].updateFunc))){
+			sp.update=f.tbl[1];
+			sp._customUpdate=bgs[x].updateFunc;
+		}
+		p.addChild(sp);
+	}
+},t).add('create_applyConfig_window',function f(info){
+	if(!info.window) return;
+	const ow=this._optionsWindow;
+	if(!isNaN(info.window.backgroundType-=0)) ow.setBackgroundType(info.window.backgroundType);
+	if(!isNaN(info.window.borderAlpha-=0) && ow._windowFrameSprite) ow._windowFrameSprite.alpha=info.window.borderAlpha;
+	if(!isNaN(info.window.backgroundAlpha-=0) && ow._windowBackSprite) ow._windowBackSprite.alpha*=info.window.backgroundAlpha;
+	if(info.window.backgroundTone&&info.window.backgroundTone.constructor===Array) ow._optionsWindow._windowBackSprite.setColorTone(info.window.backgroundTone);
+	if(info.window.updateFunc && (info.window.updateFunc=eval(info.window.updateFunc))) this._customUpdate=info.window.updateFunc;
+},t).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if((typeof f)===(typeof this._customUpdate)) this._customUpdate();
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 動畫外部note.txt
+ * @author agold404
+ * @help 名稱含有特定字串者套用。讀取 BLR_custom/Animations/AniNoteXXX.txt ， XXX 表動畫 id ，開頭不補 0 。
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+["BLR_custom/Animations/AniNote",".txt","",],
+/^%%%/,
+function f(dataobj){ return f.tbl[0][0]+dataobj.id+f.tbl[0][1]; },
+function f(dataobj){
+	const m=dataobj&&dataobj.name&&dataobj.name.match(f.tbl[1]); if(!m) return;
+	ImageManager.otherFiles_addLoad(f.tbl[2](dataobj));
+},
+function f(dataobj){
+	dataobj.note=ImageManager.otherFiles_getData(f.tbl[2](dataobj))||f.tbl[0][2];
+	DataManager.extractMetadata(dataobj);
+},
+];
+t.forEach(x=>x&&x.constructor===Function&&(x.tbl=x.ori=t));
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataAnimations.forEach(f.tbl[3]);
+	return f.ori.apply(this,arguments);
+},t);
+
+new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mirror, delay, rate){
+	if(animation && !animation.meta) f.tbl[4](animation);
+	return f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 設定動畫每幾幀更新成下一個畫面
+ * @author agold404
+ * @help 動畫外部note.txt中
+ * 
+ * <frameTime:整數>
+ *
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mirror, delay, rate){
+	const rtv=f.ori.apply(this,arguments);
+	if(0<(animation.meta.frameTime|=0)){
+		this._rate=animation.meta.frameTime;
+		this.setupDuration();
+	}
+	return rtv;
+},t);
 
 })();
 
