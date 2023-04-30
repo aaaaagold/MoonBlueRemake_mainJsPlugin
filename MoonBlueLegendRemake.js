@@ -177,6 +177,12 @@ const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	txtin.parentNode.removeChild(txtin);
 	if(typeof $gameMessage!=='undefined' && $gameMessage.popup) $gameMessage.popup("已複製: "+s.replace(/\\/g,"\\\\"),1);
 };
+const pasteCanvas=window.pasteCanvas=c=>{
+	const img=document.createElement('img');
+	img.src=c.toDataURL();
+	img.setAttribute('style','z-index:404;');
+	document.body.appendChild(img);
+};
 
 { const a=Game_Interpreter,p=a.prototype;
 a.NOP={code:0,indent:0,parameters:[],};
@@ -461,6 +467,7 @@ console.group("%c"+(++id)+". 此插件的作者表示: 這遊戲好難喔，不�
 	console.log("[215,304].forEach(i=>$gameParty.gainItem($dataItems[i],1e3));");
 	console.log("[15,16,21,39,44,47,50,128,170,174,187,207,210,].forEach(i=>$gameParty.gainItem($dataWeapons[i],1e3));");
 	console.log("[$dataItems,$dataWeapons,$dataArmors,].forEach(arr=>arr&&arr.forEach(dataobj=>dataobj&&dataobj.name&&$gameParty.gainItem(dataobj,1e3)));");
+	console.log("for(let t=0,dst=$gameTemp.goods=[],conts=[$dataItems,$dataWeapons,$dataArmors,],ts=conts.length;t!==ts;++t) for(let x=0,arr=conts[t],xs=arr.length;x!==xs;++x) dst.push([t,x,0,NaN]);","SceneManager.push(Scene_Shop);","SceneManager.prepareNextScene($gameTemp.goods, false);");
 	console.log("%c效果就留給你自己嘗試啦",normal);
 console.groupEnd();
 console.log("");
@@ -2795,6 +2802,7 @@ p._logItemUsed=function(item,s){
 	let m=L.get(s);
 	if(!m) L.set(s,m=new Map());
 	m.set(item,(m.get(item)|0)+1);
+	m.set('all',(m.get('all')|0)+1); // s, all
 	}
 	// overall item used
 	if(s) this._logItemUsed(item);
@@ -20846,6 +20854,477 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 	}
 	return rtv;
 },t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 目前地圖的地圖
+ * @author agold404
+ * @help $gameScreen.handmap_show(比例尺);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Temp.prototype).add('minimapBitmapCache_getCont',function f(){
+	let rtv=this._minimapBitmapCache; if(!rtv) rtv=this._minimapBitmapCache=new Map();
+	return rtv;
+},t,false,true).add('minimapBitmapCache_get',function f(mapId){
+	const cont=this.minimapBitmapCache_getCont();
+	return cont.get(mapId);
+},t,false,true).add('minimapBitmapCache_set',function f(mapId,bitmap){
+	const cont=this.minimapBitmapCache_getCont();
+	cont.set(mapId,bitmap);
+},t,false,true);
+
+new cfc(Game_Screen.prototype).add('handmap_show',function f(scale){
+	const sm=SceneManager; if(!sm._scene||sm._scene.constructor!==Scene_Map) return;
+	const c=this.handmap_getConf();
+	c.scale=scale===undefined?1:scale;
+	sm.push(Scene_HandMap);
+}).add('_handmap_getConf',function f(mapId){
+	if(mapId===undefined) mapId=$gameMap&&$gameMap.mapId();
+	if(!this._handmap) this._handmap={};
+	if(!this._handmap[mapId]) this._handmap[mapId]={};
+	return this._handmap[mapId];
+}).add('handmap_getConf',function f(mapId){
+	const conf=this._handmap_getConf(mapId);
+	return this.handmap_setConf(conf.gx,conf.gy,conf.gw,conf.gh,conf.x,conf.y,conf.w,conf.h,); // prevent format changed for old saves
+}).add('handmap_setConf',function f(gridX,gridY,gridW,gridH,x,y,w,h,mapId){
+	if(!$gameMap) return console.warn('$gameMap invalid');
+	if(gridX===undefined) gridX=$gameMap._displayX;
+	if(gridY===undefined) gridY=$gameMap._displayY;
+	if(gridW===undefined) gridW=$gameMap.screenTileX();
+	if(gridH===undefined) gridH=$gameMap.screenTileY();
+	if(x===undefined) x=0;
+	if(y===undefined) y=0;
+	if(w===undefined) w=Graphics.boxWidth;
+	if(h===undefined) h=Graphics.boxHeight;
+	
+	const conf=this._handmap_getConf(mapId);
+	conf.x=x;
+	conf.y=y;
+	conf.w=w;
+	conf.h=h;
+	conf.gx=gridX;
+	conf.gy=gridY;
+	conf.gw=gridW;
+	conf.gh=gridH;
+	return conf;
+}).add('handmap_clearConf',function f(){
+	if(!this._handmap) return;
+	const mapId=$gameMap&&$gameMap.mapId();
+	if(this._handmap[mapId]) delete this._handmap[mapId];
+});
+
+{ // Scene_HandMap
+const a=function Scene_HandMap(){
+	this.initialize.apply(this,arguments);
+};
+window[a.name]=a;
+a.ori=Scene_Base;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a.ori;
+if(!Input.keyMapper[109]) Input.keyMapper[109]='NumPad-';
+if(!Input.keyMapper[107]) Input.keyMapper[107]='NumPad+';
+if(!Input.keyMapper[189]) Input.keyMapper[189]='-';
+if(!Input.keyMapper[187]) Input.keyMapper[187]='+';
+t=[
+a.ori.prototype,
+a.ori,
+[Input.keyMapper[109],Input.keyMapper[189],], // -,numPad-
+[Input.keyMapper[107],Input.keyMapper[187],], // +,numPad+
+[0.5,2], // *
+0.125, // +
+['img/system/IconSet.png',{
+x:(75&15)*Window_Base._iconWidth,
+y:(75>>4)*Window_Base._iconHeight,
+width:Window_Base._iconWidth,
+height:Window_Base._iconHeight,
+}],
+];
+new cfc(p).add('initialize',function f(){
+	const rtv=f.tbl[0].initialize.apply(this,arguments);
+	this._prevScene_store();
+	this._conf=$gameScreen.handmap_getConf();
+	if(this.init_minimap()) return;
+	this._initX=this._conf.gx;
+	this._initY=this._conf.gy;
+	this._moveSpeed=0;
+	const playerSp=SceneManager._scene._chr2sp.get($gamePlayer);
+	const mm=this._minimap,anc=playerSp.anchor;
+	this._playerX=$gameMap._displayX*mm._tileWidth  +playerSp.x +(0.5-anc.x)*playerSp.width  ;
+	this._playerY=$gameMap._displayY*mm._tileHeight +playerSp.y +(0.5-anc.y)*playerSp.height ;
+	this._playerFrm=playerSp._frame;
+	this._playerBmp=playerSp.bitmap;
+	this.init_mouseDown(true);
+	this.showPopupMsg();
+	return rtv;
+},t,false,true).add('init_minimap',function f(){
+	this._minimap=new Sprite_Minimap();
+	if(!this._minimap._inited){
+		this._minimap=undefined;
+		return true;
+	}
+	this._setFrame_minimap();
+},t,false,true).add('init_mouseDown',function f(loadBmp){
+	if(loadBmp) this._mouseDownBmp=ImageManager.loadNormalBitmap(f.tbl[6][0]);
+	this._mouseDownY=this._mouseDownX=undefined;
+	if(this._mouseDown) this._mouseDown.visible=false;
+},t,false,true).add('create',function f(){
+	const rtv=f.tbl[0].create.apply(this,arguments);
+	this._prevScene_restore();
+	if(this.chkCondNotOk()){
+		this.popScene();
+		return rtv;
+	}
+	this.createMinimap();
+	this.createPlayer();
+	this.createMouseDown();
+	return rtv;
+},t,false,true).add('chkCondNotOk',function f(){
+	return !this._minimap||!this._conf||!$gameMap;
+},t,false,true).add('createMinimap',function f(){
+	this.update_minimap();
+	this.addChild(this._minimap);
+},t,false,true).add('createPlayer',function f(){
+	const sp=this._player=new Sprite(this._playerBmp);
+	const frm=this._playerFrm,scl=sp.scale;
+	sp.setFrame(frm.x,frm.y,frm.width,frm.height);
+	sp.anchor.y=sp.anchor.x=0.5;
+	this.update_player();
+	this.addChild(sp);
+},t,false,true).add('createMouseDown',function f(){
+	const sp=this._mouseDown=new Sprite(this._mouseDownBmp);
+	const frm=f.tbl[6][1];
+	sp.setFrame(frm.x,frm.y,frm.width,frm.height);
+	sp.anchor.y=sp.anchor.x=0.5;
+	sp.visible=false;
+	this.addChild(sp);
+},t,false,true).add('showPopupMsg',function f(){
+	$gameTemp.popupMsg("使用上下左右移動，\n或使用滑鼠拖曳移動");
+},t,false,true).add('_setFrame_minimap',function f(){
+	const mm=this._minimap;
+	const c=this._conf,tw=mm._tileWidth,th=mm._tileHeight;
+	const s=c.scale;
+	const w=c.gw*tw,h=c.gh*th;
+	const ws=w/s,hs=h/s;
+	mm.setFrame(c.gx*tw-(ws-w)*0.5,c.gy*th-(hs-h)*0.5,ws,hs);
+	
+	const scl=mm.scale;
+	scl.x=c.w/ws;
+	scl.y=c.h/hs;
+},t,false,true).add('update',function f(){
+	if(this.update_shouldEnd()) return;
+	const rtv=f.tbl[0].update.apply(this,arguments);
+	this.update_minimap();
+	this.update_player();
+	this.update_mouseDown();
+	return rtv;
+},t,false,true).add('update_shouldEnd',function f(){
+	if(Input.isTriggered(f.tbl[0])||TouchInput.isCancelled()){
+		this.popScene();
+		return true;
+	}
+},[
+"cancel",
+],false,true).add('update_minimapScale',function f(){
+	let scl=0;
+	if(Input.isTriggered(f.tbl[2][0])||Input.isTriggered(f.tbl[2][1])) --scl;
+	if(Input.isTriggered(f.tbl[3][0])||Input.isTriggered(f.tbl[3][1])) ++scl;
+	if(scl){
+		const ori=this._conf.scale;
+		if(Input.isPressed('shift')) this._conf.scale*=f.tbl[4][1-(scl<0)];
+		else this._conf.scale+=f.tbl[5]*scl;
+		if(!(0<this._conf.scale*ori)) this._conf.scale=ori;
+	}
+},t,false,true).add('update_minimap',function f(){
+	this.update_minimapScale();
+	const c=this._conf;
+	const s=c.scale;
+	const dspeed=f.tbl[1]/s;
+	const gws=c.gw/s;
+	const ghs=c.gh/s;
+	const gwse=gws<0?1-Math.floor(gws):Math.ceil(gws)+1;
+	const ghse=ghs<0?1-Math.floor(ghs):Math.ceil(ghs)+1;
+	const gwd=(gws-c.gw)*0.5;
+	const ghd=(ghs-c.gh)*0.5;
+	let tmp;
+	if(!this._moveSpeed) this._moveSpeed=dspeed;
+	let changed=false,lr=0,ud=0;
+	if(ghs<$dataMap.height && Input.isPressed(f.tbl[0][0])) ud+=this._moveSpeed;
+	if(gws<$dataMap.width  && Input.isPressed(f.tbl[0][1])) lr-=this._moveSpeed;
+	if(gws<$dataMap.width  && Input.isPressed(f.tbl[0][2])) lr+=this._moveSpeed;
+	if(ghs<$dataMap.height && Input.isPressed(f.tbl[0][3])) ud-=this._moveSpeed;
+	if(TouchInput.isReleased()) this.init_mouseDown();
+	if(TouchInput.isPressed()){
+		const dx=TouchInput.x-this._mouseDownX;
+		const dy=TouchInput.y-this._mouseDownY;
+		if(dx) lr+=dx/s*f.tbl[6];
+		if(dy) ud+=dy/s*f.tbl[6];
+		if(this._mouseDownX===undefined||this._mouseDownY===undefined){
+			this._mouseDown.x=this._mouseDownX=TouchInput.x;
+			this._mouseDown.y=this._mouseDownY=TouchInput.y;
+			this._mouseDown.visible=true;
+		}
+	}
+	const nshift=!Input.isPressed(f.tbl[3]);
+	if(lr||ud){
+		c.gx+=lr*(2-nshift);
+		c.gy+=ud*(2-nshift);
+		if(!(c.gx>=gwd)) c.gx=gwd;
+		else{ tmp=$dataMap.width  -c.gw-gwd; if(!(c.gx<tmp)) c.gx=tmp; }
+		if(!(c.gy>=ghd)) c.gy=ghd;
+		else{ tmp=$dataMap.height -c.gh-ghd; if(!(c.gy<tmp)) c.gy=tmp; }
+		changed=true;
+	}
+	if(Input.isTriggered('ok')){
+		changed=false;
+		c.gx=this._initX;
+		c.gy=this._initY;
+	}
+	if(changed) this._moveSpeed+=dspeed*( f.tbl[2]-(nshift<<f.tbl[4]) );
+	else this._moveSpeed=dspeed;
+	tmp=Math.max(Math.min(gwse,ghse)>>f.tbl[5],1); if(this._moveSpeed>=tmp) this._moveSpeed=tmp;
+	this._minimap.paintAll(Math.floor(c.gx-gwd),Math.floor(c.gy-ghd),gwse,ghse);
+	this._setFrame_minimap();
+},[
+['down','left','right','up',],
+1.0/64,
+3,
+'shift',
+1,
+2,
+1.0/256,
+]).add('update_player',function f(){
+	const sp=this._player;
+	const s=this._conf.scale;
+	const frm=this._minimap._frame;
+	const x=(this._playerX-frm.x)*s,y=(this._playerY-frm.y)*s;
+	sp.x=x.clamp(0,Graphics.boxWidth  );
+	sp.y=y.clamp(0,Graphics.boxHeight );
+	const scl=sp.scale;
+	const dx=sp.x-x,dy=sp.y-y;
+	const d2=dx*dx+dy*dy;
+	scl.y=scl.x=d2?f.tbl[0]-(f.tbl[0]-f.tbl[1])*Math.exp(f.tbl[2]*-d2):f.tbl[1];
+},[
+4,
+1,
+1.0/65536,
+]).add('update_mouseDown',function f(){
+	if(!this._mouseDown.visible) return;
+	if(!(++this._mouseDown._ctr<f.tbl[0])) this._mouseDown._ctr=0;
+	this._mouseDown.rotation=this._mouseDown._ctr/f.tbl[0]*f.tbl[1];
+},[
+120,
+Math.PI*2,
+]).add('terminate',function f(){
+	this._conf.gx=this._initX;
+	this._conf.gy=this._initY;
+	return f.tbl[0].terminate.apply(this,arguments);
+},t,false,true);
+} // Scene_Minimap
+
+{ // Sprite_Minimap
+const a=function Sprite_Minimap(){
+	this.initialize.apply(this,arguments);
+};
+window[a.name]=a;
+a.ori=Sprite_Base;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a.ori;
+t=[
+a.ori.prototype,
+a.ori,
+[48,48], // tile size [w,h] ; if this become non const, update it in initData()
+];
+p.isMapValid=function(){
+	return $dataMap && $gameMap && $gameMap.mapId() && $gamePlayer && !$gamePlayer.isTransferring();
+};
+new cfc(p).add('initialize',function f(){
+	const rtv=f.tbl[0].initialize.apply(this,arguments);
+	this.initData();
+	return rtv;
+},t).add('initData',function f(){ // return false-like if no error
+	if(this._inited) return; // not an error
+	if(!this.isMapValid()) return true;
+	{
+		const sc=SceneManager._scene; 
+		const sps=sc&&sc._spriteset;
+		const tm=sps&&sps._tilemap;
+		if(!tm) return true;
+		this.bitmaps=tm.bitmaps;
+		this.flags=tm.flags;
+	}
+	
+	this._tileWidth=f.tbl[2][0];
+	this._tileHeight=f.tbl[2][1];
+	
+	let bmp=$gameTemp.minimapBitmapCache_get($gameMap.mapId());
+	if(!bmp){
+		$gameTemp.minimapBitmapCache_set($gameMap.mapId(),bmp=new Bitmap($dataMap.width*this._tileWidth,$dataMap.height*this._tileHeight));
+		(bmp._painted=[]).length=$dataMap.width*$dataMap.height;
+	}
+	
+	this.bitmap=bmp;
+	this._painted=bmp._painted;
+	
+	this._inited=true;
+},t).add('painted',function f(x,y){
+	if(this.initData()) return;
+	return this._painted[y*$dataMap.width+x];
+}).add('painted_setVal',function f(x,y,value){
+	if(this.initData()) return;
+	return this._painted[y*$dataMap.width+x]=value;
+}).add('painted_clear',function f(){
+	if(this.initData()) return;
+	this._painted.length=0;
+	this._painted.length=$dataMap.width*$dataMap.height;
+}).add('paintAll',function f(x,y,w,h){
+	// unit: grid
+	if(this.initData()) return;
+	if(x===undefined||x<0) x=0;
+	if(y===undefined||y<0) y=0;
+	if(w===undefined||(w>=$dataMap.width  -x)) w=$dataMap.width  -x;
+	if(h===undefined||(h>=$dataMap.height -y)) h=$dataMap.height -y;
+	
+	const bmp=this.bitmap;
+	if(bmp){ for(let j=y,je=y+h;j<je;++j){ for(let i=x,ie=x+w;i<ie;++i){ if(!this.painted(i,j)){ for(let z=0;z<4;++z){
+		const tileId=$gameMap.tileId(i,j,z); if(!Tilemap.isVisibleTile(tileId)) continue;
+		Tilemap.isAutotile(tileId)?this._drawAutotile(bmp, tileId, i*this._tileWidth, j*this._tileHeight):this._drawNormalTile(bmp, tileId, i*this._tileWidth, j*this._tileHeight);
+	} this.painted_setVal(i,j,true); } } } }
+},t).add('_isTableTile',function f(){
+	return Tilemap.prototype._isTableTile.apply(this,arguments);
+},t).add('_drawNormalTile',function f(bitmap, tileId, dx, dy){
+	const setNumber=Tilemap.isTileA5(tileId)?4:5+(tileId>>8);
+	const source=this.bitmaps[setNumber];
+	if(source){
+		const w=this._tileWidth;
+		const h=this._tileHeight;
+		const sx=( ((tileId>>4)&8) + (tileId&7) )*w;
+		const sy=(  (tileId>>3)&15              )*h;
+		bitmap.bltImage(source, sx, sy, w, h, dx, dy, w, h);
+	}
+},t).add('_drawAutotile',function f(bitmap, tileId, dx, dy){
+	let autotileTable = Tilemap.FLOOR_AUTOTILE_TABLE;
+	let kind = Tilemap.getAutotileKind(tileId); // will >=0 ; autoTile only, whose id >= the base =2048
+	let shape = Tilemap.getAutotileShape(tileId);
+	let tx=kind&7;
+	let ty=kind>>3;
+	let bx = 0;
+	let by = 0;
+	let setNumber = 0;
+	let isTable = false;
+
+	if (Tilemap.isTileA1(tileId)) {
+		// var waterSurfaceIndex = [0, 1, 2, 1][this.animationFrame % 4];
+		setNumber = 0;
+		if(kind<4){
+			bx=kind<2?2:6;
+			by=kind&1?3:0;
+		}else{
+			bx=tx>>2<<3;
+			by=ty*6+((tx>>1)&1)*3;
+			if(kind&1){
+				bx += 6;
+				autotileTable = Tilemap.WATERFALL_AUTOTILE_TABLE;
+				// by += this.animationFrame % 3;
+			}else bx+=2;
+		}
+	} else if (Tilemap.isTileA2(tileId)) {
+		setNumber = 1;
+		bx=tx<<1;
+		by = (ty - 2) * 3;
+		isTable = this._isTableTile(tileId);
+	} else if (Tilemap.isTileA3(tileId)) {
+		setNumber = 2;
+		bx=tx<<1;
+		by=(ty-6)<<1;
+		autotileTable = Tilemap.WALL_AUTOTILE_TABLE;
+	} else if (Tilemap.isTileA4(tileId)) {
+		setNumber = 3;
+		bx=tx<<1;
+		by=Math.floor(((ty-10)*5+(ty&1))*0.5);
+		if(ty&1) autotileTable=Tilemap.WALL_AUTOTILE_TABLE;
+	}
+
+	const table=autotileTable[shape],source=this.bitmaps[setNumber];
+	if (table && source) {
+		const chs=[0,3,2,1],w1=this._tileWidth>>1,h1=this._tileHeight>>1;
+		for(let i=0;i<4;++i){
+			let qsx = table[i][0];
+			let qsy = table[i][1];
+			let sx1=((bx<<1)+qsx)*w1;
+			let sy1=((by<<1)+qsy)*h1;
+			let dx1=dx+(i& 1)*w1;
+			let dy1=dy+(i>>1)*h1;
+			if(isTable&&(qsy===1||qsy===5)){
+				let qsx2 = qsx;
+				let qsy2 = 3;
+				if(qsy===1) qsx2=chs[qsx];
+				let sx2=((bx<<1)+qsx2)*w1;
+				let sy2=((by<<1)+qsy2)*h1;
+				bitmap.bltImage(source, sx2, sy2, w1, h1, dx1, dy1, w1, h1);
+				dy1 += h1/2;
+				bitmap.bltImage(source, sx1, sy1, w1, h1/2, dx1, dy1, w1, h1/2);
+			}else bitmap.bltImage(source, sx1, sy1, w1, h1, dx1, dy1, w1, h1);
+		}
+	}
+},t);
+} // Sprite_Minimap
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc actor:<noShadow> enemy:<showShadow>
+ * @author agold404
+ * @help disable shadow for the one
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Sprite_Battler.prototype).add('setShadow_commonBeg',function f(btlr){
+	this._shadowSprite.alpha=1;
+	this._shadowSprite.visible=true;
+}).add('setShadow_commonEnd',function f(btlr){
+	if(!btlr) this._shadowSprite.visible=false;
+});
+
+new cfc(t={}).add('setBattler',function f(btlr){
+	const func=f.tbl.get(this.constructor);
+	const rtv=func&&func.apply(this,arguments);
+	this.setShadow();
+	return rtv;
+},new Map([
+[Sprite_Actor,Sprite_Actor.prototype.setBattler],
+[Sprite_Enemy,Sprite_Enemy.prototype.setBattler],
+]));
+Sprite_Enemy.prototype.setBattler=Sprite_Actor.prototype.setBattler=t.setBattler;
+
+new cfc(Sprite_Actor.prototype).add('setShadow',function f(btlr){
+	btlr=btlr||this._battler;
+	this.setShadow_commonBeg(btlr);
+	if(btlr){ const data=btlr.getData(); if((data && data.meta && data.meta.noShadow)){
+		this._shadowSprite.visible=false;
+	} }
+	this.setShadow_commonEnd(btlr);
+});
+
+new cfc(Sprite_Enemy.prototype).add('setShadow',function f(btlr){
+	btlr=btlr||this._battler;
+	this.setShadow_commonBeg(btlr);
+	if(btlr){ const data=btlr.getData(); if((data && data.meta && !data.meta.showShadow)){
+		this._shadowSprite.visible=false;
+	} }
+	this.setShadow_commonEnd(btlr);
+});
 
 })();
 
