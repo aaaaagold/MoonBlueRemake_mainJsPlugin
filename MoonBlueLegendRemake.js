@@ -486,16 +486,16 @@ console.log("");
 
 console.group("%c歡迎拍打餵食開發人員們，對象有：","color: rgba(234,234,234,0.75); font-size:32px;");
 const devers={
-	"天使":["原作作者","劇情相關部分"],
-	"攸藍":["戰鬥動畫製作","人才召集大師","人設/劇情守護員"],
+	"天使":["原作作者","主力主線RMMV事件"],
+	"攸藍":["戰鬥動畫製作","人才召集大師","PV",],
 	"鎧特":["支線製作","小遊戲製作","劇情相關部分"],
 	"牙籤":["CG","頭像","部分UI"],
-	"黃金":["此插件作者","修正原廠js及其他插件的bug","遊戲中部份特殊功能"],
+	"黃金":["此插件作者","修正原廠js及其他插件的bug","遊戲中部份特殊功能","寫在地圖上的特殊功能",],
 	"材材":["劇情相關部分"],
 	"波波":["學習畫地圖"],
 	"狗頭":["exe反組譯大師"],
 	"樺城":["畫地圖"],
-	"咕咕咕":["協助主線RMMV事件","每次都說很短結果都超長，我是指劇情。","中文小老師(?)"],
+	"咕咕咕":["主力主線RMMV事件","每次都說很短結果都超長，我是指劇情。",],
 	"LULU":["PV"],
 	"柏林":["CG強化","放閃(?)"],
 };
@@ -505,8 +505,8 @@ console.table(devers);
 const byWork={
 	"原著既最後細調":["天使",],
 	"統籌":["天使","攸藍",],
-	"主線劇情":["天使","材材","咕咕咕",],
-	"支線劇情":["天使","鎧特","狗頭",],
+	"主線劇情":["天使","咕咕咕",],
+	"支線劇情":["天使","鎧特","狗頭","材材",],
 	"???":["攸藍","黃金","樺城",],
 	"戰鬥":["天使","攸藍",],
 	"程式":["黃金",],
@@ -3932,6 +3932,10 @@ p.closeNumBoard=function(id){
 			get:function(){
 				return this._len;
 			},
+			set:function(rhs){
+				if(rhs) throw new Error('\'Queue\' not support setting \'length\' to non-zero');
+				else this.clear();
+			},
 		configurable: false},
 		front: {
 			get:function(){
@@ -4483,7 +4487,21 @@ r=p[k]; (p[k]=function f(){
 }
 
 { const p=BattleManager;
-p.clearDmgLog=t=>t._dmgLog=[];
+p._setDmgLogBase=function f(t,type,ele){
+	const v=this.getDmgSum(t,type,ele); if(!v) return 0;
+	let b=t._dmgLog._base; if(!b) b=t._dmgLog._base={};
+	let o=b[type]; if(!o) o=b[type]={};
+	return o[ele]=v;
+};
+p._getDmgLogBase=function f(t,type,ele){
+	const b=t&&t._dmgLog&&t._dmgLog._base;
+	const o=b&&b[type];
+	return o&&o[ele]||0;
+};
+p.clearDmgLog=function f(t,type,ele){
+	if(!type) t._dmgLog=[]; // clear it via using new obj
+	else this._setDmgLogBase(t,type,ele);
+};
 p.clearExeLog=function(s){ this.getExeLogger().delete(s); };
 p.getExeLogger=function(){
 	if(!this._exeLog) this._exeLog=new Map();
@@ -4533,7 +4551,7 @@ p.logDmg=function(t,info,s){
 p.getDmgSum=function(t,type,ele){
 	if(!t||!t._dmgLog) return;
 	let m=t._dmgLog.byEle; if(!m) t._dmgLog.byEle=m=new Map();
-	let rtv=m.get(ele); if(rtv!==undefined) return rtv[type]||0;
+	let rtv=m.get(ele); if(rtv!==undefined) return rtv[type]-this._getDmgLogBase(t,type,ele)||0;
 	rtv=0;
 	if(!t._dmgLog.eles) t._dmgLog.eles=[];
 	t._dmgLog.eles.push(ele);
@@ -4553,7 +4571,7 @@ p.getDmgSum=function(t,type,ele){
 			obj.tp+=dmgs[x].dtp*r;
 		}
 	}
-	return obj[type]||0;
+	return obj[type]-this._getDmgLogBase(t,type,ele)||0;
 };
 p.getExeArr=function(s){
 	return this.getExeLogger().get(s);
@@ -16289,6 +16307,8 @@ cf(Game_Action.prototype,'itemEffectAddBuff',function f(trgt, eff){
  * <技能後追加技能:{"使用的技能id":[追加的技能id,追加的技能id, ... ], ... }>
  * 普攻用"普攻"，不要打1，請想想武器普攻技能。
  * 
+ * 技能note: <技能後追加技能:[追加的技能id,追加的技能id, ... ]>
+ * 
  * This plugin can be renamed as you want.
  */
 
@@ -16319,8 +16339,8 @@ k='start';
 r=p[k]; (p[k]=function f(){
 	$dataActors  .forEach(f.tbl[0]);
 	$dataClasses .forEach(f.tbl[0]);
-	$dataSkills  .forEach(f.tbl[0]);
-	$dataItems   .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[1]);
+	$dataItems   .forEach(f.tbl[1]);
 	$dataWeapons .forEach(f.tbl[0]);
 	$dataArmors  .forEach(f.tbl[0]);
 	$dataEnemies .forEach(f.tbl[0]);
@@ -16334,6 +16354,9 @@ dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
 	const m=JSON.parse(meta[kw]);
 	for(let i in m) if(i) for(let x=0,arr=m[i];x!==arr.length;++x) if(arr[x]) ts.push({code:gbb[kw],dataId:i,value:arr[x]});
 },
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	dataobj[kw]=meta[kw]?JSON.parse(meta[kw]):undefined;
+},
 ];
 }
 
@@ -16344,13 +16367,15 @@ cf(cf(cf(Game_BattlerBase.prototype,kw_main,function f(id){
 	return t.value;
 },kw_pend,kw_push,function f(btlr){
 	const q=btlr[f.tbl[8]](); if(q) q.clear();
-},kw_getQ,]),kw_push,function f(fromSkill,lastAct){
+},kw_getQ,kw]),kw_push,function f(fromSkill,lastAct){
 	if(!fromSkill) return;
 	const s=this,id=fromSkill.id;
-	const additionalSkills=s[f.tbl[0]](id);
+	const additionalSkills=s[f.tbl[0]](id).concat(fromSkill[f.tbl[9]]);
+	if(!fromSkill[f.tbl[9]]) additionalSkills.pop();
 	const acts=s[f.tbl[8]](true);
 	if(lastAct){
 		const lastIsForFriend=lastAct.isForFriend();
+		const lastIsForAll=lastAct.isForAll();
 		if(!lastAct[f.tbl[3]]()){ for(let x=0,arr=additionalSkills;x!==arr.length;++x){
 			const id=arr[x]==="普攻"?this.attackSkillId():arr[x];
 			if(!$dataSkills[arr[x]]) continue;
@@ -21331,6 +21356,112 @@ new cfc(Sprite_Enemy.prototype).add('setShadow',function f(btlr){
 
 ﻿"use strict";
 /*:
+ * @plugindesc ㄏㄏYEPㄏㄏ ( Game_Battler.prototype.updateATB 內的詠唱和at跑條的增加差使用同一函式，到底哪根筋覺得會一樣 )
+ * @author agold404
+ * @help 分ㄛ
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Battler.prototype).add('updateATB',function f(){
+	if(this.isDead()) return this.resetAllATB();
+	if(!this.canMove()){
+		this.updateATBStates();
+		return;
+	}
+	if(this.isATBCharging()){
+		if(!this.currentAction()) this.resetAllATB();
+		if(this.currentAction() && this.currentAction().item() === null) this.resetAllATB();
+	}
+	if(this.isATBCharging()){
+		const value = this.atbCharge() + this.atbChargeTick();
+		this.setATBCharge(value);
+	}else if(this.atbRate() < 1){
+		const value = this.atbSpeed() + this.atbSpeedTick();
+		this.setATBSpeed(value);
+	}
+},t,true,true).add('atbChargeTick',function f(){
+	return this.atbTickValue() * BattleManager.tickRate();
+},t,true,true);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 輕鬆自動尋路移動路徑API
+ * @author agold404
+ * @help in event script: chr.moveToLoc(evtId,x,y,dir,speed,opt); ; in moveRoute script: chr.move1ToLoc(evtId,x,y,dir,speed,opt);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=Game_Character.MOVEROUTE_EMPTY={
+list:[
+{code:Game_Character.ROUTE_END,parameters:[]},
+],
+repeat:false,
+wait:false,
+skippable:true,
+};
+t.list.push(t.list[0]);
+t.list[-1]=t.list[0];
+
+new cfc(Game_Character.prototype).add('turnTo',function f(arg0){
+	if(arg0&&arg0.constructor===String){ const m=arg0.match(f.tbl[0]); if(m){
+		const rev=m[1]!==m[2],evt=(m[2]==='p')?$gamePlayer:this._mvToGetTrgt(m[2]);
+		if(!evt) return;
+		if(rev) this.turnAwayFromCharacter(evt);
+		else this.turnTowardCharacter(evt);
+	} }else{
+		arg0|=0;
+		if(arg0 in f.tbl[1]) this._direction=arg0;
+	}
+},[
+/^evt (-?([0-9]+|p))$/,
+{2:2,4:4,6:6,8:8,},
+],true,true).add('setMoveRouteEmpty',function f(){
+	this._moveRoute=Game_Character.MOVEROUTE_EMPTY;
+	this._moveRouteIndex=-1;
+}).add('_mvToGetTrgt',function f(evtId){
+	if(evtId==='p') return $gamePlayer;
+	else if(evtId==-1) return this;
+	else return $gameMap && $gameMap._events && $gameMap._events[evtId];
+}).add('_mvToLoc',function f(x,y,dir,opt){
+	if(this.x===x && this.y===y){ if(!opt||!opt.repeat--) this.setMoveRouteEmpty(); this.turnTo(dir); }
+	else{ let d=this.findDirTo([[x,y]])||this.findDirectionTo(x,y); this.moveDiagNumpad(d); }
+},undefined,true,true).add('moveToLoc',function f(evtId,x,y,dir,speed,opt){
+	if(speed) this._moveSpeed=speed;
+	const evt=this._mvToGetTrgt(evtId);
+	if(evt){ x+=evt.x; y+=evt.y; }
+	return this.forceMoveRoute({
+		trgt:{x:x,y:y,d:dir,o:opt,},
+		list:f.tbl[0],
+		repeat:true,
+		skippable:true,
+	});
+},[
+[
+//{code:Game_Character.ROUTE_SCRIPT,parameters:['let t=this._moveRoute.trgt; if(this.x===t.x && this.y===t.y){ this._moveRoute.repeat=false; this.turnTo(t.d); }else{ let d=this.findDirTo([[t.x,t.y]])||this.findDirectionTo(t.x,t.y); this.moveDiagNumpad(d); }']},
+{code:Game_Character.ROUTE_SCRIPT,parameters:['let t=this._moveRoute.trgt; this._mvToLoc(t.x,t.y,t.d,t.o);']},
+Game_Character.MOVEROUTE_EMPTY.list[0],
+],
+],true,true).add('move1ToLoc',function f(evtId,x,y,dir,speed,opt){
+	if(speed) this._moveSpeed=speed;
+	const evt=this._mvToGetTrgt(evtId);
+	if(evt){ x+=evt.x; y+=evt.y; }
+	return this._mvToLoc(x,y,dir,opt);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -21767,7 +21898,7 @@ r=p[k]; (p[k]=function f(){
 	$dataArmors  .forEach(f.tbl[0]);
 	const rtv=f.ori.apply(this,arguments);
 	console.log("MOG_Weather_EX.js is coded the worst I've ever seen.","So bad that you should directly edit it.");
-	if(Input.KeyMapperPKD){ console.log("不懂鍵盤編碼嗎? PKD_SimpleQuestSystem.js"); for(let x='a'.charCodeAt(),last='z'.charCodeAt();x<=last;++x) delete Input.KeyMapperPKD[x]; }
+	if(Input.KeyMapperPKD){ console.log("PKD_SimpleQuestSystem.js 不懂鍵盤編碼嗎?"); for(let x='a'.charCodeAt(),last='z'.charCodeAt();x<=last;++x) delete Input.KeyMapperPKD[x]; }
 	return rtv;
 }).ori=r;
 p[k].tbl=[
