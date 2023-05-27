@@ -232,6 +232,21 @@ Graphics.getScale=function(){
 	const c=this._canvas;
 	return Math.min(c.scrollWidth/c.width,c.scrollHeight/c.height);
 };
+new cfc(Graphics).add('_updateAllElements',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._updateAsGameCanvas();
+	return rtv;
+}).add('_updateAsGameCanvas',function f(){
+	const arr=document.querySelectorAll('.AsGameCanvas');
+	for(let x=0,xs=arr.length;x!==xs;++x){
+		this._centerElement(arr[x]);
+		if((typeof f)===(typeof arr[x]._onCenterElement)) arr[x]._onCenterElement();
+	}
+}).add('addAsGameCanvas',function f(dom){
+	if(!dom || !dom.classList) return;
+	dom.classList.add('AsGameCanvas');
+	this._centerElement(dom);
+});
 //
 let t;
 const undef=undefined,none=()=>{};
@@ -808,9 +823,66 @@ r=p[k]; (p[k]=function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 視窗預設colorTone
+ * @author agold404
+ * @help BLR_custom/default-Window_Base.txt
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+'BLR_custom/default-Window_Base.txt',
+];
+
+new cfc(SceneManager).add('run',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+	return rtv;
+},t);
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._applyCustomData_windowBase();
+	return rtv;
+}).add('_applyCustomData_windowBase',function f(){
+	const data=ImageManager.otherFiles_getData(f.tbl[0]); if(!data) return;
+	const cs=DataManager._customWindowBaseSetting=JSON.parse(data); if(!cs) return;
+	if(cs.back){
+		const b=cs.back;
+		if(b.colorTone){
+			if(b.colorTone.constructor===Array) while(b.colorTone.length<4) b.colorTone.push(0);
+			else b.colorTone=undefined;
+		}
+	}
+},t);
+
+new cfc(Window_Base.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.setCustom();
+	return rtv;
+}).add('setCustom',function f(){
+	this._setCustom_back();
+}).add('_setCustom_back',function f(){
+	const b=this._windowBackSprite,cs=DataManager._customWindowBaseSetting; if(!(cs&&cs.back)||!b) return;
+	let needRefresh=false;
+	// [75, 142, 160, 0]
+	if((this._customColorTone=cs.back.colorTone)){ needRefresh=true; b.setColorTone(this._customColorTone); }
+	if(needRefresh) b._refresh();
+},t).add('_refreshBack',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._setCustom_back();
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc reduce refresh
  * @author agold404
- *
+ * 
  * @help reduce refresh
  * 
  * This plugin can be renamed as you want.
@@ -9945,6 +10017,22 @@ dataobj=>{
 },
 ]);
 
+const tbl_windowColorTone_default_path='BLR_custom/detail/windowColorToneRGB_default.txt';
+const tbl_windowColorTone_default_tone=[75, 142, 160, 0];
+const tbl_windowColorTone_default=[
+tbl_windowColorTone_default_path,
+tbl_windowColorTone_default_path,
+tbl_windowColorTone_default_tone,
+];
+const tbl_windowColorTone_item=t=tbl_windowColorTone_default.slice();
+t[0]='BLR_custom/detail/windowColorToneRGB_item.txt';
+const tbl_windowColorTone_skill=t=tbl_windowColorTone_default.slice();
+t[0]='BLR_custom/detail/windowColorToneRGB_skill.txt';
+const tbl_windowColorTone_equip=t=tbl_windowColorTone_default.slice();
+t[0]='BLR_custom/detail/windowColorToneRGB_equip.txt';
+const tbl_windowColorTone_shop=t=tbl_windowColorTone_default.slice();
+t[0]='BLR_custom/detail/windowColorToneRGB_shop.txt';
+
 new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._toDetail_using=false;
@@ -9952,6 +10040,30 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	this._toDetail_shouldShow=0;
 	this._toDetail_showOnWindow_toPos=undefined;
 	this._toDetail_showOnWindow_deltaPos=undefined;
+	return rtv;
+}).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._toDetail_windowColorTone=undefined;
+	this.toDetail_windowColorTone_load();
+	return rtv;
+}).add('toDetail_windowColorTone_getLoadTable',function f(){
+	return f.tbl;
+},tbl_windowColorTone_default).add('toDetail_windowColorTone_load',function f(){
+	const tbl=this.toDetail_windowColorTone_getLoadTable();
+	ImageManager.otherFiles_addLoad(tbl[0]);
+	ImageManager.otherFiles_addLoad(tbl[1]);
+}).add('toDetail_windowColorTone_getParsed',function f(){
+	let rtv=this._toDetail_windowColorTone; if(rtv) return rtv;
+	const tbl=this.toDetail_windowColorTone_getLoadTable();
+	rtv=ImageManager.otherFiles_getData(tbl[0]);
+	if(rtv===undefined){
+		rtv=ImageManager.otherFiles_getData(tbl[1]);
+		if(rtv===undefined){
+			rtv=tbl[2];
+		}else rtv=JSON.parse(rtv);
+	}else rtv=JSON.parse(rtv);
+	while(rtv.length<4) rtv.push(0);
+	this._toDetail_windowColorTone=rtv;
 	return rtv;
 }).add('toDetail_getPath',function f(item){
 	if(!item) return;
@@ -9987,7 +10099,10 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	if(dw.y!==pos.y){ dw.y=pos.y; }
 	if(dw.width!==pos.w){ dw.width=pos.w; editedSize=true; }
 	if(dw.height!==pos.h){ dw.height=pos.h; editedSize=true; }
-	if(editedSize && dw.contents) dw.createContents(); // re-create canvas with size w,h
+	if(editedSize){
+		if(dw.contents) dw.createContents(); // re-create canvas with size w,h
+		this.toDetail_refreshBackSprite(true);
+	}
 },[
 ['x','y','w','h',],
 ],true,true).add('toDetail_showOnWindow',function f(){
@@ -9999,11 +10114,17 @@ new cfc(Scene_MenuBase.prototype).add('create',function f(){
 }).add('toDetail_getAnchorY',function f(){
 	const w=this.toDetail_getAnchorWindow();
 	return w?w.y:0;
+}).add('toDetail_refreshBackSprite',function f(needRefresh){
+	const dw=this._detailWindow; if(!dw) return;
+	const b=dw._windowBackSprite; if(!b) return;
+	b.setColorTone(this.toDetail_windowColorTone_getParsed());
+	if(needRefresh) b._refresh();
 }).add('toDetail_oncreate',function f(tbl){
 	const iw=this.toDetail_getItemWindow(); if(!iw) return;
 	this._toDetail_using=true;
 	tbl=tbl||f.tbl;
 	const dw=this._detailWindow=new Window_Base(tbl.x,tbl.y,tbl.w,tbl.h);
+	this.toDetail_refreshBackSprite();
 	this.toDetail_resetTxtOffsetY.call(dw);
 	this.addChild(dw);
 	dw.alpha=0;
@@ -10207,6 +10328,9 @@ new cfc(Scene_Equip.prototype).add('create',function f(){
 		h:posTbl.h,
 	};
 	// custom adjust
+	this._create_customAdjust();
+	return rtv;
+}).add('_create_customAdjust',function f(){
 	this._toDetail_showOnWindow_deltaPos={
 		y:-99,
 		h:99,
@@ -10217,7 +10341,6 @@ new cfc(Scene_Equip.prototype).add('create',function f(){
 			this.addChild(this._helpWindow);
 		}
 	}
-	return rtv;
 }).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.toDetail_updatePos();
@@ -10230,10 +10353,6 @@ new cfc(Scene_Equip.prototype).add('create',function f(){
 	rtv=this._itemWindow;
 	if(rtv.active && rtv.visible && rtv.alpha) return rtv;
 	return this._statusWindow;
-},{
-null:function(){ return this._dummyWindow; },
-buy:function(){ return this._buyWindow; },
-sell:function(){ return this._sellWindow; },
 },true,true).add('toDetail_getAnchorWindow',function(){
 	return undefined;
 },undefined,true,true);
@@ -10263,6 +10382,19 @@ sell:function(){ return this._sellWindow; },
 },true,true).add('toDetail_getAnchorWindow',function(){
 	return undefined;
 },undefined,true,true);
+
+new cfc(Scene_Item.prototype).add('toDetail_windowColorTone_getLoadTable',function f(){
+	return f.tbl;
+},tbl_windowColorTone_item,true,true);
+new cfc(Scene_Skill.prototype).add('toDetail_windowColorTone_getLoadTable',function f(){
+	return f.tbl;
+},tbl_windowColorTone_skill,true,true);
+new cfc(Scene_Equip.prototype).add('toDetail_windowColorTone_getLoadTable',function f(){
+	return f.tbl;
+},tbl_windowColorTone_equip,true,true);
+new cfc(Scene_Shop.prototype).add('toDetail_windowColorTone_getLoadTable',function f(){
+	return f.tbl;
+},tbl_windowColorTone_shop,true,true);
 
 })();
 
@@ -17943,7 +18075,9 @@ f.tbl=t;
 
 Object.defineProperty(Sprite.prototype,'_colorTone',{
 	get:f,
-	set:function(rhs){ return this.__colorTone=rhs; },
+	set:function(rhs){
+		return this.__colorTone=rhs;
+	},
 	configurable:true,
 });
 
@@ -20122,10 +20256,11 @@ new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
 
 ﻿"use strict";
 /*:
- * @plugindesc 文字顯示途中播音效
+ * @plugindesc 文字顯示途中播音效、晃畫面
  * @author agold404
  * @help \AUDIO_SE"path|vol|pitch|pan|pos"
  * \AUDIO_SE \AUDIO_ME \AUDIO_BGS \AUDIO_BGM
+ * \SHAKESCREEN"power|speed|duration"
  * 
  * This plugin can be renamed as you want.
  */
@@ -20139,7 +20274,7 @@ FUNC_ISSCENEMSGWND:self=>{
 	const sc=SceneManager._scene;
 	return sc&&sc._messageWindow===self;
 },
-FUNC_PARSEINFO:(state,txt,strt,arr)=>{
+FUNC_PARSEINFO_AUDIO:(state,txt,strt,arr)=>{
 	if(txt[strt]!=='"') return strt-1;
 	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\AUDIO_* format error');
 	state.x=last;
@@ -20148,6 +20283,24 @@ FUNC_PARSEINFO:(state,txt,strt,arr)=>{
 		const info=txt.slice(strt,last).split("|");
 		arr.push({name:info[0],volume:isNaN(info[1])?90:info[1]-0,pitch:isNaN(info[2])?100:info[2]-0,pan:info[3]-0||0,pos:info[4]-0||0,});
 		state.txt+="AUDIO";
+		state.txt+=arr._key;
+		state.txt+='[';
+		state.txt+=arr.length-1;
+		state.txt+=']';
+	}
+	return last;
+},
+FUNC_PARSEINFO_SHAKESCREEN:function(state,txt,strt,isScMsgWnd){
+	if(txt[strt]!=='"') return strt-1;
+	let arr;
+	if(isScMsgWnd && !(arr=this._shakescreenInfo)) (arr=this._shakescreenInfo=[])._key="";
+	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\SHAKESCREEN format error');
+	state.x=last;
+	if(strt===last) return last; // empty info
+	if(arr){
+		const info=txt.slice(strt,last).split("|"); // power|speed|duration as function args order
+		arr.push(info);
+		state.txt+="SHAKESCREEN";
 		state.txt+=arr._key;
 		state.txt+='[';
 		state.txt+=arr.length-1;
@@ -20189,6 +20342,7 @@ SE:function(state,text,x,isScMsgWnd,func_parseInfo){
 },
 },
 STR_AUDIOPREFIX:"AUDIO_",
+STR_SHAKESCREEN:"SHAKESCREEN",
 };
 t=[];
 t[k.STATE_NEXTSTART]=function f(state,text){
@@ -20203,10 +20357,15 @@ t[k.STATE_SLASH1]=function f(state,text){
 	state.txt+='\\';
 	if(text[state.x]==='\\') state.txt+='\\';
 	else{
-		let x=f.tbl.STR_AUDIOPREFIX.length+state.x;
+		let x;
+		x=f.tbl.STR_AUDIOPREFIX.length+state.x;
 		if(f.tbl.STR_AUDIOPREFIX===text.slice(state.x,x)){
 			const func=f.tbl.FUNCS_SLASH1[text.slice(x,x+2)];
-			if(func && x<func.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this),f.tbl.FUNC_PARSEINFO)) return ++state.x; // matched
+			if(func && x<func.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this),f.tbl.FUNC_PARSEINFO_AUDIO)) return ++state.x; // matched
+		}
+		x=f.tbl.STR_SHAKESCREEN.length+state.x;
+		if(f.tbl.STR_SHAKESCREEN===text.slice(state.x,x)){
+			if(x<f.tbl.FUNC_PARSEINFO_SHAKESCREEN.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this))) return ++state.x; // matched
 		}
 		state.txt+=text[state.x];
 	}
@@ -20241,7 +20400,13 @@ AUDIOSE:function(textState){
 	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_se,textState);
 	if(info) AudioManager.playSe(info);
 },
+SHAKESCREEN:function(textState){
+	const info=this.processEscapeCharacter_getShakescreenInfo(this._shakescreenInfo,textState);
+	if(info) Game_Screen.prototype.startShake.apply($gameScreen,info);
+},
 }).add('processEscapeCharacter_getAudioInfo',function f(arr,textState){
+	return arr&&arr[this.obtainEscapeParam(textState)];
+}).add('processEscapeCharacter_getShakescreenInfo',function f(arr,textState){
 	return arr&&arr[this.obtainEscapeParam(textState)];
 });
 
@@ -20796,7 +20961,7 @@ new cfc(Scene_Options.prototype).add('initialize',function f(){
 		const scl=sp.scale;
 		scl.x=bgs[x].sx;
 		scl.y=bgs[x].sy;
-		if(bgs[x].updateFunc && (bgs[x].updateFunc=eval(bgs[x].updateFunc))){
+		if(bgs[x].updateFunc && (bgs[x].updateFunc=(bgs[x].updateFunc.constructor===String)?eval(bgs[x].updateFunc):bgs[x].updateFunc) ){
 			sp.update=f.tbl[1];
 			sp._customUpdate=bgs[x].updateFunc;
 		}
@@ -20808,7 +20973,7 @@ new cfc(Scene_Options.prototype).add('initialize',function f(){
 	if(!isNaN(info.window.backgroundType-=0)) ow.setBackgroundType(info.window.backgroundType);
 	if(!isNaN(info.window.borderAlpha-=0) && ow._windowFrameSprite) ow._windowFrameSprite.alpha=info.window.borderAlpha;
 	if(!isNaN(info.window.backgroundAlpha-=0) && ow._windowBackSprite) ow._windowBackSprite.alpha*=info.window.backgroundAlpha;
-	if(info.window.backgroundTone&&info.window.backgroundTone.constructor===Array) ow._optionsWindow._windowBackSprite.setColorTone(info.window.backgroundTone);
+	if(info.window.backgroundTone&&info.window.backgroundTone.constructor===Array) ow._windowBackSprite.setColorTone(info.window.backgroundTone);
 	if(info.window.updateFunc && (info.window.updateFunc=eval(info.window.updateFunc))) this._customUpdate=info.window.updateFunc;
 },t).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -21455,6 +21620,733 @@ Game_Character.MOVEROUTE_EMPTY.list[0],
 	const evt=this._mvToGetTrgt(evtId);
 	if(evt){ x+=evt.x; y+=evt.y; }
 	return this._mvToLoc(x,y,dir,opt);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 使技能/道具可爆擊/必中
+ * @author agold404
+ * @help 指定傷害類別+技能/道具類別，使傷害公式的部分可爆擊
+ * 
+ * <可爆技能:[ [技能類別,傷害類別], ... ]>
+ * <可爆道具:[ [道具類別,傷害類別], ... ]>
+ * <必中技能:[ [技能類別,傷害類別], ... ]>
+ * <必中道具:[ [道具類別,傷害類別], ... ]>
+ * 技能類別：請見自行設定的資料庫的技能類別編號
+ * 道具類別：1=一般道具 ; 2=關鍵道具 ; 3=隱藏A ; 4=隱藏B 。填入的東西沒有>0則代表任意
+ * 傷害類別：見設定傷害中的傷害類別清單，最上面那個是0，依序往下1,2,3,... 。填入的東西沒有>0則代表任意
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+const kwtxts={
+可爆:{
+skill:"可爆技能",
+item:"可爆道具",
+},
+必中:{
+skill:"必中技能",
+item:"必中道具",
+},
+},kws={};
+for(let c in kwtxts){
+	const src=kwtxts[c],dst=kws[c]={};
+	for(let t in src) gbb.addEnum(dst[t]="TRAIT_"+src[t]);
+}
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits,c,t; if(!ts) ts=dataobj.traits=[];
+	
+	for(let ci=0,carr=['可爆','必中'],cs=carr.length;ci!==cs;++ci){
+		const c=carr[ci];
+		for(let ti=0,tarr=['skill','item'],sz=tarr.length;ti!==sz;++ti){
+			const t=tarr[ti];
+			if(meta[kwtxts[c][t]]){ for(let x=0,arr=JSON.parse(meta[kwtxts[c][t]]),xs=arr.length;x!==xs;++x){
+				let itype=arr[x][0]|0,dtype=arr[x][1]|0;
+				if(!(itype>=0)) itype='any';
+				if(!(dtype>=0)) dtype='any';
+				ts.push({code:gbb[kws[c][t]],dataId:itype+','+dtype,value:1,});
+			} }
+		}
+	}
+},
+]);
+
+
+new cfc(DataManager).add('可爆必中_getItemKey_skill',function f(skill){
+	return skill&&(skill.stypeId+','+skill.damage.type);
+}).add('可爆必中_getItemKey_item',function f(item){
+	return item&&(item.itypeId+','+item.damage.type);
+}).add('可爆必中_getItemKeys_skill',function f(item){
+	const rtv=[]; if(!item) return rtv;
+	for(let i=0,iarr=[item.stypeId,'any'],sz=iarr.length;i!==sz;++i) for(let d=0,darr=[item.damage.type,'any'],ds=darr.length;d!==ds;++d) rtv.push(iarr[i]+','+darr[d]);
+	return rtv;
+}).add('可爆必中_getItemKeys_item',function f(item){
+	const rtv=[]; if(!item) return rtv;
+	for(let i=0,iarr=[item.itypeId,'any'],sz=iarr.length;i!==sz;++i) for(let d=0,darr=[item.damage.type,'any'],ds=darr.length;d!==ds;++d) rtv.push(iarr[i]+','+darr[d]);
+	return rtv;
+});
+
+t=function f(key){ return this.uniqueHas(key); };
+new cfc(Game_Battler.prototype).add('_可爆ㄇ_skill',function f(item){
+	const code=Game_BattlerBase[f.tbl[0]];
+	const keys=DataManager.可爆必中_getItemKeys_skill(item);
+	return keys.some(f.tbl[1],this.traitsSet(code));
+},[
+kws.可爆.skill,
+t,
+]).add('_可爆ㄇ_item',function f(item){
+	const code=Game_BattlerBase[f.tbl[0]];
+	const keys=DataManager.可爆必中_getItemKeys_item(item);
+	return keys.some(f.tbl[1],this.traitsSet(code));
+},[
+kws.可爆.item,
+t,
+]).add('_必中ㄇ_skill',function f(item){
+	const code=Game_BattlerBase[f.tbl[0]];
+	const keys=DataManager.可爆必中_getItemKeys_skill(item);
+	return keys.some(f.tbl[1],this.traitsSet(code));
+},[
+kws.必中.skill,
+t,
+]).add('_必中ㄇ_item',function f(item){
+	const code=Game_BattlerBase[f.tbl[0]];
+	const keys=DataManager.可爆必中_getItemKeys_item(item);
+	return keys.some(f.tbl[1],this.traitsSet(code));
+},[
+kws.必中.item,
+t,
+]);
+
+new cfc(Game_Battler.prototype).add('可爆ㄇ',function f(item){
+	if(!item || !item.damage) return false;
+	if(item.damage.critical) return true;
+	if(!f.tbl[0]) f.tbl[0]=new Game_Item(item);
+	f.tbl[0].setObject(item);
+	const func=f.tbl[1][f.tbl[0]._dataClass];
+	return func&&func.apply(this,arguments);
+},[
+undefined,
+{
+skill:Game_Battler.prototype._可爆ㄇ_skill,
+item:Game_Battler.prototype._可爆ㄇ_item,
+},
+]).add('必中ㄇ',function f(item){
+	if(!item) return false;
+	if(item.hitType===0) return true;
+	if(!f.tbl[0]) f.tbl[0]=new Game_Item(item);
+	f.tbl[0].setObject(item);
+	const func=f.tbl[1][f.tbl[0]._dataClass];
+	return func&&func.apply(this,arguments);
+},[
+undefined,
+{
+skill:Game_Battler.prototype._必中ㄇ_skill,
+item:Game_Battler.prototype._必中ㄇ_item,
+},
+]);
+
+
+new cfc(Game_Action.prototype).add('itemCri',function f(trgt){
+	const item=this.item(),subj=this.subject();
+	return subj.可爆ㄇ(item) ? (subj.cri+item.crit) * (1-trgt.cev) : 0;
+},undefined,true,true).add('itemHit',function f(){
+	const item=this.item(),subject=this.subject();
+	return subject.必中ㄇ(item) ? Infinity : f.ori.apply(this,arguments);
+}).add('itemEva',function f(){
+	const rtv=f.ori.apply(this,arguments); if(rtv<=0) return rtv;
+	const item=this.item(),subject=this.subject();
+	return subject.必中ㄇ(item) ? 0 : rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 對話視窗客製化
+ * @author agold404
+ * @help BLR_custom/Message/mapMsg-Window_Message.txt
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+'BLR_custom/Message/mapMsg-Window_Message.txt',
+];
+
+new cfc(Scene_Map.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+	return rtv;
+},t).add('createMessageWindow',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._create_adjustMsgWindow();
+	return rtv;
+}).add('_create_adjustMsgWindow_getData',function f(){
+	const rawdata=ImageManager.otherFiles_getData(f.tbl[0]); if(!rawdata) return;
+	return this._customizeData_messageWindow=(this._customizeData_messageWindow||JSON.parse(rawdata));
+},t).add('_create_adjustMsgWindow',function f(){
+	const data=this._create_adjustMsgWindow_getData(),msgw=this._messageWindow;
+	if(!data) return;
+	msgw._customizeData=data;
+	const bp=msgw._windowBackSprite,fp=msgw._windowFrameSprite;
+	if(data.imgback) msgw._refreshBack();
+	if(data.imgframe){
+		msgw._refreshFrame();
+		msgw.addChildAt(msgw._windowFrameSprite,msgw.children.indexOf(msgw._windowContentsSprite)+1);
+	}
+});
+
+new cfc(Game_System.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.customizeData_msgWindow_setUseOri(0);
+	return rtv;
+}).add('customizeData_msgWindow_setUseOri',function f(val){
+	this._customizeData_msgWindow_useOri=val;
+}).add('customizeData_msgWindow_getUseOri',function f(){
+	return this._customizeData_msgWindow_useOri;
+});
+
+new cfc(Window_Base.prototype).add('customizeData_isUseOri',function f(){
+	return this._customizeData_isUseOri || $gameSystem.customizeData_msgWindow_getUseOri();
+}).add('customizeData_isUseOri_setVal',function f(val){
+	return this._customizeData_isUseOri=val;
+}).add('_refreshBack',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._updateBackSprite();
+	return rtv;
+}).add('_refreshFrame',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._updateFrameSprite();
+	return rtv;
+}).add('_updateBackSprite',function f(){
+	const data=this._customizeData,bp=this._windowBackSprite;
+	if(data && !this._background && !this.customizeData_isUseOri()){
+		if(data.imgback){
+			const b={};
+			if(!this._customizeData_bak_bp){
+				this._customizeData_bak_bp=b;
+				b.bitmap=bp.bitmap;
+				b.x=bp.x;
+				b.y=bp.y;
+				b.scaleX=bp.scale.x;
+				b.scaleY=bp.scale.y;
+			}
+			bp.bitmap=ImageManager.loadNormalBitmap(data.imgback);
+			if('x' in data) bp.x=data.x;
+			if('y' in data) bp.y=data.y;
+			if('scaleX' in data) bp.scale.x=data.scaleX;
+			if('scaleY' in data) bp.scale.y=data.scaleY;
+		}
+	}else{
+		const b=this._customizeData_bak_bp;
+		if(b){
+			bp.bitmap=b.bitmap;
+			bp.x=b.x;
+			bp.y=b.y;
+			bp.scale.x=b.scaleX;
+			bp.scale.y=b.scaleY;
+		}
+	}
+}).add('_updateFrameSprite',function f(){
+	const data=this._customizeData,fp=this._windowFrameSprite;
+	if(data && !this._background && !this.customizeData_isUseOri()){
+		if(data.imgframe){
+			const b={};
+			if(!this._customizeData_bak_fp){
+				this._customizeData_bak_fp=b;
+				b.bitmap=fp.bitmap;
+				b.x=fp.x;
+				b.y=fp.y;
+				b.scaleX=fp.scale.x;
+				b.scaleY=fp.scale.y;
+			}
+			fp.bitmap=ImageManager.loadNormalBitmap(data.imgframe);
+			if('x' in data) fp.x=data.x;
+			if('y' in data) fp.y=data.y;
+			if('scaleX' in data) fp.scale.x=data.scaleX;
+			if('scaleY' in data) fp.scale.y=data.scaleY;
+		}
+	}else{
+		const b=this._customizeData_bak_fp;
+		if(b){
+			fp.bitmap=b.bitmap;
+			fp.x=b.x;
+			fp.y=b.y;
+			fp.scale.x=b.scaleX;
+			fp.scale.y=b.scaleY;
+		}
+	}
+	if(fp) fp.alpha=this._windowSpriteContainer.alpha;
+}).add('open',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._updateBackSprite();
+	this._updateFrameSprite();
+	return rtv;
+});
+new cfc(Window_Message.prototype).add('startMessage',function f(){
+	const txt=$gameMessage.allText();
+	this.customizeData_isUseOri_setVal(false);
+	if(txt.match(f.tbl[0])) this.customizeData_isUseOri_setVal(true);
+	if(txt.match(f.tbl[1])) this.customizeData_isUseOri_setVal(false);
+	return f.ori.apply(this,arguments);
+},[
+/\\SETUSEORIGIN/g,
+/\\SETUSECUSTOM/g,
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc refine Scene_Options
+ * @author agold404
+ * @help BLR_custom/Scene_Option.txt
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+'BLR_custom/Scene_Options.txt',
+];
+
+new cfc(SceneManager).add('run',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+	return rtv;
+},t);
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._applyCustomData_SceneOption();
+	return rtv;
+}).add('_applyCustomData_SceneOption',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	const data=ImageManager.otherFiles_getData(f.tbl[0]); if(!data) return;
+	const cs=DataManager._customSceneOption=JSON.parse(data); if(!cs) return;
+	;
+	return rtv;
+},t);
+
+
+const a=function Scene_Options2(){
+	this.initialize(this,arguments);
+};
+a.ori=Scene_Options;
+t=[a.ori.prototype, t&&t[0]];
+window[a.name]=a;
+const p=a.prototype=Object.create(t[0]);
+p.constructor=a;
+
+t.push({
+"back":"_create_back",
+"label":"_create_label",
+"button":"_create_button",
+"numBar":"_create_numBar",
+"switch":"_create_switch",
+"setorigin":"_create_setorigin",
+},'rgba(255,255,255,0.75)',()=>{});
+
+new cfc(Scene_Options.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	//const rtv=t[0].initialize.apply(this,arguments);
+	ImageManager.otherFiles_addLoad(f.tbl[1]);
+	this._lastTouchSelect=-1;
+	this._idxRow=-1;
+	return rtv;
+},t).add('create',function f(){
+	//const rtv=f.ori.apply(this,arguments);
+	Scene_MenuBase.prototype.create.call(this);
+	const ow=this._optionsWindow=new Window_Options(); ow.select(-1); ow.processCursorMove=f.tbl[4];
+	const gw=Graphics.boxWidth,gh=Graphics.boxHeight;
+	this._selRect=new Sprite(new Bitmap(gw,gh)); this._selRect.bitmap.fillRect(0,0,gw,gh,f.tbl[3]); this._selRect.setFrame(0,0,0,0); 
+	this.addChild(this._alpha0=new Sprite()); this._alpha0.alpha=0;
+	this._alpha0.x=gw;
+	this._alpha0.y=gh;
+	this._alpha0.addChild(this._optionsWindow);
+	const rawdata=ImageManager.otherFiles_getData(f.tbl[1]); if(!rawdata) return f.ori.apply(this,arguments);
+	const data=JSON.parse(rawdata),state={x:0,y:0,},root=this._root=new Sprite();
+	root.addChild(root._back=new Sprite());
+	root.addChild(root._front=new Sprite());
+	root._front.addChild(this._selRect);
+	this.addChild(root);
+	this._interactives=[];
+	this._displayValues=[];
+	this._rows=[];
+	this._bmpBarCursor=this.__create_loadImg(data.consts,data.consts.imgBarCursor);
+	for(let x=0;x<data.layout.length;++x) this.__create_selectFromInfo(root,data,state,data.layout[x]);
+	this.refreshToCurrentConf();
+	//return rtv;
+},t).add('__create_selectFromInfo',function f(root,data,state,info){
+	const funcName=f.tbl[2][info&&info.type]; if(!funcName) return;
+	return this[funcName](root,data.consts,state,info);
+},t).add('__create_loadImg',function f(consts,relativePath){
+	let path=consts.imgRoot||"";
+	if(!f.tbl[0].has(path.slice(-1))) path+='/';
+	path+=relativePath;
+	return ImageManager.loadNormalBitmap(path);
+},[
+new Set('/','\\',''),
+]).add('__create_newSp',function f(root,consts,info,isBack){
+	const sp=new Sprite(this.__create_loadImg(consts,info.img));
+	if(0&&!isBack){
+		sp._info=info;
+		sp._row=sp;
+		this._rows.push(sp);
+	}
+	const p=new Sprite(); p.addChild(sp);
+	(isBack?root._back:root._front).addChild(p);
+	return p;
+}).add('__create_setLoc',function f(state,info,sp){
+	sp.x=state.x;
+	sp.y=state.y;
+	if('x' in info) sp.x+=info.x;
+	if('y' in info) sp.y+=info.y;
+}).add('__create_setNewLoc',function f(rectSize,state,info,sp){
+	// after this.__create_setLoc()
+	if('x' in info) state.x-=-info.x;
+	if('y' in info) state.y-=-info.y;
+	if(rectSize && 'width' in rectSize) state.x-=-rectSize.width;
+	if(rectSize && 'height' in rectSize) state.y-=-rectSize.height;
+}).add('_create_back',function f(root,consts,state,info){
+	const sp=this.__create_newSp(root,consts,info,true);
+	const c=sp.children[0];
+	if('anchor' in info && info.anchor){
+		if('x' in info.anchor) c.anchor.x=info.anchor.x;
+		if('y' in info.anchor) c.anchor.y=info.anchor.y;
+	}
+	this.__create_setLoc(state,info,sp);
+	this.__create_setNewLoc(consts&&consts.back,state,info,sp);
+}).add('_create_label',function f(root,consts,state,info){
+	const sp=this.__create_newSp(root,consts,info,true);
+	this.__create_setLoc(state,info,sp);
+	this.__create_setNewLoc(consts&&consts.label,state,info,sp);
+}).add('_create_button',function f(root,consts,state,info){
+	const sp=this.__create_newSp(root,consts,info);
+	const c=sp.children[0];
+	this.__create_setLoc(state,info,sp);
+	this.__create_setNewLoc(consts&&consts.button,state,info,sp);
+	c._info=info;
+	c._row=sp;
+	this._interactives.push(c);
+	sp._row=sp;
+	sp._info=info;
+	this._rows.push(sp);
+}).add('_create_numBar',function f(root,consts,state,info){
+	const sp=this.__create_newSp(root,consts,info);
+	const c=sp.children[0];
+	if('numBarAnchor' in consts){ const anchor=consts.numBarAnchor; if(anchor){
+		if('x' in anchor) c.anchor.x=anchor.x;
+		if('y' in anchor) c.anchor.y=anchor.y;
+	} }
+	c.x=consts.textWidth;
+	this.__create_setLoc(state,info,sp);
+	this.__create_setNewLoc(consts&&consts.numBar,state,info,sp);
+	// bar
+	{
+		const img=this.__create_loadImg(consts,consts.imgBar);
+		const bar=new Sprite(img);
+		bar.x=consts.textWidth; if('scrollBarDx' in consts) bar.x+=consts.scrollBarDx;
+		bar.anchor.y=c.anchor.y;
+		if('numBarMax' in info) bar._numBarMax=info.numBarMax;
+		else if('numBarMax' in consts) bar._numBarMax=consts.numBarMax;
+		sp.addChild(sp._bar=bar);
+		bar._limWidth=consts.scrollBarWidth-0;
+		img.addLoadListener(f.tbl[0].bind(bar));
+		bar._info=info;
+		bar._row=sp;
+		this._interactives.push(bar);
+		this._displayValues.push(bar);
+		const cursor=bar._cursor=new Sprite(this._bmpBarCursor);
+		cursor.anchor.x=0.5;
+		cursor.anchor.y=bar.anchor.y;
+		bar.addChild(cursor);
+		img.addLoadListener(f.tbl[1].bind(this,bar));
+	}
+	sp._row=sp;
+	sp._info=info;
+	this._rows.push(sp);
+},[
+function(bm){
+	if(isNaN(this._limWidth)) return;
+	this.scale.x=this._limWidth/bm.width;
+},
+function(sp,bm){
+	this._refreshToCurrentConf_numBar(sp);
+},
+]).add('_create_switch',function f(root,consts,state,info){
+	const sp=this.__create_newSp(root,consts,info);
+	const c=sp.children[0];
+	if('switchAnchor' in consts){ const anchor=consts.switchAnchor; if(anchor){
+		if('x' in anchor) c.anchor.x=anchor.x;
+		if('y' in anchor) c.anchor.y=anchor.y;
+	} }
+	c.x=consts.textWidth;
+	this.__create_setLoc(state,info,sp);
+	this.__create_setNewLoc(consts&&consts.switch,state,info,sp);
+	// selected/unselected
+	if(consts.switchButtons){ this._imgSels={
+		"selected":this.__create_loadImg(consts,consts.switchButtons.selected.img),
+		"unselected":this.__create_loadImg(consts,consts.switchButtons.unselected.img),
+	}; }
+	// options
+	sp._switchBtns={};
+	if(info.switches){ for(let x=0,lastp;x<info.switches.length;++x){
+		const p=new Sprite(); p.anchor.y=0;
+		if(lastp) p.x=lastp.x+lastp.width;
+		else p.x=consts.textWidth;
+		if('switchWidth' in consts) p.width=consts.switchWidth;
+		const pathTxt=consts.switchTexts[info.switches[x]].img;
+		let txtsp;
+		if(pathTxt){
+			const img=this.__create_loadImg(consts,pathTxt);
+			p.addChild(txtsp=new Sprite(img));
+			txtsp.anchor.y=c.anchor.y;
+			txtsp._switchKey=info.switches[x];
+			txtsp._info=info;
+			txtsp._row=sp;
+			this._interactives.push(txtsp);
+		}
+		const btn=new Sprite(this._imgSels.unselected);
+		btn.anchor.y=c.anchor.y;
+		p.addChild(btn);
+		btn._switch=txtsp._switch=btn;
+		btn._switchKey=info.switches[x];
+		btn._info=info;
+		btn._row=sp;
+		this._interactives.push(btn);
+		this._displayValues.push(btn);
+		sp.addChild(p);
+		this._imgSels.selected.addLoadListener(f.tbl[0].bind(txtsp));
+		this._imgSels.unselected.addLoadListener(f.tbl[0].bind(txtsp));
+		sp._switchBtns[btn._switchKey]=btn;
+		lastp=p;
+	} }
+	sp._row=sp;
+	sp._info=info;
+	this._rows.push(sp);
+},[
+function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
+{
+"on":function f(){},
+"off":function f(){},
+},
+]).add('_create_setorigin',function f(root,consts,state,info){
+	if('x' in info) state.x=info.x;
+	if('y' in info) state.y=info.y;
+	if('dx' in info) state.x+=info.dx;
+	if('dy' in info) state.y+=info.dy;
+}).add('update',function f(){
+	this._root.update();
+	if(!TouchInput.isPressed()) this._lastTouchSelect=-1;
+	if(TouchInput.isCancelled()||Input.isTriggered(f.tbl[0])) return this.popScene();
+	const ti=TouchInput;
+	const x=ti.x,y=ti.y;
+	if(TouchInput.isTriggered()){
+		if((this._lastTouchSelect=this.hitTest(x,y))>=0){
+			this.moveSelRectTo(this._lastTouchSelect);
+		}
+	}
+	if(this._lastTouchSelect>=0 && TouchInput.isPressed()){
+		this._doingLayoutIdx(this._lastTouchSelect,x,y);
+	}
+	const idxOri=this._idxRow;
+	if(Input.isRepeated('down')){
+		++this._idxRow;
+	}
+	if(Input.isRepeated('up')){
+		--this._idxRow;
+	}
+	if(idxOri!==this._idxRow){
+		this._idxRow+=this._rows.length;
+		this._idxRow%=this._rows.length;
+	}
+	if(idxOri!==this._idxRow){
+		const sp=this._rows[this._idxRow];
+		this.moveSelRectTo(sp);
+		const idx=this._getOptionsWindowSelectIdx(sp._info._key);
+		this._optionsWindow.select(idx);
+		SoundManager.playCursor();
+	}
+	if(!(this._idxRow>=0)) return;
+	const neg_adj=(Input.isRepeated('left')-Input.isRepeated('right'))*(1+Input.isPressed('shift')*f.tbl[1]);
+	const isPressingOk=Input.isTriggered('ok');
+	if(isPressingOk||neg_adj){
+		if(idxOri===this._idxRow) SoundManager.playCursor();
+		this._doingLayoutByKeyboard(this._rows[this._idxRow],neg_adj,isPressingOk);
+	}
+},[
+'cancel',
+9,
+]).add('hitTest',function f(x,y){
+	if(!ImageManager.isReady()) return -1;
+	for(let i=0,arr=this._interactives;i<arr.length;++i){ const sp=arr[i];
+		const rect=this.getGlobalRect(sp);
+		if(!rect.contains(x,y)) continue;
+		return i;
+	}
+	return -1;
+}).add('getGlobalRect',function f(sp){
+	let rtv=sp._globalRectCache;
+	if(!rtv){
+		if(!sp._pt){
+			sp._pt=[new Sprite(),new Sprite()];
+			const a=sp.anchor;
+			const w=sp.width,h=sp.height;
+			sp._pt[0].x=-a.x*w;
+			sp._pt[0].y=-a.y*h;
+			sp._pt[1].x=(1-a.x)*w;
+			sp._pt[1].y=(1-a.y)*h;
+		}
+		sp.addChild(sp._pt[0]);
+		sp.addChild(sp._pt[1]);
+		const p0=sp._pt[0].getGlobalPosition();
+		const p1=sp._pt[1].getGlobalPosition();
+		sp.removeChild(sp._pt[1]);
+		sp.removeChild(sp._pt[0]);
+		rtv=sp._globalRectCache=new Rectangle(p0.x,p0.y,p1.x-p0.x,p1.y-p0.y);
+		for(let x=0,arr=sp.children;x!==arr.length;++x){
+			if(arr[x].bitmap===this._bmpBarCursor || sp._pt.indexOf(arr[x])>=0) continue;
+			const rect=this.getGlobalRect(arr[x]);
+			const x0=Math.min(rtv.x,rect.x),x1=Math.max(rtv.x+rtv.width,rect.x+rect.width);
+			const y0=Math.min(rtv.y,rect.y),y1=Math.max(rtv.y+rtv.height,rect.y+rect.height);
+			rtv.x=x0; rtv.width=x1-x0;
+			rtv.y=y0; rtv.height=y1-y0;
+		}
+	}
+	return rtv;
+}).add('_doingLayoutByKeyboard',function f(sp,neg_adj,isPressingOk){
+	const info=sp&&sp._info; if(!info) return;
+	if(info.type==="numBar"){
+		if(isPressingOk) return;
+		sp=sp._bar;
+		ConfigManager[sp._info._key]=Math.round(ConfigManager[sp._info._key]-neg_adj).clamp(sp._numBarMin||0,sp._numBarMax);
+		this._refreshToCurrentConf_numBar(sp);
+	}else if(info.type==="switch"){
+		ConfigManager[sp._info._key]^=1;
+		this._refreshToCurrentConf_switch(sp);
+	}else if(info.type==="button"){
+		if(!isPressingOk) return;
+		this._optionsWindow.processOk();
+	}
+}).add('_doingLayoutIdx',function f(i,x,y){
+	const sp=this._interactives[i]; if(!sp) return;
+	const info=sp._info,rect=this.getGlobalRect(sp);
+	const idx=this._getOptionsWindowSelectIdx(info._key);
+	if(isNaN(x)) return;
+	if(idx>=0){
+		const ow=this._optionsWindow;
+		ow.select(idx);
+		if(info.type==="numBar"){
+			const r=(x-rect.x)/rect.width;
+			ConfigManager[sp._info._key]=Math.round((sp._numBarMax*r).clamp(0,sp._numBarMax)*f.tbl[0])/f.tbl[0];
+			this._refreshToCurrentConf_numBar(sp);
+		}else if(info.type==="switch"){
+			let idx=f.tbl[1].indexOf(sp._switchKey);
+			if(idx>=0) ConfigManager[sp._info._key]=idx;
+			this._refreshToCurrentConf_switch(sp);
+		}else if(info.type==="button") ow.processOk();
+	}
+},[
+1024, // precision
+["off","on"],
+]).add('_getOptionsWindowSelectIdx',function f(symbol){ // "_key"
+	const ow=this._optionsWindow; if(!ow||!ow._list) return;
+	if(!ow._symb2idx){
+		const m=ow._symb2idx=new Map();
+		for(let x=0,arr=ow._list;x!==arr.length;++x) m.set(arr[x].symbol,x);
+	}
+	return ow._symb2idx.get(symbol);
+}).add('refreshToCurrentConf',function f(){
+	const arr=this._displayValues;
+	if(!arr._symb2idx){
+		const m=arr._symb2idx=new Map();
+		for(let x=0;x!==arr.length;++x) m.set(arr[x]._info._key,x);
+	}
+	for(let i=0;i!==arr.length;++i){
+		const info=arr[i]._info; if(!info) continue;
+		const funcName=f.tbl[0][info.type]; if(!funcName) continue;
+		this[funcName](arr[i]);
+	}
+},[
+{
+switch:'_refreshToCurrentConf_switch',
+numBar:'_refreshToCurrentConf_numBar',
+},
+]).add('_refreshToCurrentConf_numBar',function f(sp){
+	const r=(ConfigManager[sp._info._key]/sp._numBarMax);
+	sp._cursor.x=sp.width*r;
+}).add('_refreshToCurrentConf_switch',function f(sp){
+	for(let x=0,arr=sp._info.switches;x!==arr.length;++x){
+		const i=ConfigManager[sp._info._key]^1;
+		sp._row._switchBtns[arr[x]].bitmap=x===i?this._imgSels.selected:this._imgSels.unselected;
+	}
+}).add('moveSelRectTo',function f(idx_or_sp){
+	let sp;
+	if(f.tbl[0]===typeof idx_or_sp){
+		sp=this._interactives[idx_or_sp];
+		sp=sp&&sp._row||sp;
+	}else sp=idx_or_sp;
+	if(!sp) return;
+	const rect=this.getGlobalRect(sp);
+	this._selRect.setFrame(0,0,rect.width,rect.height);
+	this._selRect.x=rect.x;
+	this._selRect.y=rect.y;
+	this._idxRow=this._rows.indexOf(sp);
+},[
+'number',
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 敵方sv_actor倒下不消失
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Sprite_Battler.prototype).add('removeCollapseEffects',function f(){
+	const alpha=this.alpha;
+	const rtv=f.ori.apply(this,arguments);
+	if(this._svBattlerEnabled) this.alpha=alpha;
+	return rtv;
 });
 
 })();
