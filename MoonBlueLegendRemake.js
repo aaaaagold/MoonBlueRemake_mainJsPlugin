@@ -488,6 +488,7 @@ console.groupEnd();
 console.log("");
 }
 
+// ****
 { const normal="color: rgba(234,234,234,0.75); font-size:20px;"+commonBgcolor,
 	enhance="color: rgba(234,234,123,0.75); font-size:20px;"+commonBgcolor
 	;
@@ -495,53 +496,47 @@ console.group("%c好好享受遊戲。這個插件拔走全部或部分我都沒
 console.log("要寫 credit 就寫作者是 agold404 。不寫進 credit 的話，你要在其中一個會載入的 js 檔案中，留下這段 group 起來的程式碼。(即至少這列及上一列，建議是這個scope，連變數一起，比較方便)");
 console.groupEnd();
 }
+// ****
 
 console.groupEnd();
 console.log("");
 
 console.group("%c歡迎拍打餵食開發人員們，對象有：","color: rgba(234,234,234,0.75); font-size:32px;");
 const devers={
-	"天使":["原作作者","主力主線RMMV事件"],
-	"攸藍":["戰鬥動畫製作","人才召集大師","PV",],
-	"鎧特":["支線製作","小遊戲製作","劇情相關部分"],
+	"天使":["原作作者","主力主線RMMV事件","部分支線"],
+	"攸藍":["戰鬥動畫製作","人才召集","PV"],
+	"鎧特":["部分支線","小遊戲製作"],
 	"牙籤":["CG","頭像","部分UI"],
-	"黃金":["此插件作者","修正原廠js及其他插件的bug","遊戲中部份特殊功能","寫在地圖上的特殊功能",],
+	"黃金":["此插件作者","修正原廠js及其他插件的bug","遊戲中部份非原生特殊功能"],
 	"材材":["劇情相關部分"],
-	"波波":["學習畫地圖"],
-	"狗頭":["exe反組譯大師"],
-	"樺城":["畫地圖"],
-	"咕咕咕":["主力主線RMMV事件","每次都說很短結果都超長，我是指劇情。",],
-	"LULU":["PV"],
-	"柏林":["CG強化","放閃(?)"],
+	"狗頭":["部分支線","已離隊"],
+	"樺城":["地圖支援"],
+	"咕咕咕":["主力主線RMMV事件","部分支線","每次都說很短結果都超長，我是指劇情。",],
+	"柏林":["怪圖","放閃(?)"],
 };
-{ const arr=[]; for(let i in devers) arr.push(i,','); arr.push("分工如下:"); console.log.apply(null,arr);
+{ const arr=[]; for(let i in devers) arr.push(i,','); arr.push("主要分工如下:"); console.log.apply(null,arr);
 }
 console.table(devers);
 const byWork={
 	"原著既最後細調":["天使",],
-	"統籌":["天使","攸藍",],
+	"統籌":["天使",],
+	"找人":["攸藍",],
 	"主線劇情":["天使","咕咕咕",],
-	"支線劇情":["天使","鎧特","狗頭","材材",],
-	"???":["攸藍","黃金","樺城",],
-	"戰鬥":["天使","攸藍",],
-	"程式":["黃金",],
-	"美術":["牙籤","柏林",],
+	"支線劇情":["天使","鎧特","咕咕咕","狗頭","材材",],
+	"戰鬥調整":["天使","攸藍","咕咕咕",],
+	"戰鬥動畫":["攸藍",],
+	"程式":["黃金","鎧特",],
+	"美術":["牙籤","柏林","機器人G",],
 	"地圖支援":["樺城",],
 	"PV":["攸藍","LULU",],
-},byWork_={
-	"原著既最後細調組":["天使",],
-	"劇情組":["天使","咕咕咕","材材",],
-	"事件組":["鎧特","咕咕咕","狗頭",],
-	"戰鬥組":["攸藍",],
-	"CG組":["牙籤","柏林",],
-	"寫插件組":["黃金",],
-	"地圖組":["天使","鎧特","波波","樺城",],
-	"吃披薩組":["攸藍",],
-	"???組":["攸藍","黃金","樺城",],
-	"PV組":["攸藍","LULU",],
+	"封測回饋":["但丁紅茶","幻影",],
+	"我不是情風藍":["攸藍",],
 };
 console.table(byWork);
+console.log("上下人數對不起來是對ㄉ");
+console.log("此處可能沒更新，請依遊戲中的感謝名單為主。");
 console.groupEnd();
+for(let x=4;x--;) console.log('');
 }catch(e){
 	console.log("你的瀏覽器不支援一些好玩的功能。真可惜。");
 }
@@ -1002,7 +997,7 @@ r=p[k]; (p[k]=function f(){
 (()=>{ let k,r,t;
 
 
-{ // 多1幀來讀其他東西
+{ // 多1場景(至少多1幀)來讀其他東西
 
 { const p=DataManager;
 const tune=[
@@ -1094,7 +1089,7 @@ r.tbl=t;
 }
 
 t=undefined;
-} // 多1幀來讀其他東西
+} // 多1場景(至少多1幀)來讀其他東西
 
 
 { // 支援前場景暫存恢復+確保下個場景要預讀的東西好了 // ImageManager.isReady()
@@ -1413,6 +1408,23 @@ r=p[k]; (p[k]=function f(value){
 	}
 }).ori=r;
 }
+
+
+{ // 合併 Scene_Map 和 Scene_Battle 的 createMessageWindow
+
+const k='createMessageWindow';
+const arr=[Scene_Map,Scene_Battle,];
+const tbl=new Map(); for(let x=0,xs=arr.length;x!==xs;++x) tbl.set(arr[x],arr[x].prototype[k]);
+new cfc(Scene_Base.prototype).add('createMessageWindow_merged',function f(){
+	return f.tbl.get(this.constructor).apply(this,arguments); // should throw error if not found
+},tbl,false,true);
+const f=function f(){
+	return Scene_Base.prototype.createMessageWindow_merged.apply(this,arguments);
+};
+arr.forEach(a=>new cfc(a.prototype).add('createMessageWindow',f,undefined,false,true));
+
+} // 合併 Scene_Map 和 Scene_Battle 的 createMessageWindow
+
 
 })();
 
@@ -18857,7 +18869,7 @@ new cfc(Game_System.prototype).add('_additionalMsgImg_getArr',function f(){
 x=>x,
 ]);
 
-new cfc(Scene_Map.prototype).add('createMessageWindow',function f(){
+new cfc(Scene_Base.prototype).add('createMessageWindow_merged',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._messageWindow._additionalMsgImg_use=true;
 	return rtv;
@@ -21148,11 +21160,28 @@ new cfc(p).add('initialize',function f(){
 	const mm=this._minimap,anc=playerSp.anchor;
 	this._playerX=$gameMap._displayX*mm._tileWidth  +playerSp.x +(0.5-anc.x)*playerSp.width  ;
 	this._playerY=$gameMap._displayY*mm._tileHeight +playerSp.y +(0.5-anc.y)*playerSp.height ;
-	this._playerFrm=playerSp._frame;
+	this._playerFrm=this._getSpriteBitmapFrame(playerSp);
 	this._playerBmp=playerSp.bitmap;
 	this.init_mouseDown(true);
 	this.showPopupMsg();
 	return rtv;
+},t,false,true).add('_getSpriteBitmapFrame',function f(sp){
+	const frm=sp._frame; if(!frm) return console.warn('no _frame property'),new Rectangle();
+	const ff=new Rectangle(frm.x,frm.y,frm.width,frm.height);
+	if(!(ff.width&&ff.height)){
+		if(sp._upperBody && sp._lowerBody){
+			const spuf=sp._upperBody._frame,splf=sp._lowerBody._frame;
+			const frmx0=Math.min(spuf.x,splf.x),frmx1=Math.max(spuf.x+spuf.width,splf.x+splf.width);
+			const frmy0=Math.min(spuf.y,splf.y),frmy1=Math.max(spuf.y+spuf.height,splf.y+splf.height);
+			ff.x=frmx0; ff.width=frmx1-frmx0;
+			ff.y=frmy0; ff.height=frmy1-frmy0;
+		}
+		if(!(ff.width&&ff.height) && sp.patternWidth && sp.patternHeight){
+			ff.width=sp.patternWidth();
+			ff.height=sp.patternHeight();
+		}
+	}
+	return ff;
 },t,false,true).add('init_minimap',function f(){
 	this._minimap=new Sprite_Minimap();
 	if(!this._minimap._inited){
@@ -21194,7 +21223,10 @@ new cfc(p).add('initialize',function f(){
 	sp.anchor.y=sp.anchor.x=0.5;
 	sp.visible=false;
 	this.addChild(sp);
-},t,false,true).add('showPopupMsg',function f(){
+},t,false,true).add('getMouseDownSprite',function f(){
+	if(!this._mouseDown) this.createMouseDown();
+	return this._mouseDown;
+}).add('showPopupMsg',function f(){
 	$gameTemp.popupMsg("使用上下左右移動，\n或使用滑鼠拖曳移動");
 },t,false,true).add('_setFrame_minimap',function f(){
 	const mm=this._minimap;
@@ -21256,9 +21288,10 @@ new cfc(p).add('initialize',function f(){
 		if(dx) lr+=dx/s*f.tbl[6];
 		if(dy) ud+=dy/s*f.tbl[6];
 		if(this._mouseDownX===undefined||this._mouseDownY===undefined){
-			this._mouseDown.x=this._mouseDownX=TouchInput.x;
-			this._mouseDown.y=this._mouseDownY=TouchInput.y;
-			this._mouseDown.visible=true;
+			const mdsp=this.getMouseDownSprite();
+			mdsp.x=this._mouseDownX=TouchInput.x;
+			mdsp.y=this._mouseDownY=TouchInput.y;
+			mdsp.visible=true;
 		}
 	}
 	const nshift=!Input.isPressed(f.tbl[3]);
@@ -21803,11 +21836,12 @@ t=[
 'BLR_custom/Message/mapMsg-Window_Message.txt',
 ];
 
-new cfc(Scene_Map.prototype).add('initialize',function f(){
+for(let x=0,arr=[Scene_Map,Scene_Battle,],xs=arr.length;x!==xs;++x) new cfc(arr[x].prototype).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	ImageManager.otherFiles_addLoad(f.tbl[0]);
 	return rtv;
-},t).add('createMessageWindow',function f(){
+},t);
+new cfc(Scene_Base.prototype).add('createMessageWindow_merged',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._create_adjustMsgWindow();
 	return rtv;
@@ -21980,10 +22014,9 @@ t.push({
 
 new cfc(Scene_Options.prototype).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	//const rtv=t[0].initialize.apply(this,arguments);
 	ImageManager.otherFiles_addLoad(f.tbl[1]);
 	this._lastTouchSelect=-1;
-	this._idxRow=-1;
+	this._idxRow=undefined;
 	return rtv;
 },t).add('create',function f(){
 	//const rtv=f.ori.apply(this,arguments);
@@ -22168,6 +22201,7 @@ function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
 	if('dx' in info) state.x+=info.dx;
 	if('dy' in info) state.y+=info.dy;
 }).add('update',function f(){
+	this.updateFade();
 	this._root.update();
 	if(!TouchInput.isPressed()) this._lastTouchSelect=-1;
 	if(TouchInput.isCancelled()||Input.isTriggered(f.tbl[0])) return this.popScene();
@@ -22181,12 +22215,10 @@ function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
 	if(this._lastTouchSelect>=0 && TouchInput.isPressed()){
 		this._doingLayoutIdx(this._lastTouchSelect,x,y);
 	}
-	const idxOri=this._idxRow;
-	if(Input.isRepeated('down')){
-		++this._idxRow;
-	}
-	if(Input.isRepeated('up')){
-		--this._idxRow;
+	const idxOri=this._idxRow,deltaUd=!Input.isRepeated('up')-!Input.isRepeated('down');
+	if(deltaUd){
+		if(isNaN(idxOri)) this._idxRow=Math.min(deltaUd,0);
+		else this._idxRow+=deltaUd;
 	}
 	if(idxOri!==this._idxRow){
 		this._idxRow+=this._rows.length;
@@ -22200,7 +22232,7 @@ function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
 		SoundManager.playCursor();
 	}
 	if(!(this._idxRow>=0)) return;
-	const neg_adj=(Input.isRepeated('left')-Input.isRepeated('right'))*(1+Input.isPressed('shift')*f.tbl[1]);
+	const neg_adj=(!Input.isRepeated('right')-!Input.isRepeated('left'))*(1+Input.isPressed('shift')*f.tbl[1]);
 	const isPressingOk=Input.isTriggered('ok');
 	if(isPressingOk||neg_adj){
 		if(idxOri===this._idxRow) SoundManager.playCursor();
@@ -22348,6 +22380,111 @@ new cfc(Sprite_Battler.prototype).add('removeCollapseEffects',function f(){
 	if(this._svBattlerEnabled) this.alpha=alpha;
 	return rtv;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 抓type error
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+Object.defineProperties(Game_Actor.prototype,{
+'_actorId':{
+	set:function(rhs){
+		if(typeof rhs!=='number'){
+			const msg='type error actor id. please open DevTools';
+			console.warn(msg);
+			alert(msg);
+			debugger;
+		}
+		return this.__actorId=rhs;
+	},get:function(){
+		return this.__actorId;
+	},configurable:true,
+},
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc Window_EventItem ㄉ Window_Help
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Base.prototype).add('createMessageWindow_merged',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	let h,w=this._messageWindow; w=w&&w._itemWindow; if(!w) return rtv;
+	w.addChild(h=new Window_Help());
+	w.setHelpWindow(h);
+	w._helpWindow=h; // ensure
+	return rtv;
+});
+new cfc(Window_EventItem.prototype).add('updatePlacement',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const w=this,h=this._helpWindow; if(!h) return rtv;
+	if(Graphics.boxHeight<w.y+w.height+h.height) h.y=-h.height;
+	else h.y=w.height;
+	return rtv;
+});
+
+
+{ const p=Window_EventItem.prototype;
+new cfc(p).add('syncHelpWindow_updateOpen',function f(){
+	const h=this._helpWindow;
+	if(h){
+		h.openness=this.openness;
+		h._opening=this._opening;
+	}
+},undefined,false,true).add('syncHelpWindow_updateClose',function f(){
+	const h=this._helpWindow;
+	if(h){
+		h.openness=this.openness;
+		h._closing=this._closing;
+	}
+},undefined,false,true);
+t=[
+Object.getPrototypeOf(Window_EventItem.prototype),
+'updateOpen',
+'updateClose',
+];
+k=t[1];
+if(Object.hasOwnProperty(p,k)){ new cfc(p).add(k,function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.syncHelpWindow_updateOpen();
+	return rtv;
+}); }
+else{ new cfc(p).add(k,function f(){
+	const rtv=f.tbl[0][f.tbl[1]].apply(this,arguments);
+	this.syncHelpWindow_updateOpen();
+	return rtv;
+},t); }
+k=t[2];
+if(Object.hasOwnProperty(p,k)){ new cfc(p).add(k,function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.syncHelpWindow_updateClose();
+	return rtv;
+}); }
+else{ new cfc(p).add(k,function f(){
+	const rtv=f.tbl[0][f.tbl[2]].apply(this,arguments);
+	this.syncHelpWindow_updateClose();
+	return rtv;
+},t); }
+}
+
 
 })();
 
