@@ -19666,7 +19666,7 @@ function f(){
 		};
 		for(let x=0,s="VPN",xs=s.length;x!==xs;++x) f.tbl[s[x].toLowerCase()]=f.tbl[s[x]];
 	}
-	const slashes=arguments[2]||"",key=arguments[5],val=arguments[6];
+	const slashes=arguments[2]||"",key=arguments[5],val=arguments[6]-0; // to num type
 	if(key in f.tbl) return slashes+f.tbl[key](val);
 	return arguments[0];
 },
@@ -22485,6 +22485,25 @@ else{ new cfc(p).add(k,function f(){
 },t); }
 }
 
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 如果 Game_Actor.prototype.setup ㄉ arg0 !isNaN() ，就轉型成 Number
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Actor.prototype).add('setup',function f(){
+	if(!isNaN(arguments[0])) arguments[0]-=0;
+	return f.ori.apply(this,arguments);
+});
 
 })();
 
