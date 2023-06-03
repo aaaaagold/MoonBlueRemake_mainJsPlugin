@@ -357,6 +357,30 @@ cf(cf(cf(cf(Input,'isTexting_set',function f(){
 	return f.ori.apply(this,arguments);
 });
 //
+SceneManager._updateSceneCnt=0|0;
+new cfc(SceneManager).add('isMapOrIsBattle',function f(){
+	return this._scene&&f.tbl.has(this._scene.constructor);
+},new Set([Scene_Map,Scene_Battle])).add('updateMain',function f(){
+	if(Utils.isMobileSafari()){
+		// this.updateInputData(); // already in .update
+		this.changeScene(); this.updateScene();
+	}else{
+		const newTime=this._getTimeInMsWithoutMobileSafari();
+		const fTime=Math.min((newTime-this._currentTime)/1000,f.tbl[0]);
+		this._currentTime=newTime;
+		this._accumulator+=fTime;
+		for(;this._accumulator>=this._deltaTime;this._accumulator-=this._deltaTime){
+			this.updateInputData();
+			this.changeScene(); this.updateScene();
+		}
+	}
+	this.renderScene();
+	this.requestUpdate();
+},[0.25,],true,true).add('updateScene',function f(){
+	++this._updateSceneCnt; // reset to zero when 'Graphics.frameCount' increase // in 'Graphics.render'
+	return f.ori.apply(this,arguments);
+});
+//
 cf(cf(cf(Window_Selectable.prototype,'processCursorMove',t=function f(){
 	const idx=this.index();
 	const rtv=f.ori.apply(this,arguments);
@@ -6923,7 +6947,7 @@ r=p[k]; (p[k] = function f(stage){
 		this.renderOtherEffects(stage);
 		this._skipCount = Math.min((Date.now() - startTime)>>4, this._maxSkip);
 	}
-	this.frameCount++;
+	this.frameCount+=Math.max(SceneManager._updateSceneCnt|0,1)|0; SceneManager._updateSceneCnt=0|0;
 }).ori=r;
 p[k].forEach=function(f){ f.call(this); };
 if(!p.renderOtherEffects) p.renderOtherEffects=()=>{};
@@ -19864,7 +19888,7 @@ if(!window.addEnum) window.addEnum=function(key){
 	return this;
 };
 
-(()=>{ let k,r,t; const gp=Game_Party;
+(()=>{ let k,r,t; const gbb=Game_BattlerBase,gp=Game_Party;
 
 const kwtxt='掉落數量上升';
 const kwtrait="ABILITY_"+kwtxt;
@@ -22503,7 +22527,53 @@ else{ new cfc(p).add(k,function f(){
 new cfc(Game_Actor.prototype).add('setup',function f(){
 	if(!isNaN(arguments[0])) arguments[0]-=0;
 	return f.ori.apply(this,arguments);
+}).add('actorId',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	return isNaN(rtv)?rtv:rtv-0;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 16倍跑幀,lag我不管
+ * @author agold404
+ * @help ESC下面那顆鍵
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const keyCode=192; // event.keyCode('`') === 192
+if(!Input.keyMapper[keyCode]) Input.keyMapper[keyCode]='`';
+t=[
+Input.keyMapper[keyCode], // buttonName
+16|0,
+2|0,
+];
+
+SceneManager._speedUpdateUpCnt=0|0;
+new cfc(SceneManager).add('updateMain',function f(){
+	if(Input.isPressed(f.tbl[0])){
+		for(let x=Math.max(f.tbl[1],0)|0;x--;){
+			this.updateInputData();
+			this.changeScene();
+			this.updateScene();
+		}
+		this._currentTime=this._getTimeInMsWithoutMobileSafari();
+		this._accumulator=0.0;
+		if(++this._speedUpdateUpCnt>=f.tbl[2]){
+			this._speedUpdateUpCnt=0|0;
+			this.renderScene();
+		}
+		this.requestUpdate();
+	}else{
+		this._speedUpdateUpCnt=0|0;
+		return f.ori.apply(this,arguments);
+	}
+},t);
 
 })();
 
