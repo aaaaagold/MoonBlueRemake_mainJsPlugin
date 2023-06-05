@@ -22552,18 +22552,25 @@ t=[
 Input.keyMapper[keyCode], // buttonName
 16|0,
 2|0,
+0.25,
 ];
 
 SceneManager._speedUpdateUpCnt=0|0;
 new cfc(SceneManager).add('updateMain',function f(){
 	if(Input.isPressed(f.tbl[0])){
-		for(let x=Math.max(f.tbl[1],0)|0;x--;){
-			this.updateInputData();
-			this.changeScene();
-			this.updateScene();
+		const isLongPressed=0&&Input.isLongPressed(f.tbl[0]);
+		const newTime=this._getTimeInMsWithoutMobileSafari();
+		const fTime=Math.min((newTime-this._currentTime)/1000.0,f.tbl[3]);
+		this._currentTime=newTime;
+		this._accumulator+=fTime;
+		if(isLongPressed) this.updateInputData();
+		for(;this._accumulator>=this._deltaTime;this._accumulator-=this._deltaTime){
+			for(let x=Math.max(f.tbl[1],0)|0;x--;){
+				if(!isLongPressed) this.updateInputData();
+				this.changeScene(); this.updateScene();
+			}
+			this._accumulator=0.0; break; // it will be VERY lag if a tiny lag happens, thus discarding the rest of updates
 		}
-		this._currentTime=this._getTimeInMsWithoutMobileSafari();
-		this._accumulator=0.0;
 		if(++this._speedUpdateUpCnt>=f.tbl[2]){
 			this._speedUpdateUpCnt=0|0;
 			this.renderScene();
@@ -22574,6 +22581,109 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return f.ori.apply(this,arguments);
 	}
 },t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 月藍特製商店UI圖
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Shop.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._backImg_buy=ImageManager.loadNormalBitmap('BLR_custom/Shop/Buy/frame.png');
+	this._backImg_sell=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/frame.png');
+	this._backImg_buyBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Buy/a01.png');
+	this._backImg_sellBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Buy/a02.png');
+	this._backImg_leaveBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Buy/a03.png');
+	this._backImg_itemBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b01.png');
+	this._backImg_weaponBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b02.png');
+	this._backImg_armorBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b03.png');
+	this._backImg_keyItemBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b04.png');
+	
+	return rtv;
+}).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const c=this.children,bs=this._backgroundSprite,wl=this._windowLayer;
+	let idx=0;
+	if(bs&&bs.parent===this) idx=Math.max(c.indexOf(bs)+1,idx);
+	if(wl&&wl.parent===this) idx=Math.max(c.indexOf(wl),idx);
+	//this.addChildAt(this._template=new Sprite(ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/Sell.png')),idx); // 對照用
+	this.addChildAt(this._backSprite_buy=new Sprite(this._backImg_buy),idx);
+	this.addChildAt(this._backSprite_sell=new Sprite(this._backImg_sell),idx);
+	if(wl) wl.children.forEach(f.tbl[0]);
+	const cmdg=this._commandGroup=new Sprite(),catg=this._categoryGroup=new Sprite();
+	this.addChild(cmdg);
+	this.addChild(catg);
+	cmdg.addChild(this._sprite_buyBtn=new Sprite(this._backImg_buyBtn));
+	cmdg.addChild(this._sprite_sellBtn=new Sprite(this._backImg_sellBtn));
+	cmdg.addChild(this._sprite_leaveBtn=new Sprite(this._backImg_leaveBtn));
+	catg.addChild(this._sprite_itemBtn=new Sprite(this._backImg_itemBtn));
+	catg.addChild(this._sprite_weaponBtn=new Sprite(this._backImg_weaponBtn));
+	catg.addChild(this._sprite_armorBtn=new Sprite(this._backImg_armorBtn));
+	catg.addChild(this._sprite_keyItemBtn=new Sprite(this._backImg_keyItemBtn));
+	this._sprite_buyBtn.x=f.tbl[1].buyBtn.x;
+	this._sprite_buyBtn.y=f.tbl[1].buyBtn.y;
+	this._sprite_sellBtn.x=f.tbl[1].sellBtn.x;
+	this._sprite_sellBtn.y=f.tbl[1].sellBtn.y;
+	this._sprite_leaveBtn.x=f.tbl[1].leaveBtn.x;
+	this._sprite_leaveBtn.y=f.tbl[1].leaveBtn.y;
+	this._sprite_itemBtn.x=f.tbl[1].itemBtn.x;
+	this._sprite_itemBtn.y=f.tbl[1].itemBtn.y;
+	this._sprite_weaponBtn.x=f.tbl[1].weaponBtn.x;
+	this._sprite_weaponBtn.y=f.tbl[1].weaponBtn.y;
+	this._sprite_armorBtn.x=f.tbl[1].armorBtn.x;
+	this._sprite_armorBtn.y=f.tbl[1].armorBtn.y;
+	this._sprite_keyItemBtn.x=f.tbl[1].keyItemBtn.x;
+	this._sprite_keyItemBtn.y=f.tbl[1].keyItemBtn.y;
+	const cmdw=this._commandWindow,catw=this._categoryWindow;
+	cmdw.alpha=catw.alpha=0;
+	cmdw.itemRect=f.tbl[2].bind(cmdw,cmdg);
+	catw.itemRect=f.tbl[2].bind(catw,catg);
+	catw.padding=cmdw.padding=0;
+	return rtv;
+},[
+x=>x._windowBackSprite.visible=x._windowFrameSprite.alpha=0,
+{
+// use global (0,0) their (0,0)
+buyBtn:{x:28,y:125,},
+sellBtn:{x:210,y:125,},
+leaveBtn:{x:391,y:125,},
+itemBtn:{x:37,y:199,},
+weaponBtn:{x:228,y:199,},
+armorBtn:{x:419,y:199,},
+keyItemBtn:{x:609,y:199,},
+},
+function(g,idx){
+	const src=g.children[idx];
+	return new Rectangle(src.x-this.x,src.y-this.y,src.width,src.height);
+},
+]).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const cmdw=this._commandWindow,catw=this._categoryWindow;
+	const cmdg=this._commandGroup,catg=this._categoryGroup;
+	const idxCmdw=cmdw.index(),idxCatw=catw.index();
+	this._backSprite_buy.visible=!(catg.visible=this._backSprite_sell.visible=this._sellWindow.visible);
+	if(cmdg._lastIdx!==idxCmdw){
+		cmdg._lastIdx=idxCmdw;
+		cmdg.children.forEach(f.tbl[0].bind(idxCmdw,f.tbl[1]));
+	}
+	if(catg.visible && catg._lastIdx!==idxCatw){
+		catg._lastIdx=idxCatw;
+		catg.children.forEach(f.tbl[0].bind(idxCatw,f.tbl[1]));
+	}
+	return rtv;
+},[
+function f(alphas,sp,i){ sp.alpha=alphas[(this===i)-0]; },
+[0.5,1,],
+]);
 
 })();
 
