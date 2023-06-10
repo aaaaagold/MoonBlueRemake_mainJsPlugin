@@ -13922,7 +13922,7 @@ new cfc(Window_Options.prototype).add('makeCommandList',function f(){
 
 new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
 	let rtv=f.ori.apply(this,arguments);
-	if(ConfigManager[f.tbl[0]]){
+	if(this[f.tbl[1]]){
 		const arr0=[],arr1=[];
 		for(let x=0,arr=this._data;x!==arr.length;++x) (arr[x]&&$gameParty.gainLogger_isNew($gameParty.itemContainer(arr[x]),arr[x])?arr0:arr1).push(arr[x]);
 		for(let x=0;x!==arr1.length;++x) arr0.push(arr1[x]);
@@ -13953,9 +13953,11 @@ r=p[k]; (p[k]=function f(iconIndex, x, y, item){
 }).ori=r;
 }
 
-{ const p=Scene_Equip.prototype;
-k='terminate';
-r=p[k]; (p[k]=function f(){
+new cfc(Scene_Equip.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._itemWindow[f.tbl[1]]=ConfigManager[f.tbl[0]];
+	return rtv;
+},t).add('terminate',function f(){
 	const rtv=f.ori.apply(this,arguments),sm=SceneManager;
 	const nc=sm&&sm._nextScene;
 	if(nc && nc.constructor===Scene_Map){
@@ -13963,8 +13965,7 @@ r=p[k]; (p[k]=function f(){
 		$gameParty && $gameParty.gainLogger_clear_equips();
 	}else $gameTemp.gainLogger_shouldClear_equips=true;
 	return rtv;
-}).ori=r;
-}
+});
 
 new cfc(Scene_Item.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -22819,7 +22820,7 @@ new cfc(p).add(k,function f(skill, x, y, width){
 		const itemConsume=skill[f.tbl[0]];
 		if(itemConsume){
 			const tmp=[],m=new Map(); for(let k in itemConsume){ const item=$dataItems[k]; tmp.push(item); m.set(item,itemConsume[k]); }
-			DataManager.sortDataObjList(tmp);
+			if(DataManager.sortDataObjList) DataManager.sortDataObjList(tmp);
 			arr[0]=tmp.map(f.tbl[2],m);
 			arr[2]=arr[1]=0;
 		}
