@@ -22738,6 +22738,7 @@ dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
 t=[
 kw,
 64,
+function(item){ return [item,this.get(item),]; },
 ];
 
 new cfc(Game_BattlerBase.prototype).add('canUse',function f(item){
@@ -22766,6 +22767,20 @@ new cfc(Game_Battler.prototype).add('useItem',function f(item){
 
 
 { const p=Window_SkillList.prototype;
+const f=function f(){
+	// update_itemConsume
+	if(!this._data) return;
+	const strt=this.topIndex(),n=this.maxPageItems()+this[f.tbl[0]](),M=this.maxItems();
+	for(let x=0;x!==n;++x){
+		const idx=x+strt; if(!(idx<M)) break;
+		const item=this._data[idx];
+		if(item && this.drawSkillCost_itemConsume_updateIconIdx(item)) this.redrawItem(idx);
+	}
+};
+f.ori=undefined;
+f.tbl=[
+'maxCols',
+];
 k='drawSkillCost';
 new cfc(p).add(k,function f(skill, x, y, width){
 	let rtv=f.ori.apply(this,arguments);
@@ -22802,12 +22817,19 @@ new cfc(p).add(k,function f(skill, x, y, width){
 		const arr=rtv=[]; // [[item,amount,],...] , idx , remainFrames
 		m.set(skill,arr);
 		const itemConsume=skill[f.tbl[0]];
-		if(itemConsume){ arr[0]=[]; for(let k in itemConsume){
-			arr[0].push([$dataItems[k],itemConsume[k],]);
-		} arr[2]=arr[1]=0; }
+		if(itemConsume){
+			const tmp=[],m=new Map(); for(let k in itemConsume){ const item=$dataItems[k]; tmp.push(item); m.set(item,itemConsume[k]); }
+			DataManager.sortDataObjList(tmp);
+			arr[0]=tmp.map(f.tbl[2],m);
+			arr[2]=arr[1]=0;
+		}
 	}
 	return rtv;
-},t);
+},t).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.update_itemConsume();
+	return rtv;
+}).add('update_itemConsume',f,f.tbl,false,true);
 if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[k]=p[k];
 t=k+'_itemConsume_draw';
 if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[t]=p[t];
@@ -22815,7 +22837,21 @@ t=k+'_itemConsume_updateIconIdx';
 if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[t]=p[t];
 t=k+'_itemConsume_getInfo';
 if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[t]=p[t];
+if(typeof Window_SkillListM!=='undefined') new cfc(Window_SkillListM.prototype).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.update_itemConsume();
+	return rtv;
+}).add('update_itemConsume',f,f.tbl,false,true);
 }
+
+if(0)new cfc(Scene_Skill.prototype).add('update',function f(){
+	this.update_itemConsume();
+	return f.ori.apply(this,arguments);
+}).add('update_itemConsume',function f(){
+	const iw=this._itemWindow;
+	const item=iw&&iw.item(); if(!item) return;
+	if(iw.drawSkillCost_itemConsume_updateIconIdx(item)) iw.redrawCurrentItem();
+});
 
 })();
 
