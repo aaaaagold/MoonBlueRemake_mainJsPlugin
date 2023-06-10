@@ -1616,7 +1616,7 @@ r=p[k]; (p[k]=function f(skill, x, y, width){
 		this.drawText(tuneVal(tmp), x+nextPad, y, w_4, 'right');
 		nextPad-=d;
 	}
-	return x-nextPad;
+	return x+nextPad;
 }).ori=r;
 if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[k]=p[k];
 }
@@ -19045,8 +19045,28 @@ new cfc(Game_System.prototype).add('miniPrng_init',function f(seed,b,a){
 
 const d=document;
 
+Bitmap._giveUps=new Map();
+Bitmap.giveUps_add=function f(ori,giveUps){
+	this._giveUps.set(ori,giveUps);
+};
+Bitmap.giveUps_del=function f(ori){
+	this._giveUps.delete(ori);
+};
+Bitmap.giveUps_clear=function f(){
+	this._giveUps.clear();
+};
+Bitmap.giveUps_get=function f(ori){
+	return this._giveUps.has(ori)?this._giveUps.get(ori):ori;
+};
+
+const emptyData={
+'img':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=', // blank_1x1
+'audio':'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQAAAAA=', // blank_audio
+};
+
 new cfc(Bitmap.prototype).add('_requestImage',function f(url,substituteUrl){
 	if(substituteUrl) arguments[0]=substituteUrl;
+	arguments[0]=Bitmap.giveUps_get(arguments[0]);
 	return f.ori.apply(this,arguments);
 });
 
@@ -19077,10 +19097,7 @@ new cfc(ResourceHandler).add('createLoader',function f(url, retryMethod, resignM
 			}
 		}
 	};
-},{
-'img':'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=', // blank_1x1
-'audio':'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQAAAAA=', // blank_audio
-},true).add('createLoader_loadErr',function(url,retryMethod){
+},emptyData,true).add('createLoader_loadErr',function(url,retryMethod){
 	Graphics.printLoadingError(url,retryMethod._type,);
 	SceneManager.stop();
 },undefined,true).add('retry',function (giveUp){
@@ -19115,11 +19132,12 @@ new cfc(Graphics).add('printLoadingError',function f(url,type){
 			ResourceHandler.retry();
 			evt.stopPropagation();
 			rtv.style.zIndex=99;
+			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("retry loading: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		this._errorPrinter.ac(btn);
 		this._loadingCount = -Infinity;
 		
-		const alt=f.tbl.alts[type]; if(alt) alt(this);
+		const alt=f.tbl.alts[type]; if(alt) alt(this,url);
 		
 		let arr=this._errorPrinter.querySelectorAll("button"); //let arr=d.querySelectorAll('#ErrorPrinter>button');
 		// clear btn.style.backgroundColor so they can use style sheet
@@ -19141,7 +19159,7 @@ new cfc(Graphics).add('printLoadingError',function f(url,type){
 	return rtv;
 },{
 alts:{
-	'img':self=>{
+	'img':(self,url)=>{
 		// using transparent image?
 		const btn=self._setErrActBtnStyle(d.ce('button'));
 		btn.ac(d.ce('div').atxt('Give up')).ac(d.ce('div').atxt('(use 1x1 transparent image)'));
@@ -19149,17 +19167,20 @@ alts:{
 			ResourceHandler.retry(1);
 			evt.stopPropagation();
 			self._errorPrinter.style.zIndex=99;
+			Bitmap.giveUps_add(url,emptyData.img);
+			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("give up: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		self._errorPrinter.ac(d.ce('br')).ac(btn);
 		self._loadingCount = -Infinity;
 	},
-	'audio':self=>{
+	'audio':(self,url)=>{
 		// using empty audio?
 		const btn=self._setErrActBtnStyle(d.ce('button'));
 		btn.ac(d.ce('div').atxt('Give up')).ac(d.ce('div').atxt('(use empty audio)'));
 		btn.onmousedown=btn.ontouchstart=(evt)=>{
 			ResourceHandler.retry(1);
 			evt.stopPropagation();
+			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("give up: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		self._errorPrinter.ac(d.ce('br')).ac(btn);
 		self._loadingCount = -Infinity;
@@ -22684,6 +22705,117 @@ function(g,idx){
 function f(alphas,sp,i){ sp.alpha=alphas[(this===i)-0]; },
 [0.5,1,],
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 技能/道具 消耗道具
+ * @author agold404
+ * @help <消耗道具:JSON>
+ * 
+ * <消耗道具:{"道具id":幾個}>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw="消耗道具";
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const raw=meta[kw]; if(!raw) return;
+	dataobj[kw]=JSON.parse(meta[kw]);
+},
+]);
+
+t=[
+kw,
+64,
+];
+
+new cfc(Game_BattlerBase.prototype).add('canUse',function f(item){
+	let rtv=f.ori.apply(this,arguments); if(!rtv) return false;
+	const fu=this.friendsUnit();
+	if(!fu||!fu.gainItem||!fu.numItems) return true; // enemy
+	const itemConsume=item[f.tbl[0]];
+	if(itemConsume){ for(let k in itemConsume){
+		if(!rtv) break;
+		rtv=fu.numItems($dataItems[k])-itemConsume[k]>=0;
+	} }
+	return rtv;
+},t).add('friendsUnit',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	return rtv;
+});
+
+new cfc(Game_Battler.prototype).add('useItem',function f(item){
+	const fu=this.friendsUnit(); if(!fu||!fu.gainItem||!fu.numItems) return f.ori.apply(this,arguments);
+	const itemConsume=item[f.tbl[0]];
+	if(itemConsume){ for(let k in itemConsume){
+		fu.gainItem($dataItems[k],0-itemConsume[k]);
+	} }
+	return f.ori.apply(this,arguments);
+},t);
+
+
+{ const p=Window_SkillList.prototype;
+k='drawSkillCost';
+new cfc(p).add(k,function f(skill, x, y, width){
+	let rtv=f.ori.apply(this,arguments);
+	rtv=this.drawSkillCost_itemConsume_draw(skill,rtv,y,Window_Base._iconWidth);
+	return rtv;
+},t).add(k+'_itemConsume_draw',function f(skill, x, y, width){
+	const info=this.drawSkillCost_itemConsume_getInfo(skill);
+	if(!info||!info.length) return x;
+	const idx=info[1]; if(!info[0][idx]) return x;
+	x-=Window_Base._iconWidth+f.tbl[0];
+	this.drawIcon(info[0][idx][0].iconIndex,x,y);
+	this.resetTextColor();
+	const orifs=this.contents.fontSize;
+	this.contents.fontSize-=this.contents.fontSize>>2;
+	const dy=orifs-this.contents.fontSize;
+	this.drawText('-'+info[0][idx][1],x+f.tbl[0],y+dy,Window_Base._iconWidth-(f.tbl[0]<<1));
+	this.contents.fontSize=orifs;
+	return x;
+},[
+1, // text padding
+]).add(k+'_itemConsume_updateIconIdx',function f(skill){
+	// return true if updated
+	const info=this.drawSkillCost_itemConsume_getInfo(skill); if(!info||!info.length) return;
+	if(!(--info[2]>0)){
+		info[2]=f.tbl[1];
+		const old=info[1];
+		info[1]=~~((info[1]+1)%info[0].length);
+		return old!==info[1];
+	}
+},t).add(k+'_itemConsume_getInfo',function f(skill){
+	let m=this._itemConsume_map; if(!m) m=this._itemConsume_map=new Map();
+	let rtv=m.get(skill);
+	if(!rtv){
+		const arr=rtv=[]; // [[item,amount,],...] , idx , remainFrames
+		m.set(skill,arr);
+		const itemConsume=skill[f.tbl[0]];
+		if(itemConsume){ arr[0]=[]; for(let k in itemConsume){
+			arr[0].push([$dataItems[k],itemConsume[k],]);
+		} arr[2]=arr[1]=0; }
+	}
+	return rtv;
+},t);
+if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[k]=p[k];
+t=k+'_itemConsume_draw';
+if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[t]=p[t];
+t=k+'_itemConsume_updateIconIdx';
+if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[t]=p[t];
+t=k+'_itemConsume_getInfo';
+if(typeof Window_SkillListM!=='undefined') Window_SkillListM.prototype[t]=p[t];
+}
 
 })();
 
