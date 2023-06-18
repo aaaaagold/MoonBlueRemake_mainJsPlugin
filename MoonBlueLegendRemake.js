@@ -688,7 +688,16 @@ function(stat){
 cf(Game_Interpreter.prototype,'command111',function f(){
 	// interpreter branch
 	if(this._params[0]===12){
-		this._branch[this._indent]=!!eval(this._params[1]);
+		let res;
+		try{
+			res=!!eval(this._params[1]);
+		}catch(e){
+			if(this && this._params) e.message+='\nScript:\n'+this._params[1];
+			e.name+=' in Game_Interpreter.prototype.command111';
+			e._msgOri=e.message;
+			throw e;
+		}
+		this._branch[this._indent]=res;
 		if(!this._branch[this._indent]) this.skipBranch();
 		return true;
 	}else return f.ori.apply(this,arguments);
@@ -1021,6 +1030,28 @@ r=p[k]; (p[k]=function f(){
 (()=>{ let k,r,t;
 
 
+{ // error msg
+new cfc(SceneManager).add('catchException',function f(e){
+	if(e instanceof Error){
+		Graphics.printError(e.name, e.message, e);
+		console.error(e.stack);
+	}else{
+		Graphics.printError('UnknownError', e, e && e.error);
+	}
+	AudioManager.stopAll();
+	this.stop();
+},t,false,true).add('onError',function f(e){
+	console.error(e.message);
+	console.error(e.filename, e.lineno);
+	try{
+		this.stop();
+		Graphics.printError('Error', e.message, e.error);
+		AudioManager.stopAll();
+	}catch(_){}
+},t,false,true);
+} // error msg
+
+
 { // 多1場景(至少多1幀)來讀其他東西
 
 { const p=DataManager;
@@ -1125,7 +1156,7 @@ new cfc(SceneManager).add('push',function f(sceneClass,shouldRecordCurrentScene)
 	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
 		let recordedPrevScene;
 		if(this._scene){
-			if(DataManager.isBattleTest()||!this._nextScene._prevScene){
+			if(!this._nextScene||!this._nextScene._prevScene){
 				this._scene.terminate();
 				this._scene.detachReservation();
 			}
@@ -1145,9 +1176,16 @@ new cfc(SceneManager).add('push',function f(sceneClass,shouldRecordCurrentScene)
 				this.onSceneCreate();
 			}
 		}
-		if(this._exiting) this.terminate();
+		if(this._exiting){
+			if(f.tbl[0]){
+				--f.tbl[0];
+				this.terminate();
+			}
+		}
 	}
-},undefined,true,true);
+},[
+3, // max call count of 'this.terminate();'
+],true,true);
 } // 支援前場景暫存恢復+確保下個場景要預讀的東西好了
 
 
@@ -19187,20 +19225,39 @@ alts:{
 		self._loadingCount = -Infinity;
 	},
 },
-},true).add('printError',function f(name,msg){
+},true).add('printError',function f(name,msg,err){
 	this._errorShowed=true;
-	if(this._errorPrinter) this._errorPrinter.ac(this._makeErrorHtml(name, msg));
+	if(this._errorPrinter) this._errorPrinter.ac(this._makeErrorHtml(name, msg, err));
 	this._applyCanvasFilter();
 	this._clearUpperCanvas();
-},undefined,true).add('_makeErrorHtml',function f(name,msg){
-	return d.ce("div").sa("style","background-color:rgba(0,0,0,0.5);").ac(
-		d.ce("font").sa("color","yellow").ac(
+},undefined,true).add('_makeErrorHtml',function f(name,msg,err){
+	const rtv=d.ce("div").sa("style",f.tbl[0][0]+f.tbl[0][1]).ac(
+		d.ce("font").sa("color",f.tbl[1][0]).ac(
 			d.ce("b").atxt(name)
 		)
 	).ac(d.ce("br")).ac(
-		d.ce("font").sa("color","white").atxt(msg)
+		d.ce("font").sa("color",f.tbl[1][1]).atxt(msg)
+	).ac(d.ce("br")).ac(d.ce("br")).ac(
+		d.ce("font").sa("color",f.tbl[1][1]).atxt(f.tbl[1][2])
 	).ac(d.ce("br"));
-},undefined,true).add('_setErrActBtnStyle',function f(btn){
+	const stack=err&&err.stack;
+	if(stack){
+		console.log(stack);
+		rtv.ac(d.ce("br")).ac(d.ce("div").sa("style",f.tbl[0][0]+"color:"+f.tbl[1][0]).atxt(f.tbl[0][2]||f.tbl[0][3]));
+		const elemsg=d.ce("div").sa("style",f.tbl[0][0]+"color:"+f.tbl[1][1]).sa("color",f.tbl[1][1]);
+		const idx=err._msgOri?stack.indexOf(err._msgOri):0;
+		(0<idx?stack.slice(idx+err._msgOri.length):stack).replace(f.tbl[2][0],f.tbl[2][1]).split(f.tbl[3]).map(f.tbl[4][0],f.tbl[4][1]).forEach(f.tbl[5][0],elemsg);
+		rtv.ac(elemsg);
+	}
+	return rtv;
+},[
+["background-color:rgba(0,0,0,0.5);white-space:pre-wrap;font-family:monospace;","max-height:100%;overflow-y:scroll;user-select:all;","爛掉ㄌ，快找agold404(黃金)求救","爛掉ㄌ，試著自救如何？"],
+["yellow","white","Press F5 or reload the page to restart"],
+[/\r/g,''],
+/\n/g,
+[function(line){ console.warn(line); return line.replace(this[0],this[1]); },[/(((at eval \([^\(]+)?))?\(.*[/\\]([^/\\:]+):/g,"$3($4:"],],
+[function(line){ this.ac(d.ce('div').atxt(line)); }],
+],true).add('_setErrActBtnStyle',function f(btn){
 	return btn.sa('style',f.tbl.css_inline.btn).sa('class',f.tbl.css_class.btn);
 },{
 css_class:{
@@ -19209,7 +19266,15 @@ css_class:{
 css_inline:{
 	btn:'',
 },
-},undefined,true);
+},undefined,true).add('_updateErrorPrinter',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const t=this._errorPrinter;
+	t.height = this._height * f.tbl[0];
+	this._centerElement(t);
+	return rtv;
+},[
+0.875,
+]);
 
 })();
 
@@ -21180,6 +21245,7 @@ if(!Input.keyMapper[109]) Input.keyMapper[109]='NumPad-';
 if(!Input.keyMapper[107]) Input.keyMapper[107]='NumPad+';
 if(!Input.keyMapper[189]) Input.keyMapper[189]='-';
 if(!Input.keyMapper[187]) Input.keyMapper[187]='+';
+if(!Input.keyMapper["M".charCodeAt()]) Input.keyMapper["M".charCodeAt()]='m';
 t=[
 a.ori.prototype,
 a.ori,
@@ -21188,12 +21254,14 @@ a.ori,
 [0.5,2], // *
 0.125, // +
 ['img/system/IconSet.png',{
-x:(75&15)*Window_Base._iconWidth,
-y:(75>>4)*Window_Base._iconHeight,
-width:Window_Base._iconWidth,
-height:Window_Base._iconHeight,
+ x:(75&15)*Window_Base._iconWidth,
+ y:(75>>4)*Window_Base._iconHeight,
+ width:Window_Base._iconWidth,
+ height:Window_Base._iconHeight,
 }],
+undefined, // 7:reserved: keySymbols for marker adjustments
 ];
+{ const c="M".charCodeAt(),km=Input.keyMapper; t[8]=km[c]=km[c]||'m';  }
 new cfc(p).add('initialize',function f(){
 	const rtv=f.tbl[0].initialize.apply(this,arguments);
 	this._prevScene_store();
@@ -21323,10 +21391,10 @@ new cfc(p).add('initialize',function f(){
 	let tmp;
 	if(!this._moveSpeed) this._moveSpeed=dspeed;
 	let changed=false,lr=0,ud=0;
-	if(ghs<$dataMap.height && Input.isPressed(f.tbl[0][0])) ud+=this._moveSpeed;
-	if(gws<$dataMap.width  && Input.isPressed(f.tbl[0][1])) lr-=this._moveSpeed;
-	if(gws<$dataMap.width  && Input.isPressed(f.tbl[0][2])) lr+=this._moveSpeed;
-	if(ghs<$dataMap.height && Input.isPressed(f.tbl[0][3])) ud-=this._moveSpeed;
+	if(Input.isPressed(f.tbl[0][0])) ud+=this._moveSpeed;
+	if(Input.isPressed(f.tbl[0][1])) lr-=this._moveSpeed;
+	if(Input.isPressed(f.tbl[0][2])) lr+=this._moveSpeed;
+	if(Input.isPressed(f.tbl[0][3])) ud-=this._moveSpeed;
 	if(TouchInput.isReleased()) this.init_mouseDown();
 	if(TouchInput.isPressed()){
 		const dx=TouchInput.x-this._mouseDownX;
@@ -21342,12 +21410,15 @@ new cfc(p).add('initialize',function f(){
 	}
 	const nshift=!Input.isPressed(f.tbl[3]);
 	if(lr||ud){
+		const ogx=c.gx,ogy=c.gy;
 		c.gx+=lr*(2-nshift);
 		c.gy+=ud*(2-nshift);
-		if(!(c.gx>=gwd)) c.gx=gwd;
-		else{ tmp=$dataMap.width  -c.gw-gwd; if(!(c.gx<tmp)) c.gx=tmp; }
-		if(!(c.gy>=ghd)) c.gy=ghd;
-		else{ tmp=$dataMap.height -c.gh-ghd; if(!(c.gy<tmp)) c.gy=tmp; }
+		if(!lr) ;
+		else if(lr<0){ if(c.gx<gwd) c.gx=Math.min(ogx,gwd); }
+		else{ tmp=$dataMap.width  -c.gw-gwd; if(c.gx>=tmp) c.gx=Math.max(ogx,tmp); }
+		if(!ud) ;
+		else if(ud<0){ if(c.gy<ghd) c.gy=Math.min(ogy,ghd); }
+		else{ tmp=$dataMap.height -c.gh-ghd; if(c.gy>=tmp) c.gy=Math.max(ogy,tmp); }
 		changed=true;
 	}
 	if(Input.isTriggered('ok')){
@@ -21370,6 +21441,8 @@ new cfc(p).add('initialize',function f(){
 1.0/256,
 ]).add('update_player',function f(){
 	const sp=this._player;
+	if(Input.isTriggered(f.tbl[3][0])) sp.visible=!sp.visible;
+	if(!sp.visible) return;
 	const s=this._conf.scale;
 	const frm=this._minimap._frame;
 	const x=(this._playerX-frm.x)*s,y=(this._playerY-frm.y)*s;
@@ -21383,6 +21456,7 @@ new cfc(p).add('initialize',function f(){
 4,
 1,
 1.0/65536,
+t[8],
 ]).add('update_mouseDown',function f(){
 	if(!this._mouseDown.visible) return;
 	if(!(++this._mouseDown._ctr<f.tbl[0])) this._mouseDown._ctr=0;
@@ -22852,6 +22926,74 @@ if(0)new cfc(Scene_Skill.prototype).add('update',function f(){
 	const iw=this._itemWindow;
 	const item=iw&&iw.item(); if(!item) return;
 	if(iw.drawSkillCost_itemConsume_updateIconIdx(item)) iw.redrawCurrentItem();
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 保證 Window_NumberInput.prototype.start 拿到的變數是數字型態
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(0)(()=>{ let k,r,t;
+
+new cfc(Window_NumberInput.prototype).add('start',function f(){
+	const idx=$gameMessage.numInputVariableId();
+	const val=$gameVariables.value(idx);
+	if(val-0!==val) $gameVariables.setValue(idx,0);
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc refine initialization of MOG_ComboCounter to meets our needs
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+Game_Temp.prototype.MOG_ComboCounter_combo_data_init=function(){
+	this.combo_data=[[false,0,0,false,false],[false,0,0,false,false],];
+};
+
+new cfc(Scene_Battle.prototype).add('start',function f(){
+	$gameTemp.MOG_ComboCounter_combo_data_init();
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc ensure Game_Battler.prototype._damagePopup instanceof Array
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+if((typeof Imported!=='undefined') && Imported.YEP_BattleEngineCore) Object.defineProperty(Game_Battler.prototype,'_damagePopup',{
+	set:function f(rhs){
+		return this.__damagePopup=rhs;
+	},get:function f(){
+		let rtv=this.__damagePopup;
+		if(!rtv||!(rtv instanceof Array)) rtv=this.__damagePopup=[];
+		return rtv;
+	},configurable:true
 });
 
 })();
