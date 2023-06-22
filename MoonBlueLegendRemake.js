@@ -10694,6 +10694,9 @@ r=p[k]; (p[k]=function f(){
 		eval(script);
 	}catch(e){
 		console.warn('Game_Interpreter.prototype.command355','\n',script);
+		if(script) e.message+='\nScript:\n'+script;
+		e.name+=' in Game_Interpreter.prototype.command355';
+		e._msgOri=e.message;
 		throw e;
 	}
 	return true;
