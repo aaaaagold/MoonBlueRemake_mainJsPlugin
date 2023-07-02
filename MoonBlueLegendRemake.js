@@ -692,7 +692,10 @@ cf(Game_Interpreter.prototype,'command111',function f(){
 		try{
 			res=!!eval(this._params[1]);
 		}catch(e){
-			if(this && this._params) e.message+='\nScript:\n'+this._params[1];
+			if(this && this._params){
+				console.warn(this._params);
+				e.message+='\nScript:\n'+this._params[1];
+			}
 			e.name+=' in Game_Interpreter.prototype.command111';
 			e._msgOri=e.message;
 			throw e;
@@ -2732,7 +2735,7 @@ let r,d;
 Scene_Shop.prototype.maxBuy=function f(){ // overwrite
 	const max=$gameParty.maxItems(this._item)-$gameParty.unionCnt(this._item);
 	const price=this.buyingPrice();
-	return price>0 ? Math.min(~~(this.money() / price),max) : max;
+	return price>0 ? ~~Math.min((this.money() / price),max) : max;
 };
 
 { const p=Game_Party.prototype , h=Object.hasOwnProperty;
@@ -4634,13 +4637,13 @@ r=p[k]; (p[k]=function f(){
 
 { const p=BattleManager;
 p._setDmgLogBase=function f(t,type,ele){
-	const v=this.getDmgSum(t,type,ele); if(!v) return 0;
+	const v=this.getDmgSum(t,type,ele)+this._getDmgLogBase(t,type,ele); if(!v) return 0;
 	let b=t._dmgLog._base; if(!b) b=t._dmgLog._base={};
 	let o=b[type]; if(!o) o=b[type]={};
 	return o[ele]=v;
 };
 p._getDmgLogBase=function f(t,type,ele){
-	const b=t&&t._dmgLog&&t._dmgLog._base;
+	const b=t&&t._dmgLog&&t._dmgLog._base; // cleared in onBattleStart
 	const o=b&&b[type];
 	return o&&o[ele]||0;
 };
@@ -6545,31 +6548,6 @@ r=p[k]; (p[k]=function f(){
 
 ﻿"use strict";
 /*:
- * @plugindesc 可愛ㄉ自動換行
- * @author agold404
- * @help 僅限對話視窗
- * 
- * This plugin can be renamed as you want.
- */
-
-(()=>{ let k,r,t;
-
-{ const p=Window_Message.prototype;
-k='processNormalCharacter';
-r=p[k]; (p[k]=function f(ts){
-	if(ts.x + this.textWidth(ts.text[ts.index]) >= this.contentsWidth() + 1){
-		--ts.index;
-		this.processNewLine(ts);
-	}
-	return f.ori.apply(this,arguments);
-}).ori=r;
-}
-
-})();
-
-
-﻿"use strict";
-/*:
  * @plugindesc ㄇㄉMOG你在沒寫好44看
  * @author agold404
  * @help 更新完道具類別不更新說明內容ㄉㄟ
@@ -6985,7 +6963,7 @@ r=p[k]; (p[k] = function f(stage){
 		this.renderOtherEffects(stage);
 		this._skipCount = Math.min((Date.now() - startTime)>>4, this._maxSkip);
 	}
-	this.frameCount+=Math.max(SceneManager._updateSceneCnt|0,1)|0; SceneManager._updateSceneCnt=0|0;
+	this.frameCount+=SceneManager._updateSceneCnt|0; SceneManager._updateSceneCnt=0|0;
 }).ori=r;
 p[k].forEach=function(f){ f.call(this); };
 if(!p.renderOtherEffects) p.renderOtherEffects=()=>{};
@@ -11283,7 +11261,7 @@ const kw_c="TXTCENTER";
 const kw_r="TXTRIGHT";
 const re=/^:"(\\.|[^\\"\n])*"/g; // not used
 
-[Window_Message,Window_Base,].forEach(a=>{ const p=a.prototype;
+[Window_Base,].forEach(a=>{ const p=a.prototype;
 k='processNormalCharacter';
 r=p[k]; (p[k]=function f(ts){
 	if(this._CENTERTEXT_stat===ts.index){
@@ -17831,6 +17809,66 @@ function(v,k){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 不顯示選項
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const oriIdx=15;
+
+new cfc(Game_Interpreter.prototype).add('setupChoices',function f(params){
+	const oriParam=params[oriIdx]||(params[oriIdx]=params[0].slice());
+	const arr=this.setupChoices_dontShow_get(),choicesN=oriParam.length;
+	let tbl=this._mappingTable; if(!tbl) tbl=this._mappingTable=[];
+	tbl.length=0;
+	params[0].length=0;
+	for(let x=0,arrLen=arr.length;x!==choicesN;++x){
+		if(!(arrLen && arr.uniqueHas(x))){
+			params[0].push(oriParam[x]);
+			tbl.push(x);
+		}
+	}
+	return f.ori.apply(this,arguments);
+}).add('setupChoices_callBack',function f(n){
+	this._branch[this._indent]=this._mappingTable?this._mappingTable[n]:n;
+},undefined,true,true).add('setupChoices_dontShow_get',function f(){
+	let rtv=this._dontShow; if(!rtv) rtv=this._dontShow=[];
+	return rtv;
+}).add('setupChoices_dontShow_add',function f(idx){
+	const arr=this.setupChoices_dontShow_get();
+	for(let x=0,xs=arguments.length;x!==xs;++x) arr.uniquePush(arguments[x]);
+	return this;
+}).add('setupChoices_dontShow_del',function f(idx){
+	const arr=this.setupChoices_dontShow_get();
+	for(let x=arguments.length;x--;) arr.uniquePop(arguments[x]);
+	return this;
+}).add('setupChoices_dontShow_addRange',function f(idxMin,idxMax){
+	for(let x=idxMin;x<=idxMax;++x) this.setupChoices_dontShow_add(x);
+	return this;
+}).add('setupChoices_dontShow_delRange',function f(idxMin,idxMax){
+	for(let x=idxMax;x>=idxMin;--x) this.setupChoices_dontShow_del(x);
+	return this;
+}).add('setupChoices_dontShow_clear',function f(){
+	this.setupChoices_dontShow_get().length=0;
+}).add('setupChoices_dontShow_isPersistInThisInterpreter_set',function f(val){
+	return this._isReserveInThisInterpreter=val;
+}).add('setupChoices_dontShow_isPersistInThisInterpreter_get',function f(){
+	return this._isReserveInThisInterpreter;
+}).add('clear',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.setupChoices_dontShow_clear();
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 多組選項相連
  * @author agold404
  * @help 1-line comment: @CONCAT between two concequent "Show Choices"
@@ -22652,11 +22690,12 @@ Input.keyMapper[keyCode], // buttonName
 16|0,
 2|0,
 0.25,
+new Set([Scene_Battle,]),
 ];
 
 SceneManager._speedUpdateUpCnt=0|0;
 new cfc(SceneManager).add('updateMain',function f(){
-	if(Input.isPressed(f.tbl[0])){
+	if(!f.tbl[4].has(this._scene&&this._scene.constructor) && Input.isPressed(f.tbl[0])){
 		const isLongPressed=0&&Input.isLongPressed(f.tbl[0]);
 		const newTime=this._getTimeInMsWithoutMobileSafari();
 		const fTime=Math.min((newTime-this._currentTime)/1000.0,f.tbl[3]);
@@ -23004,18 +23043,158 @@ if((typeof Imported!=='undefined') && Imported.YEP_BattleEngineCore) Object.defi
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc 文字效果線
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help \\(STRIKETHROUGH|UNDERLINE)(START|END)
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
+t=[
+['_strikeThrough','_underLine',], // 0
+new Map([
+['STRIKETHROUGHSTART',['_strikeThrough',true,]],
+['STRIKETHROUGHEND',['_strikeThrough',false,]],
+['UNDERLINESTART',['_underLine',true,]],
+['UNDERLINEEND',['_underLine',false,]],
+]), // 1
 {
-}
+center:(tx,tw)=>tx-tw/2, // tx is at center already
+right:(tx,tw)=>tx-tw, // tx is at right-most already
+}, // 2
+'_lastEffectLinesPos', // 3
+1, // 4: line shorter. for some char may overlap onto the previous
+3, // 5: lineWidthBits
+];
+
+new cfc(Window_Base.prototype).add('processEscapeCharacter',function f(code,textState){
+	const res=f.tbl[1].get(code);
+	if(!res) return f.ori.apply(this,arguments);
+	this.contents[res[0]]=res[1];
+},t);
+
+new cfc(Bitmap.prototype).add('_drawTextBody',function f(txt,tx,ty,maxW){
+	const rtv=f.ori.apply(this,arguments);
+	this._drawTextEffectLines(txt,tx,ty,maxW);
+	return rtv;
+}).add('_drawTextEffectLines',function f(txt,tx,ty,maxW){
+	const tbl0=f.tbl[0];
+	{
+		let has=false;
+		for(let x=0,arr=tbl0,xs=arr.length;x!==xs;++x){ if(this[arr[x]]){ has=true; break; } }
+		if(!has){
+			this[f.tbl[3]]=undefined;
+			return;
+		}
+	}
+	const ctx=this._context;
+	const mw=~~ctx.measureText(txt).width-f.tbl[4];
+	const w=isNaN(maxW)?mw:Math.min(mw,maxW);
+	const x=this.getTextStartX(tx,mw);
+	const xe=x+w;
+	ctx.save();
+	ctx.strokeStyle=this.textColor;
+	ctx.lineWidth=this._drawLineWidth(ctx);
+	if(!this[f.tbl[3]]) this[f.tbl[3]]=[];
+	const posAll=this[f.tbl[3]];
+	if(this[tbl0[0]]){
+		// _strikeThrough
+		const y=this.getTextCenterY(ty);
+		const pos=posAll[0];
+		const xs=pos&&pos[1]===y?pos[0]:x;
+		this._drawLine(ctx,xs,y,xe,y);
+		posAll[0]=[xe,y];
+	}else posAll[0]=undefined;
+	if(this[tbl0[1]]){
+		// _underLine
+		const y=ty;
+		const pos=posAll[1];
+		const xs=pos&&pos[1]===y?pos[0]:x;
+		this._drawLine(ctx,xs,y,xe,y);
+		posAll[1]=[xe,y];
+	}else posAll[1]=undefined;
+	ctx.restore();
+},t).add('getTextStartX',function f(x,w){
+	const func=f.tbl[2][this._context.textAlign];
+	return func?func(x,w):x;
+},t).add('getTextCenterY',function f(y){
+	return y-((this.fontSize-(this.fontSize>>2))>>1);
+},t).add('_drawLine',(ctx,x0,y0,x1,y1)=>{
+	ctx.beginPath();
+	ctx.moveTo(x0,y0);
+	ctx.lineTo(x1,y1);
+	ctx.stroke();
+}).add('_drawLineWidth',function f(){
+	return (this.fontSize+((1<<f.tbl[5])-1))>>f.tbl[5]; // leave fontSize=0 to be 0
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 無視道具效果(可被用於該btlr但無效)
+ * @author agold404
+ * @help <無視道具效果:[id,id, ... ]>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+
+const kw='無視道具效果';
+const kwt='TRAIT_'+kw;
+const kwget='get_'+kw;
+const kwis='is_'+kw;
+gbb.addEnum(kwt);
+
+t=[kwis,gbb[kwt],kw,kwt,];
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits,c,t; if(!ts) ts=dataobj.traits=[];
+	
+	if(meta[kw]){
+		const arr=JSON.parse(meta[kw]);
+		for(let x=0,xs=arr.length;x!==xs;++x) ts.push({code:gbb[kwt],dataId:arr[x],value:1,});
+	}
+},
+]);
+
+new cfc(Game_Battler.prototype).add(kwget,function f(){
+	return this.traitsSet(f.tbl[1]);
+},t).add(kwis,function f(item){
+	return DataManager.isItem(item) && this.traitsSet(f.tbl[1]).uniqueHas(item.id);
+},t);
+
+new cfc(Game_Action.prototype).add('applyItemEffect',function f(trgt, effect){
+	return trgt[f.tbl[0]](this.item()) || f.ori.apply(this,arguments);
+},t).add('makeDamageValue',function f(trgt, cri){
+	return trgt[f.tbl[0]](this.item()) ? 0 : f.ori.apply(this,arguments);
+},t);
 
 })();
 
@@ -23067,6 +23246,31 @@ p[k].forEach=(dataobj)=>{ if(!dataobj) return;
 	}else dataobj.note=s;
 	if(dataobj.note) DataManager.extractMetadata(dataobj);
 };
+}
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 可愛ㄉ自動換行
+ * @author agold404
+ * @help 僅限對話視窗
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{ const p=Window_Message.prototype;
+k='processNormalCharacter';
+r=p[k]; (p[k]=function f(ts){
+	if(ts.x + this.textWidth(ts.text[ts.index]) >= this.contentsWidth() + 1){
+		--ts.index;
+		this.processNewLine(ts);
+	}
+	return f.ori.apply(this,arguments);
+}).ori=r;
 }
 
 })();
@@ -23518,7 +23722,9 @@ p[k].tbl=t;
 
 // scUpdate-additional
 (()=>{ let k,r,t;
-
+t=[
+function(f){ if(!f()) this.push(f); },
+];
 { const p=SceneManager;
 k='additionalUpdates_before';
 r=p[k]; (p[k]=function f(){
@@ -23548,12 +23754,44 @@ r=p[k]; (p[k]=function f(){
 	}
 	return rtv;
 }).ori=r;
-p[k].tbl=[
-function(f){ if(!f()) this.push(f); },
-];
+p[k].tbl=t;
 k='add_additionalUpdate';
 r=p[k]; (p[k]=function f(func,isAfter){
 	const arr=isAfter?this.additionalUpdates_after():this.additionalUpdates_before();
+	arr.push(func);
+}).ori=r;
+k='additionalUpdatesScene_before';
+r=p[k]; (p[k]=function f(){
+	let rtv=this._additionalUpdatesScene_before ; if(!rtv) rtv=this._additionalUpdatesScene_before =[];
+	return rtv;
+}).ori=r;
+k='additionalUpdatesScene_after';
+r=p[k]; (p[k]=function f(){
+	let rtv=this._additionalUpdatesScene_after  ; if(!rtv) rtv=this._additionalUpdatesScene_after  =[];
+	return rtv;
+}).ori=r;
+k='updateScene';
+r=p[k]; (p[k]=function f(){
+	// additionalUpdatesScene: 送進來是 bind 過的 function ；要調順序自己調， return true-like 代表要移除。
+	{
+		const arr=this.additionalUpdatesScene_before();
+		const remainList=[];
+		arr.forEach(f.tbl[0],remainList);
+		if(arr.length!==remainList.length) this._additionalUpdatesScene_before=remainList;
+	}
+	const rtv=f.ori.apply(this,arguments);
+	{
+		const arr=this.additionalUpdatesScene_after();
+		const remainList=[];
+		arr.forEach(f.tbl[0],remainList);
+		if(arr.length!==remainList.length) this._additionalUpdatesScene_after=remainList;
+	}
+	return rtv;
+}).ori=r;
+p[k].tbl=t;
+k='add_additionalUpdate_scene';
+r=p[k]; (p[k]=function f(func,isAfter){
+	const arr=isAfter?this.additionalUpdatesScene_after():this.additionalUpdatesScene_before();
 	arr.push(func);
 }).ori=r;
 }

@@ -341,17 +341,58 @@ r=p[k]; (p[k]=function f(){
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc obtainEscapeCode 新增 ; 中斷\\用
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
-{
+const p=Window_Base.prototype;
+k='obtainEscapeCode';
+(p[k]=function f(textState){
+	textState.index++;
+	const regExp=f.tbl[0];
+	const arr=regExp.exec(textState.text.slice(textState.index));
+	if(arr){
+		textState.index+=arr[0].length;
+		return arr[0].toUpperCase();
+	}else return '';
+}).ori=undefined;
+p[k].tbl=[
+/^[\$\.\|\^!><\{\}\\;]|^[A-Z]+/i,
+];
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc refine Game_Interpreter.prototype.setupChoices
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{ const p=Game_Interpreter.prototype;
+p.setupChoices=function(params){
+	const choices=params[0].clone(); // mappingTbl
+	const cancelT=params[1]<choices.length?params[1]:-2,defaultT=params[2]||0;
+	const positionT=params.length>3?params[3]:2,bg=params[4]||0;
+	const gmsg=$gameMessage;
+	gmsg.setChoices(choices,defaultT,cancelT);
+	gmsg.setChoiceBackground(bg);
+	gmsg.setChoicePositionType(positionT);
+	gmsg.setChoiceCallback(this.setupChoices_callBack.bind(this));
+};
+p.setupChoices_callBack=function(n){
+	this._branch[this._indent]=n; // mappingTbl
+};
 }
 
 })();
