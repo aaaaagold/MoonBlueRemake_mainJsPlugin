@@ -23199,6 +23199,24 @@ new cfc(Game_Action.prototype).add('applyItemEffect',function f(trgt, effect){
 })();
 
 
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
+}
+
+})();
+
+
 ﻿
 
 
