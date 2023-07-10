@@ -677,7 +677,7 @@ function(stat){
 
 ﻿"use strict";
 /*:
- * @plugindesc 誰都別想讓debug變更難，誰都別想。
+ * @plugindesc 誰都別想讓debug變更難，誰都別想。 YEP ㄉ作者一定沒手刻過網頁，用尛 require 。
  * @author agold404
  * 
  * This plugin can be renamed as you want.
@@ -694,7 +694,8 @@ cf(Game_Interpreter.prototype,'command111',function f(){
 		}catch(e){
 			if(this && this._params){
 				console.warn(this._params);
-				e.message+='\nScript:\n'+this._params[1];
+				e.message+='\n\nScript:\n'+this._params[1];
+				e.message+=f.tbl[1][1];
 			}
 			e.name+=' in Game_Interpreter.prototype.command111';
 			e._msgOri=e.message;
@@ -704,7 +705,56 @@ cf(Game_Interpreter.prototype,'command111',function f(){
 		if(!this._branch[this._indent]) this.skipBranch();
 		return true;
 	}else return f.ori.apply(this,arguments);
-});
+},[
+0,
+[
+'',
+'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：條件分歧ㄉ條件打錯ㄌ',
+],
+]);
+
+new cfc(Game_Action.prototype).add('evalDamageFormula',function f(target){
+	try{
+		const item=this.item();
+		const a=this.subject();
+		const b=target;
+		const v=$gameVariables._data;
+		let sign=f.tbl[0].has(item.damage.type)?-1:1;
+		try{
+			let value=Math.max(eval(item.damage.formula),0)*sign;
+			if(isNaN(value)) throw new Error(f.tbl[1][0]);
+			return value;
+		}catch(e){
+			if(item && item.damage){
+				console.warn(item.damage.formula);
+				e.message+='\n\nDamage Formula:\n'+item.damage.formula;
+				e.message+=f.tbl[1][1];
+			}
+			e.name+=' in damage formula of '+f.tbl[2](item);
+			e._msgOri=e.message;
+			throw e;
+			return 0;
+		}
+	}catch(e){
+		throw e;
+		return 0;
+	}
+},[
+new Set([3,4]),
+[
+'the Damage Formula evaluates an NaN',
+'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：公式打錯ㄌ，是哪ㄍ公式自己往上看',
+],
+function f(dataobj){
+	let rtv;
+	if(DataManager.isSkill(dataobj)) rtv='skill';
+	else if(DataManager.isItem(dataobj)) rtv='item';
+	else return "(WTF is this?)";
+	rtv+=' id ';
+	rtv+=dataobj.id;
+	return rtv;
+},
+],true,true);
 
 })();
 
@@ -5766,6 +5816,7 @@ r=p[k]; (p[k]=function f(){
 		const i=arr[x].tpgid;
 		if(!arr[x].isRunning() && this.meetsConditions(pgs[i])){
 			arr[x].setup(pgs[i].list);
+			arr[x]._checkForceActionCnt=0; // cmd339
 			arr[x]._pageId=i;
 		}
 		arr[x].update();
@@ -5777,6 +5828,19 @@ p[k].forEach=function(pg,i){
 	tmp.tpgid=i;
 	this.push(tmp);
 };
+new cfc(Game_Interpreter.prototype).add('command339',function f(){
+	this.command339_chkCnt();
+	return f.ori.apply(this,arguments);
+}).add('command339_chkCnt',function f(){
+	if(++this._checkForceActionCnt>=f.tbl[0]) throw new Error(f.tbl[1]+$gameTroop._troopId);
+},[
+2,
+"@PARALLEL 裡面放超過1個\"強制行動\"可能會使動畫不會消失，還請這場戰鬥ㄉ作者更正ㄛ\ntroop id = ",
+]).add('setupChild',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._childInterpreter._checkForceActionCnt=this._checkForceActionCnt;
+	return rtv;
+});
 k='setupBattleEventPendedByActionSequence';
 r=p[k]; (p[k]=function f(){
 	if(this._toBeSetPageIdx>=0){
@@ -5792,6 +5856,7 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 k='setupBattleEvent';
 r=p[k]; (p[k]=function f(){
+	let rtv;
 	const itrp=this._interpreter;
 	if(!itrp.isRunning() && this._toBeSetPageIdx===undefined){
 		if(itrp.setupReservedCommonEvent()) return;
@@ -5801,7 +5866,7 @@ r=p[k]; (p[k]=function f(){
 			if(!this._eventFlags[p] && this.meetsConditions(pgs[p])){
 				this._toBeSetPageIdx=p;
 				if(0&&f.tbl[0].has(BattleManager._phase)) BattleManager._actionList.push(['EVAL',['$gameTroop.setupBattleEventPendedByActionSequence()',]]);
-				else this.setupBattleEventPendedByActionSequence();
+				else rtv=this.setupBattleEventPendedByActionSequence();
 				break;
 			}
 		}
@@ -5820,6 +5885,7 @@ r=p[k]; (p[k]=function f(){
 			arr.length=0;
 		}
 	}
+	return rtv;
 }).ori=r;
 p[k].tbl=[
 new Set(['actionList','actionTargetList',]),
@@ -8187,15 +8253,15 @@ r=p[k]; (p[k]=function f(){
 }
 
 { const p=Input;
-k='_金手指';
-r=p[k];
-t=p[k]=function f(evt){
+const new金手指=(cond,hit,keys,otherThingsOnTableKVPair,otherThingsOnFunctionKVPair)=>{
+const k='_金手指';
+const r=p[k];
+const t=p[k]=function f(evt){
 	if(f.ori) f.ori.apply(this,arguments);
-	if(!currentlyEnabled && SceneManager._scene && SceneManager._scene.constructor===Scene_Title){
+	if(cond.call(this,f)){
 		const kc=evt.keyCode;
 		if(kc===f.tbl[f.idx]){ if(f.tbl.length===++f.idx){
-			currentlyEnabled=true;
-			AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+			hit.call(this,f);
 		} }else{
 			while(f.idx>=0 && kc!==f.tbl[f.idx]){
 				if(f.idx) f.idx=f.sameTo[f.idx-1]+1;
@@ -8206,7 +8272,7 @@ t=p[k]=function f(evt){
 	}
 };
 t.ori=r;
-t.tbl=[38,38,40,40,37,39,37,39,66,65,];
+t.tbl=keys;
 t.sameTo=[-1,];
 for(let i=0,x=1,s=t.tbl,st=t.sameTo;x<s.length;){
 	if(s[x]===s[i]) st[x++]=i++;
@@ -8216,43 +8282,41 @@ for(let i=0,x=1,s=t.tbl,st=t.sameTo;x<s.length;){
 	}
 }
 t.idx=0;
-k='_金手指';
-r=p[k];
-t=p[k]=function f(evt){
-	if(f.ori) f.ori.apply(this,arguments);
-	if(!$dataItems||!$gameParty) return;
-	const kc=evt.keyCode;
-	if(kc===f.tbl[f.idx]){ if(f.tbl.length===++f.idx){
-		if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
-		if(f.tbl.items.length){
-			AudioManager.playSe({name: "Ice4", volume: 75, pitch: 100});
-			for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],10);
-		}
-	} }else{
-		while(f.idx>=0 && kc!==f.tbl[f.idx]){
-			if(f.idx) f.idx=f.sameTo[f.idx-1]+1;
-			else f.idx=-1;
-		}
-		++f.idx;
+if(otherThingsOnTableKVPair) for(let k in otherThingsOnTableKVPair) t.tbl[k]=otherThingsOnTableKVPair[k];
+if(otherThingsOnFunctionKVPair) for(let k in otherThingsOnFunctionKVPair) t[k]=otherThingsOnFunctionKVPair[k];
+}; // new金手指
+
+new金手指(function(f){
+	return !currentlyEnabled && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
+},function(f){
+	currentlyEnabled=true;
+	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+},[38,38,40,40,37,39,37,39,66,65,]);
+
+new金手指(()=>$dataItems&&$gameParty,function(f){
+	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
+	if(f.tbl.items.length){
+		AudioManager.playSe({name: "Ice4", volume: 75, pitch: 100});
+		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],10);
 	}
-};
-t.ori=r;
-t.tbl=[76,70,50,190,78,69,84,];
-t.cmp=dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("鑽石")>=0;
-t.sameTo=[-1,];
-for(let i=0,x=1,s=t.tbl,st=t.sameTo;x<s.length;){
-	if(s[x]===s[i]) st[x++]=i++;
-	else{
-		if(i) i=st[i-1]+1;
-		else st[x++]=-1;
+},[76,70,50,190,78,69,84,],undefined,{
+cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("鑽石")>=0,
+});
+
+new金手指(()=>$dataItems&&$gameParty,function(f){
+	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
+	if(f.tbl.items.length){
+		AudioManager.playSe({name: "Magic1", volume: 75, pitch: 100});
+		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],10);
 	}
-}
-t.idx=0;
-k='_onKeyDown';
-r=p[k]; (p[k]=function f(evt){
+},[65,71,79,76,68,52,48,52,],undefined,{
+cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0,
+});
+
+new cfc(Input).add('_onKeyDown',function f(evt){
 	this._金手指(evt);
 	return f.ori.apply(this,arguments);
-}).ori=r;
+});
 }
 
 })();
@@ -10660,6 +10724,33 @@ r=p[k]; (p[k]=function f(r,g,b,a){
 (()=>{ let k,r,t;
 
 { const p=Game_Interpreter.prototype;
+new cfc(Game_Interpreter.prototype).add('command355',function f(){
+	let script=this.currentCommand().parameters[0];
+	while(f.tbl.has(this.nextEventCode())){
+		this._index++;
+		script+='\n';
+		script+=this.currentCommand().parameters[0];
+	}
+	try{
+		eval(script);
+	}catch(e){
+		console.warn('Game_Interpreter.prototype.command355','\n',script);
+		if(script){
+			e.message+='\n\nScript:\n'+script;
+			e.message+=f.tbl[1][1];
+		}
+		e.name+=' in Game_Interpreter.prototype.command355';
+		e._msgOri=e.message;
+		throw e;
+	}
+	return true;
+},[
+new Set([355,655,]),
+[
+'',
+'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版： JavaScript 打錯ㄌ',
+],
+]);
 k='command355';
 r=p[k]; (p[k]=function f(){
 	let script = this.currentCommand().parameters[0];
@@ -10672,7 +10763,10 @@ r=p[k]; (p[k]=function f(){
 		eval(script);
 	}catch(e){
 		console.warn('Game_Interpreter.prototype.command355','\n',script);
-		if(script) e.message+='\nScript:\n'+script;
+		if(script){
+			e.message+='\n\nScript:\n'+script;
+			e.message+=f.tbl[1][1];
+		}
 		e.name+=' in Game_Interpreter.prototype.command355';
 		e._msgOri=e.message;
 		throw e;
@@ -17832,6 +17926,7 @@ new cfc(Game_Interpreter.prototype).add('setupChoices',function f(params){
 			tbl.push(x);
 		}
 	}
+	params[1]=tbl[params[1]];
 	return f.ori.apply(this,arguments);
 }).add('setupChoices_callBack',function f(n){
 	this._branch[this._indent]=this._mappingTable?this._mappingTable[n]:n;
@@ -20788,7 +20883,9 @@ new cfc(BattleManager).add('startBattle',function f(){
 }).add('_createActions',function f(retPhase,key){
 	this._returnPhase=retPhase;
 	const item=this._action.item();
-	(this._actionList=item[key].slice())._item=item;
+	const arr=this._actionList=item[key].slice();
+	arr._item=item;
+	arr._phase=key;
 }).add('createSetupActions',function f(){
 	$gameTemp.clearActionSequenceSettings();
 	return this._createActions(f.tbl[0],f.tbl[1]);
@@ -23265,6 +23362,47 @@ p[k].forEach=(dataobj)=>{ if(!dataobj) return;
 	if(dataobj.note) DataManager.extractMetadata(dataobj);
 };
 }
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc BattleManager.startBattle 會清掉 this._actionList
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(BattleManager).add('startBattle',function f(){
+	this._actionList=undefined;
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc item/skill onApply
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Action.prototype).add('apply',function f(){
+	const item=this.item(); if(item && item.meta && item.meta[f.tbl[0]]){
+		eval(item.meta[f.tbl[0]]);
+	}
+	const rtv=f.ori.apply(this,arguments);
+	return rtv;
+},['onApply_javascript',]);
 
 })();
 
