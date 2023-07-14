@@ -250,6 +250,19 @@ new cfc(Graphics).add('_updateAllElements',function f(){
 //
 let t;
 const undef=undefined,none=()=>{};
+const getStr_英文不好齁=t=function f(){
+	if(!f.tbl) f.tbl=[
+		'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：',
+		'\n\n給"比破麻還不如，看ㄅ懂英文ㄉ破破麻"ㄉ台譯版：',
+	];
+	const idx=(((typeof $gameVariables!=='undefined')&&$gameVariables&&($gameVariables.value(f.tbl[0])>=f.tbl[1]))|0)+2;
+	return f.tbl[idx];
+}; t.ori=undef; t.tbl=[
+10,
+672,
+'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：',
+'\n\n給"比破麻還不如，看ㄅ懂英文ㄉ破破麻"ㄉ台譯版：',
+];
 const makeDummyWindowProto=t=function f(c,withContents,withCursor){
 	let tmp;
 	if(c.constructor===Function){
@@ -695,7 +708,7 @@ cf(Game_Interpreter.prototype,'command111',function f(){
 			if(this && this._params){
 				console.warn(this._params);
 				e.message+='\n\nScript:\n'+this._params[1];
-				e.message+=f.tbl[1][1];
+				e.message+=getStr_英文不好齁()+f.tbl[1][1];
 			}
 			e.name+=' in Game_Interpreter.prototype.command111';
 			e._msgOri=e.message;
@@ -709,7 +722,7 @@ cf(Game_Interpreter.prototype,'command111',function f(){
 0,
 [
 '',
-'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：條件分歧ㄉ條件打錯ㄌ',
+'條件分歧ㄉ條件打錯ㄌ',
 ],
 ]);
 
@@ -728,7 +741,7 @@ new cfc(Game_Action.prototype).add('evalDamageFormula',function f(target){
 			if(item && item.damage){
 				console.warn(item.damage.formula);
 				e.message+='\n\nDamage Formula:\n'+item.damage.formula;
-				e.message+=f.tbl[1][1];
+				e.message+=getStr_英文不好齁()+f.tbl[1][1];
 			}
 			e.name+=' in damage formula of '+f.tbl[2](item);
 			e._msgOri=e.message;
@@ -743,7 +756,7 @@ new cfc(Game_Action.prototype).add('evalDamageFormula',function f(target){
 new Set([3,4]),
 [
 'the Damage Formula evaluates an NaN',
-'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：公式打錯ㄌ，是哪ㄍ公式自己往上看',
+'公式打錯ㄌ，是哪ㄍ公式自己往上看',
 ],
 function f(dataobj){
 	let rtv;
@@ -10737,7 +10750,7 @@ new cfc(Game_Interpreter.prototype).add('command355',function f(){
 		console.warn('Game_Interpreter.prototype.command355','\n',script);
 		if(script){
 			e.message+='\n\nScript:\n'+script;
-			e.message+=f.tbl[1][1];
+			e.message+=getStr_英文不好齁()+f.tbl[1][1];
 		}
 		e.name+=' in Game_Interpreter.prototype.command355';
 		e._msgOri=e.message;
@@ -10748,7 +10761,7 @@ new cfc(Game_Interpreter.prototype).add('command355',function f(){
 new Set([355,655,]),
 [
 '',
-'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版： JavaScript 打錯ㄌ',
+' JavaScript 打錯ㄌ',
 ],
 ]);
 k='command355';
@@ -19299,14 +19312,13 @@ new cfc(Graphics).add('printLoadingError',function f(url,type){
 	if(this._errorPrinter && !this._errorShowed){
 		// create error board
 		this._errorPrinter.rf(0).ac(this._makeErrorHtml("Loading Error", "Failed to load: " + url));
-		this._errorPrinter.style.zIndex=99;
 		
 		// retry?
 		const btn=this._setErrActBtnStyle(d.ce('button')).atxt("Retry");
 		btn.onmousedown=btn.ontouchstart=(evt)=>{
 			ResourceHandler.retry();
 			evt.stopPropagation();
-			rtv.style.zIndex=99;
+			rtv.style.zIndex=-1;
 			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("retry loading: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		this._errorPrinter.ac(btn);
@@ -19341,7 +19353,7 @@ alts:{
 		btn.onmousedown=btn.ontouchstart=(evt)=>{
 			ResourceHandler.retry(1);
 			evt.stopPropagation();
-			self._errorPrinter.style.zIndex=99;
+			self._errorPrinter.style.zIndex=-1;
 			Bitmap.giveUps_add(url,emptyData.img);
 			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("give up: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
@@ -19355,6 +19367,7 @@ alts:{
 		btn.onmousedown=btn.ontouchstart=(evt)=>{
 			ResourceHandler.retry(1);
 			evt.stopPropagation();
+			self._errorPrinter.style.zIndex=-1;
 			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("give up: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		self._errorPrinter.ac(d.ce('br')).ac(btn);
@@ -19366,7 +19379,8 @@ alts:{
 	if(this._errorPrinter) this._errorPrinter.ac(this._makeErrorHtml(name, msg, err));
 	this._applyCanvasFilter();
 	this._clearUpperCanvas();
-},undefined,true).add('_makeErrorHtml',function f(name,msg,err){
+},undefined,true).add('_makeErrorHtml',function f(name,msg,err,noUpdateZIndex){
+	console.warn(arguments);
 	const rtv=d.ce("div").sa("style",f.tbl[0][0]+f.tbl[0][1]).ac(
 		d.ce("font").sa("color",f.tbl[1][0]).ac(
 			d.ce("b").atxt(name)
@@ -19385,6 +19399,7 @@ alts:{
 		(0<idx?stack.slice(idx+err._msgOri.length):stack).replace(f.tbl[2][0],f.tbl[2][1]).split(f.tbl[3]).map(f.tbl[4][0],f.tbl[4][1]).forEach(f.tbl[5][0],elemsg);
 		rtv.ac(elemsg);
 	}
+	if(!noUpdateZIndex && this._errorPrinter) this._errorPrinter.style.zIndex=40404;
 	return rtv;
 },[
 ["background-color:rgba(0,0,0,0.5);white-space:pre-wrap;font-family:monospace;","max-height:100%;overflow-y:scroll;user-select:all;","爛掉ㄌ，快找agold404(黃金)求救","爛掉ㄌ，試著自救如何？"],
@@ -19405,7 +19420,8 @@ css_inline:{
 },undefined,true).add('_updateErrorPrinter',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	const t=this._errorPrinter;
-	t.height = this._height * f.tbl[0];
+	if(!this._errorShowed) t.style.zIndex=-1;
+	t.height=this._height*f.tbl[0];
 	this._centerElement(t);
 	return rtv;
 },[
