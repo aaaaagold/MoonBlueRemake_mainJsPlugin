@@ -167,6 +167,21 @@ p.scale=function(r){
 };
 }
 
+const getCStyleStringStartAndEndFromString=window.getCStyleStringStartAndEndFromString=(s,strt,ende)=>{
+	// suppose s is a String
+	if(ende===undefined) ende=s.length;
+	if(strt===undefined) strt=0;
+	while(strt<ende && s[strt] && s[strt]!=='"') ++strt;
+	for(let x=strt+1,stat=0;s[x]&&x<ende;++x){
+		if(s[x]==='\\') ++x;
+		else if(s[x]==='"'){
+			ende=x+1;
+			break;
+		}
+	}
+	if(s[strt]!=='"'||s[ende-1]!=='"'||strt>=ende) ende=strt=-1;
+	return {start:strt,end:ende};
+};
 const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	const txtin=d.ce("input").sa("class","outofscreen");
 	d.body.ac(txtin);
@@ -393,6 +408,44 @@ new cfc(SceneManager).add('isMapOrIsBattle',function f(){
 	++this._updateSceneCnt; // reset to zero when 'Graphics.frameCount' increase // in 'Graphics.render'
 	return f.ori.apply(this,arguments);
 });
+new cfc(Window_Base.prototype).add('positioning',function f(setting,ref){
+	setting=setting||f.tbl;
+	let x,y,w,h;
+	if(ref){
+		x=ref.x;
+		y=ref.y;
+		w=ref.width;
+		h=ref.height;
+	}
+	if('x' in setting) x=setting.x;
+	if('y' in setting) y=setting.y;
+	if('w' in setting) w=setting.w;
+	if('h' in setting) h=setting.h;
+	x=x-0||0;
+	y=y-0||0;
+	w=w-0||0;
+	h=h-0||0;
+	if(ref&&setting.align){
+		if(0){
+		}else if(setting.align==='beforeX'){
+			y=ref.y;
+			x=ref.x-w;
+		}else if(setting.align==='beforeY'){
+			x=ref.x;
+			y=ref.y-h;
+		}else if(setting.align==='afterX'){
+			y=ref.y;
+			x=ref.x+ref.width;
+		}else if(setting.align==='afterY'){
+			x=ref.x;
+			y=ref.y+ref.height;
+		}
+	}
+	this.x=x;
+	this.y=y;
+	this.width=w;
+	this.height=h;
+},{});
 //
 cf(cf(cf(Window_Selectable.prototype,'processCursorMove',t=function f(){
 	const idx=this.index();
@@ -550,6 +603,7 @@ const devers={
 	"樺城":["地圖支援"],
 	"咕咕咕":["主力主線RMMV事件","部分支線","每次都說很短結果都超長，我是指劇情。",],
 	"柏林":["怪圖","放閃(?)"],
+	"機器人G":["部分UI"],
 };
 { const arr=[]; for(let i in devers) arr.push(i,','); arr.push("主要分工如下:"); console.log.apply(null,arr);
 }
@@ -768,6 +822,36 @@ function f(dataobj){
 	return rtv;
 },
 ],true,true);
+
+})();
+
+
+
+﻿"use strict";
+/*:
+ * @plugindesc fix yep se slow bug
+ * @author agold404
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+if(typeof Yanfly!=='undefined' && Yanfly.Core && Yanfly.Core.AudioManager_playSe) new cfc(AudioManager).add('playSe',function f(se){
+	if(this.uniqueCheckSe(se)){
+		Yanfly.Core.AudioManager_playSe.call(this, se);
+		this.getContUniqueCheckSe().add(se);
+	}
+},undefined,true,true).add('uniqueCheckSe',function f(se1){
+	// return true if not exists
+	return !this.getContUniqueCheckSe().has(se1);
+},undefined,true,true).add('clearUniqueCheckSe',function f(){
+	this.getContUniqueCheckSe().clear();
+	return this;
+},undefined,true,true).add('getContUniqueCheckSe',function f(){
+	let rtv=this._frameSe; if(!rtv) rtv=this._frameSe=new Set();
+	return rtv;
+},undefined,true,true);
 
 })();
 
@@ -5105,8 +5189,14 @@ p[k].refresh=function(){
 { const p=BattleManager;
 k='endBattle';
 r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
+	const rtv=f.ori.apply(this,arguments);
+	this.endBattle_clearFieldsData();
+	return rtv;
+}).ori=r;
+k='endBattle_clearFieldsData';
+r=p[k]; (p[k]=function f(){
 	this._actorP=this._actorT=this._fieldStates=undefined;
+	return this;
 }).ori=r;
 k='allBattleMembers';
 r=p[k]; if(0)(p[k]=function f(){
@@ -5159,6 +5249,11 @@ p.delStatesAdded=function(btlr,stateId){
 	return !this._initStatesAdded() && this.actorStatesAdded(btlr).removeState(stateId);
 };
 }
+
+new cfc(Scene_Title.prototype).add('initialize',function f(){
+	if(SceneManager._scene instanceof Scene_Gameover) BattleManager.endBattle_clearFieldsData();
+	return f.ori.apply(this,arguments);
+});
 
 { const p=Game_Battler.prototype;
 k='initialize';
@@ -15041,6 +15136,15 @@ r=p[k]; (p[k]=function f(path){
 	s.delete(path);
 	return rtv;
 }).ori=r;
+k='otherFiles_delDataAll';
+r=p[k]; (p[k]=function f(){ // for debug
+	const m=this.otherFiles_getDataMap(),s=this.otherFiles_getPendedSet();
+	m.forEach(f.tbl[0].bind(m));
+	s.forEach(f.tbl[0].bind(s));
+}).ori=r;
+p[k].tbl=[
+function(v,k){this.delete(k);},
+];
 k='otherFiles_addLoad';
 r=p[k]; (p[k]=function f(path){
 	const m=this.otherFiles_getDataMap();
@@ -16456,12 +16560,14 @@ t[3].tbl=[
 r[0],
 ];
 
-cf(Scene_Title.prototype,'create',function f(){
+cf(cf(Scene_Title.prototype,'create',function f(){
+	this.create_customTitle();
+	return f.ori.apply(this,arguments);
+}),'create_customTitle',function f(){
 	if(!(f.tbl.length>=5)) f.tbl.push( f.tbl[1](ImageManager.otherFiles_getData(f.tbl[0])) );
 	const ch=f.tbl[4].filter(f.tbl[3]).rnd1();
 	$dataSystem.title1Name=ch[0];
 	$dataSystem.title2Name=ch[1]||f.tbl[2]; // ""
-	return f.ori.apply(this,arguments);
 },t);
 
 t=r=undefined;
@@ -23314,17 +23420,603 @@ new cfc(Game_Action.prototype).add('applyItemEffect',function f(trgt, effect){
 
 ﻿"use strict";
 /*:
- * @plugindesc 清單中的說明
+ * @plugindesc MOG_Status 能力值出界特效
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(typeof MetersStatusM!=='undefined')(()=>{ let k,r,t;
+
+new cfc(MetersStatusM.prototype).add('updateFlow',function f(sp,pCur,pMax,paramId){
+	if(this._shadowBar) this._shadowBar.alpha=0;
+	if(pMax>0 && pCur>pMax){
+		arguments[1]=arguments[2];
+		let sb=sp._shadowBar;
+		if(!sb){
+			sp.parent.addChild(sb=sp._shadowBar=new Sprite(sp.bitmap));
+		}
+		sb._anchor=sp._anchor;
+		{ const frm=sp._frame; sb.setFrame(frm.x,frm.y,frm.width,frm.height); }
+		sb.x=sp.x;
+		sb.y=sp.y;
+		sb.alpha=0;
+		sb._shadowCtr|=0;
+		++sb._shadowCtr;
+		sb._shadowCtr%=f.tbl[0];
+		const r=f.tbl[0]-sb._shadowCtr;
+		if(r<f.tbl[1]){
+			const alphaRate=r/f.tbl[1];
+			const aniRate=Math.sin((1-alphaRate)*f.tbl[2])*(pCur/pMax-1)+1;
+			sb.alpha=alphaRate*f.tbl[3];
+			sb.scale.x=sp.scale.x*aniRate;
+		}
+	}
+	return f.ori.apply(this,arguments);
+},[
+128, // total frame
+64, // biggering and fading frame
+Math.PI/2, // pre-cal.
+0.5,
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 動態gameover
+ * @author agold404
+ * @help BLR_custom/GAMEOVER/GAMEOVER.txt
+ * 
+ * # 標題或說明。無視註解(包含井字號)後若為空列(只剩下tab或空白)，則無視此組。
+ * # 每圖幾幀。用井字號使該列成為空列則使用預設值，預設值=1。
+ * # 會變成候選者的條件。使用 javascript 的 eval ，故可直接輸入 js ，另可參考 title 。用井字號使該列成為空列則使用預設值，預設值=true。
+ * # 幀額外設定這圖幾幀，預設用上面的每圖幾幀 |圖1路徑
+ * # 幀額外設定這圖幾幀，預設用上面的每圖幾幀|圖2路徑
+ * # 圖3路徑
+ * # ...
  * 
  * This plugin can be renamed as you want.
  */
 
 (()=>{ let k,r,t;
 
+const parsing=t=function f(lines){
+	const rtv=lines.split('\n').map(f.tbl[0]);
+	if(rtv.length<4) return rtv;
+	const errPre="Error: In '"+rtv[0]+"':\n got '";
+	const errSuf="' parsing as Number. The result should not be an NaN.";
+	const rtv1=(!rtv[1]||rtv[1].match(f.tbl[1]))?4:rtv[1]-0;
+	if(isNaN(rtv1)){
+		throw new Error(errPre+rtv[1]+errSuf);
+	}
+	rtv[1]=rtv1;
+	for(let x=f.tbl[2],xs=rtv.length;x!==xs;++x){
+		if(rtv[x].indexOf("|")>=0){
+			rtv[x]=rtv[x].split("|");
+			const rtvX0=rtv[x][0]; rtv[x][0]-=0;
+			if(isNaN(rtv[x][0])){
+				throw new Error(errPre+rtvX0+errSuf);
+			}
+		}else rtv[x]=[rtv1,rtv[x]];
+	}
+	return rtv;
+};
+t.ori=undefined;
+t.tbl=[
+line=>line.replace(/#.*$/,''),
+/^[ \t]+$/,
+3,
+];
+
+t=[
+"BLR_custom/GAMEOVER/GAMEOVER.txt", // 0: txt path
+[/\r/g,'',/\n\n+/g], // 1: replace,split
+parsing, // 2: map
+lines=>lines&&lines[0]&&lines.length>=4, // 3: filter
+group=>Scene_Title.prototype.create_customTitle.tbl[3](group), // 4: condition fitler
+function(bm){
+	const scale=this.scale;
+	scale.y=scale.x=Math.min(Graphics.boxWidth/bm.width,Graphics.boxHeight/bm.height);;
+}, // 5: load listener
+];
+
+new cfc(Scene_Boot.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.addLoadGameoverImgsInfos();
+	return rtv;
+}).add('addLoadGameoverImgsInfos',function f(){
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+},t);
+
+new cfc(Scene_Gameover.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.parseData();
+	this._currIdx=-1;
+	return rtv;
+}).add('parseData',function f(){
+	const raw=ImageManager.otherFiles_getData(f.tbl[0]); if(!raw) return this._groups=[];
+	const groups=this._groups=raw.replace(f.tbl[1][0],f.tbl[1][1]).split(f.tbl[1][2]).map(f.tbl[2]).filter(f.tbl[3]);
+	this._group=groups.filter(f.tbl[4]).rnd1();
+	this.parseData_preloadBitmap();
+},t).add('parseData_preloadBitmap',function f(){
+	if(!this._group) return;
+	const sps=this._spritePools=[];
+	for(let x=0,arr=this._group.slice(f.tbl[2].tbl[2]),xs=arr.length;x!==xs;++x){
+		const bmp=ImageManager.loadNormalBitmap(arr[x][1]); // arr[x] = [duration,path]
+		const sp=new Sprite(bmp);
+		sp.x=Graphics.boxWidth>>1;
+		sp.y=Graphics.boxHeight>>1;
+		const anchor=sp.anchor; anchor.y=anchor.x=0.5;
+		sp._info=arr[x];
+		bmp.addLoadListener(f.tbl[5].bind(sp));
+		sps.push(sp);
+	}
+},t).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	//this.create_customGameover();
+	return rtv;
+}).add('create_customGameover',function f(){
+	if(!this._group) return;
+	this.update_currSp(this._currIdx);
+},t).add('update_currSp',function f(toIdx){
+	const newSp=this._spritePools[toIdx];
+	if(this._currIdx===toIdx||!newSp) return;
+	this._currIdx=toIdx;
+	if(this._currSp){
+		if(this._currSp!==this.children[this._currSp._idx]) this.removeChild(this._currSp);
+		else this.removeChildAt(this._currSp._idx);
+	}
+	newSp._idx=this.children.length;
+	this.addChild(this._currSp=newSp);
+	newSp._dur=newSp._info[0];
+}).add('update_nextSp',function f(){
+	if(this._currSp&&(--this._currSp._dur>0)) return;
+	const newIdx=(this._currIdx+1)%this._spritePools.length;
+	this.update_currSp(newIdx);
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.update_nextSp();
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 恢復道具套用藥劑精通
+ * @author agold404
+ * @help 所以為什麼內建不這麼做？
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Action.prototype).add('evalDamageFormula',function f(){
+	let rtv=f.ori.apply(this,arguments);
+	if(this.isItem()&&this.isRecover()) rtv*=this.subject().pha;
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 合成UI
+ * @author agold404
+ * @help data/合成.json
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const dataPath="data/合成.json";
+const properties={
+key:"名稱",
+cost:"材料",
+gain:"獲得",
+display:"製作名稱",
+description:"說明",
+};
+const itemListWidth=256;
+const amountsHeight=128;
+const putDataArrByType=tbl=>{
+	if(!tbl.dataArrByType) tbl.dataArrByType={
+		i:$dataItems,
+		w:$dataWeapons,
+		a:$dataArmors,
+	};
+};
+
+
 {
+new cfc(Game_System.prototype).add('synthesis_getCont',function f(){
+	let rtv=this._synthesis_cont; if(!rtv) (rtv=this._synthesis_cont=[])._inlineMap=new Map();
+	return rtv;
+}).add('synthesis_setEnabled',function f(key){
+	const s=this._synthesis_disabledSet;
+	if(s) s.delete(key);
+}).add('synthesis_setDisabled',function f(key){
+	let s=this._synthesis_disabledSet; if(!s) s=new Set();
+	s.add(key);
+	return s;
+}).add('synthesis_clearAll',function f(){
+	const cont=this.synthesis_getCont();
+	cont.length=0;
+	cont._cache=undefined;
+	cont._inlineMap.clear();
+	this._synthesis_selAll=false;
+	this.synthesis_setDisabled().clear();
+}).add('synthesis_selectAll',function f(key){
+	const cont=this.synthesis_getCont();
+	cont._cache=undefined;
+	this._synthesis_selAll=true;
+}).add('synthesis_addItem',function f(key){
+	const cont=this.synthesis_getCont();
+	cont._cache=undefined;
+	cont.push(['a',key]);
+}).add('synthesis_rmItem',function f(key){
+	const cont=this.synthesis_getCont();
+	cont._cache=undefined;
+	if(cont._inlineMap.has(key)) cont._inlineMap.delete(key);
+	else cont.push(['r',key]);
+}).add('synthesis_addItemInline',function f(key,cost,gain,display){
+	const info={key:key,cost:cost,gain:gain}; if(3<arguments.length) info.display=display;
+	const cont=this.synthesis_getCont();
+	cont._cache=undefined;
+	cont.push(['i',key]);
+	cont._inlineMap.set(key,info);
+}).add('synthesis_getList',function f(){
+	const arr=this.synthesis_getCont(),tmp=[],s=new Set();
+	if(arr._cache) return arr._cache;
+	for(let x=arr.length;x--;){ const key=arr[x][1];
+		if(s.has(key)) continue; else s.add(key);
+		switch(arr[x][0]){
+		case 'a':{
+			if(arr._inlineMap.has(key)){ tmp.push(['i',key]); continue; }
+			if(this._synthesis_selAll) contiune;
+		}break;
+		case 'r':{
+			if(!this._synthesis_selAll) contiune;
+		}break;
+		case 'i':{
+			if(!arr._inlineMap.has(key)) continue;
+		}break;
+		}
+		tmp.push(arr[x]);
+	}
+	arr.length=0;
+	const rtv=[];
+	for(let x=tmp.length;x--;){
+		rtv.push(tmp[x]);
+		arr.push(tmp[x]);
+	}
+	rtv._inlineMap=new Map(arr._inlineMap);
+	rtv._selAll=this._synthesis_selAll;
+	rtv._disabledSet=this._synthesis_disabledSet;
+	return arr._cache=rtv;
+});
+}
+
+
+{
+const a=function Window_合成_list(){
+	this.initialize.apply(this, arguments);
+};
+a.ori=Window_Command;
+window[a.name]=a;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a;
+const tbl=[
+a.ori.prototype,
+64, // wait start
+64, // stop
+8, // pad scroll
+];
+new cfc(p).add('initialize',function f(x,y,allList,selInfo){
+	const rtv=f.tbl[0].initialize.apply(this,arguments);
+	this.initSel(allList,selInfo);
+	this._drawTextExStartOffsetXTimer=0;
+	this.refresh();
+	return rtv;
+},tbl).add('initSel',function f(allList,selInfo){
+	// (allList=[{},...])._key2info; // from Scene_合成.createAll_parseData
+	// selInfo=$gameSystem.synthesis_getList();
+	this._data=[];
+	if(!selInfo) return;
+	const selKey2type=new Map(); selInfo.forEach(f.tbl[1],selKey2type);
+	if(selInfo._selAll){
+		for(let x=0,arr=allList,xs=arr.length;x!==xs;++x){
+			const key=arr[x][f.tbl[0].key];
+			if(selKey2type.has(key)) continue; // 'r' , 'i'
+			this._data.push(arr[x]);
+		}
+		for(let x=0,arr=selInfo,xs=arr.length;x!==xs;++x){
+			if(arr[x][0]!=='i') continue;
+			this._data.push(selInfo._inlineMap.get(arr[x][1]));
+		}
+	}else{
+		for(let x=0,arr=selInfo,xs=arr.length;x!==xs;++x){
+			if(arr[x][0]==='a') this._data.push(allList._key2info.get(arr[x][1]));
+			else this._data.push(selInfo._inlineMap.get(arr[x][1]));
+		}
+	}
+	this._disabledSet=selInfo._disabledSet;
+	return this._data;
+},[
+properties,
+function(x){ this.set(x[1],x[0]); },
+]).add('makeCommandList',function f(){
+	if(!this._data) return;
+	this._data.forEach(f.tbl[0],this);
+},t=[
+function f(info){
+	const enabled=this._disabledSet&&!this._disabledSet.has(info[f.tbl.key]);
+	this.addCommand(info[f.tbl.display],info[f.tbl.key],enabled);
+}, // forEach
+],true,true).add('checkCostsEnough',function f(info){
+	f.tbl[1](f.tbl); if(!info) return false;
+	const costs=info[f.tbl[0].cost];
+	for(let x=0,arr=costs,xs=arr.length;x!==xs;++x){
+		const info=arr[x];
+		if('g'===info[0]){ if(!($gameParty.gold()>=info[1])) return false; }
+		else{ if(!($gameParty.numItems(f.tbl.dataArrByType[info[0]][info[1]])>=info[2])) return false; }
+	}
+	return true;
+},[properties,putDataArrByType]).add('getCurrentInfo',function(index){
+	const idx=index===undefined?this._index:index;
+	return this._data[idx];
+}).add('isCommandEnabled',function f(index){
+	const rtv=this._data[index] && f.tbl[0].isCommandEnabled.apply(this,arguments);
+	return rtv && this.checkCostsEnough(this._data[index]);
+},tbl,false,true).add('isCurrentItemEnabled',function(index){
+	return this.isCommandEnabled(this.index());
+},undefined,false,true).add('drawItem',function(index){
+	if(!(index>=0 && index<this.maxItems())) return;
+	const rect=this.itemRectForText(index);
+	const align=this.itemTextAlign();
+	this.resetTextColor();
+	this.changePaintOpacity(this.isCommandEnabled(index));
+	const offsetX=this.drawItem_getOffsetX();
+	const res=this.drawTextEx(this.commandName(index), rect.x-offsetX, rect.y, rect.width, align);
+	this._drawTextExCurrentTextWidth=res+(this.textPadding()<<1);
+	this._drawTextExCurrentTextWidthMax=this._drawTextExCurrentTextWidth-this.contentsWidth();
+	this._drawTextExLastOffsetX=offsetX;
+},undefined,false,true).add('drawItem_getOffsetX',function f(){
+	return Math.max(Math.min(this._drawTextExCurrentTextWidthMax,this._drawTextExStartOffsetXTimer-f.tbl[1]),0)||0;
+},tbl,false,true).add('select',function f(idx){
+	const idx0=this._index;
+	const rtv=f.tbl[0].select.apply(this,arguments);
+	this._drawTextEx_clearCache();
+	const mit=this.maxItems();
+	if(idx0>=0) this.redrawItem(idx0); // clear last (disappeared?)
+	if(this._index>=0&&this._index<mit){
+		this.redrawItem(this._index);
+		const info=this._data[this._index]; if(info){
+			const rw=this._requirementsWindow;
+			if(rw) rw.refreshHelp(info);
+			const aw=this._amountsWindow;
+			if(aw) aw.refreshHelp(info);
+		}
+	}
+	return rtv;
+},tbl).add('_drawTextEx_clearCache',function f(){
+	this._drawTextExStartOffsetXTimer=0;
+	this._drawTextExCurrentTextWidth=undefined;
+	this._drawTextExCurrentTextWidthMax=undefined;
+	this._drawTextExLastOffsetX=undefined;
+	this._drawTextExStartOffsetXLastFc=undefined;
+},tbl).add('update',function f(){
+	const rtv=f.tbl[0].update.apply(this,arguments);
+	if(this._drawTextExStartOffsetXLastFc!==Graphics.frameCount){
+		this._drawTextExStartOffsetXTimer+=Graphics.frameCount-this._drawTextExStartOffsetXLastFc||0;
+		this._drawTextExStartOffsetXLastFc=Graphics.frameCount;
+	}
+	if(!(this._drawTextExStartOffsetXTimer-f.tbl[1]-f.tbl[2]<this._drawTextExCurrentTextWidthMax)) this._drawTextExStartOffsetXTimer=0;
+	if(this.drawItem_getOffsetX()!==this._drawTextExLastOffsetX) this.redrawItem(this._index);
+	return rtv;
+},tbl,false,true).add('refresh',function f(){
+	this._drawTextEx_clearCache();
+	const rtv=f.tbl[0].refresh.apply(this,arguments);
+	this._drawTextEx_clearCache();
+	return rtv;
+},tbl,false,true);
+t[0].ori=undefined; t[0].tbl=properties;
+}
+
+
+{
+const a=function Scene_合成(){
+	this.initialize.apply(this, arguments);
+};
+a.ori=Scene_MenuBase;
+window[a.name]=a;
+const p=a.prototype=Object.create(a.ori.prototype);
+p.constructor=a;
+t=[
+a.ori.prototype,
+a.ori,
+['itemList','amounts',], // 2
+{
+itemList:{x:0,y:0,w:itemListWidth,h:undefined,align:""},
+requirements:{x:itemListWidth,y:0,w:undefined,h:undefined,align:"afterX",},
+amounts:{x:itemListWidth,y:undefined,w:undefined,h:amountsHeight,align:"afterY",},
+}, // 3
+[
+dataPath, // 4-0
+info=>info&&(properties.key in info), // 4-1
+" repeated: ", // 4-2
+new Set([
+	'cancel',
+]), // 4-3
+"持有數量/需求數量", // 4-4
+"製作成功：", // 4-5
+], // 4
+properties, // 5
+['gain','cost',], // 6
+[1,], // 7: iconPadding,
+[
+function f(){
+	const ori=Window_Base.prototype.standardFontSize.apply(this,arguments);
+	return (ori>>1)+(ori>>2);
+},
+], // 8: funcs
+[putDataArrByType,], // 9: make tbl
+];
+
+new cfc(p).add('initialize',function f(){
+	const rtv=f.tbl[0].initialize.apply(this,arguments);
+	this.init();
+	return rtv;
+},t).add('init',function f(){
+	this._state=f.tbl[2][0];
+	ImageManager.otherFiles_addLoad(f.tbl[4][0]);
+},t).add('create',function f(){
+	const rtv=f.tbl[0].create.apply(this,arguments);
+	this.createAll();
+	return rtv;
+},t).add('getRoot',function f(){
+	return this._root;
+}).add('createAll',function f(){
+	f.tbl[9][0](f.tbl);
+	this.createAll_parseData();
+	this.createAll_root();
+	this.createWindow_itemListWindow();
+	this.createWindow_requirementsWindow();
+	this.createWindow_amountsWindow();
+	this.createAll_finalTune();
+},t).add('createAll_parseData',function f(){
+	const raw=ImageManager.otherFiles_getData(f.tbl[4][0]);
+	if(!raw) return;
+	const arr=this._data=JSON.parse(raw).filter(f.tbl[4][1]);
+	const m=this._data._key2info=new Map();
+	for(let x=0,xs=arr.length;x!==xs;++x){
+		if(!(f.tbl[5].description in arr[x])) arr[x][f.tbl[5].description]="";
+		if(!(f.tbl[5].display in arr[x])) arr[x][f.tbl[5].display]=arr[x][f.tbl[5].key];
+		const key=arr[x][f.tbl[5].key];
+		if(f.tbl[4][3].has(key)){
+			throw new Error("you cannot use "+key+" as internal name.");
+		}
+		if(m.has(key)){
+			throw new Error(f.tbl[5].key+f.tbl[4][2]+key);
+		}
+		m.set(key,arr[x]);
+	}
+},t).add('createAll_root',function f(){
+	this.addChild(this._root=new Sprite());
+},t).add('createWindow_itemListWindow',function f(){
+	const sp=this._itemListWindow=new Window_合成_list(0,0,this._data,$gameSystem.synthesis_getList());
+	const conf=f.tbl[3].itemList; conf.h=Graphics.boxHeight;
+	sp.positioning(conf);
+	this.getRoot().addChild(sp);
+},t).add('checkCostsEnough',function f(costs){
+	for(let x=0,arr=costs,xs=arr.length;x!==xs;++x){
+		const info=arr[x];
+		if('g'===info[0]){ if(!($gameParty.gold()>=info[1])) return false; }
+		else{ if(!($gameParty.numItems(f.tbl.dataArrByType[info[0]][info[1]])>=info[2])) return false; }
+	}
+	return true;
+},t).add('createWindow_itemListWindow_okHandler',function f(){
+	// bind `this` to scene
+	const self=this._itemListWindow; if(!self.isCurrentItemEnabled()){ SoundManager.playBuzzer(); return self.activate(); }
+	const info=self.getCurrentInfo(); if(!info) return;
+	//const costs=info[f.tbl[5].cost];
+	//const gains=info[f.tbl[5].gain];
+	for(let keys=f.tbl[6],z=keys.length,cw2=self.contentsWidth()>>1;z--;){
+		const coef=1-(z<<1);
+		for(let i=0,arr=info[f.tbl[5][keys[z]]],xs=arr.length;i!==xs;++i){
+			const info=arr[i];
+			if(info[0]==='g'){
+				$gameParty.gainGold(coef*info[1]);
+			}else{
+				const item=f.tbl.dataArrByType[info[0]][info[1]];
+				$gameParty.gainItem(item,coef*info[2]);
+			}
+		}
+	}
+	if($gameTemp.popupMsg) $gameTemp.popupMsg(f.tbl[4][5]+info[f.tbl[5].display]);
+	self.activate();
+},t).add('createWindow_requirementsWindow',function f(){
+	const sp=this._requirementsWindow=new Window_Base();
+	sp.processNormalCharacter=Window_Message.prototype.processNormalCharacter;
+	sp.standardFontSize=f.tbl[8][0];
+	const conf=f.tbl[3].requirements; conf.w=Graphics.width-f.tbl[3].itemList.w; conf.h=Graphics.boxHeight-f.tbl[3].amounts.h;
+	sp.positioning(conf);
+	this.getRoot().addChild(sp);
+	if($gameTemp.popupMsg) $gameTemp.popupMsg(f.tbl[4][4]);
+},t).add('createWindow_requirementsWindow_refreshHelp',function f(info){
+	f.tbl[9][0](f.tbl);
+	// this._requirementsWindow.refreshHelp=this.createWindow_requirementsWindow_refreshHelp;
+	this.createContents();
+	const lh=this.lineHeight(),x0=this.textPadding();
+	let x=0,y=0,res={};
+	this.drawTextEx("\\TXTCENTER:\""+f.tbl[5].display+"\"",x,y,undefined,undefined,res); y=res.y+lh;
+	this.drawTextEx(info[f.tbl[5].display],x,y,undefined,undefined,res); y=res.y+lh;
+	for(let z=0,keys=f.tbl[6],cw2=this.contentsWidth()>>1;z<keys.length;++z){
+		x=x0;
+		y+=lh;
+		this.drawTextEx("\\TXTCENTER:\""+f.tbl[5][keys[z]]+"\"",x,y,undefined,undefined,res); y=res.y+lh;
+		for(let i=0,arr=info[f.tbl[5][keys[z]]],xs=arr.length;i!==xs;++i){
+			const info=arr[i];
+			if(info[0]==='g'){
+				const usingGoldIcon=this.usingGoldIcon&&this.usingGoldIcon(TextManager.currencyUnit);
+				if(usingGoldIcon){
+					this.drawIcon(Yanfly.Icon.Gold, x, y);
+					x+=Window_Base._iconWidth+f.tbl[7][0];
+				}
+				this.drawTextEx(info[1]+' \\G',x,y,undefined,undefined,res);
+				if(usingGoldIcon){
+					x-=Window_Base._iconWidth+f.tbl[7][0];
+				}
+			}else{
+				const item=f.tbl.dataArrByType[info[0]][info[1]];
+				if(item.iconIndex){
+					this.drawIcon(item.iconIndex,x,y);
+					x+=Window_Base._iconWidth+f.tbl[7][0];
+				}
+				this.drawTextEx(item.name+' '+$gameParty.numItems(item)+'/'+info[2],x,y,undefined,undefined,res);
+				if(item.iconIndex){
+					x-=Window_Base._iconWidth+f.tbl[7][0];
+				}
+			}
+			if(res.x<cw2){
+				x=cw2;
+				y=res.y;
+			}else{
+				x=x0;
+				y=res.y+lh;
+			}
+		}
+	}
+},t).add('createWindow_amountsWindow',function f(){
+	const sp=this._amountsWindow=new Window_Help();
+	const conf=f.tbl[3].amounts; conf.y=f.tbl[3].requirements.h; conf.w=f.tbl[3].requirements.w;
+	sp.positioning(conf,this._requirementsWindow);
+	this.getRoot().addChild(sp);
+},t).add('createWindow_amountsWindow_refreshHelp',function f(info){
+	this.setText(info[f.tbl[5].description]);
+},t).add('createAll_finalTune',function f(){
+	// link
+	this._itemListWindow._requirementsWindow=this._requirementsWindow;
+	this._itemListWindow._amountsWindow=this._amountsWindow; // as help window
+	this._requirementsWindow.refreshHelp=this.createWindow_requirementsWindow_refreshHelp;
+	this._amountsWindow.refreshHelp=this.createWindow_amountsWindow_refreshHelp;
+	// display
+	this._itemListWindow.refresh();
+	this._itemListWindow.reselect();
+	this._amountsWindow.deactivate();
+	// input
+	this._itemListWindow.setHandler('cancel',this.popScene.bind(this));
+	this._itemListWindow.setHandler('ok',this.createWindow_itemListWindow_okHandler.bind(this));
+},t).add('getInfo',function f(key){
+	return this._data._key2info.get(key);
+},t);
 }
 
 })();
