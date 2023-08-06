@@ -23895,6 +23895,7 @@ new Set([
 ]), // 4-3
 "持有數量/需求數量", // 4-4
 "製作成功：", // 4-5
+"\\TXTCENTER:\"未知\"", // 4-6
 ], // 4
 properties, // 5
 ['gain','cost',], // 6
@@ -23995,10 +23996,13 @@ new cfc(p).add('initialize',function f(){
 		this.drawTextEx(info[f.tbl[5].display],x,y,undefined,undefined,res); y=res.y+lh;
 	}
 	for(let z=0,keys=f.tbl[6],cw2=this.contentsWidth()>>1;z<keys.length;++z){
-		if(info[f.tbl[5].hideGain]&&'gain'===keys[z]) continue;
 		x=x0;
 		y+=lh;
 		this.drawTextEx("\\TXTCENTER:\""+f.tbl[5][keys[z]]+"\"",x,y,undefined,undefined,res); y=res.y+lh;
+		if(info[f.tbl[5].hideGain]&&'gain'===keys[z]){
+			this.drawTextEx(f.tbl[4][6],x,y,undefined,undefined,res); y=res.y+lh;
+			continue;
+		}
 		for(let i=0,arr=info[f.tbl[5][keys[z]]],xs=arr.length;i!==xs;++i){
 			const info=arr[i];
 			if('g'===info[0]){
