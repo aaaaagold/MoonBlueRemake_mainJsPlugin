@@ -20648,6 +20648,8 @@ new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
 
 (()=>{ let k,r,t;
 
+const evaljs=(s,self)=>eval(s);
+
 k={
 STATE_NEXTSTART:0,
 STATE_SLASH1:1,
@@ -20664,6 +20666,24 @@ FUNC_PARSEINFO_AUDIO:(state,txt,strt,arr)=>{
 		const info=txt.slice(strt,last).split("|");
 		arr.push({name:info[0],volume:isNaN(info[1])?90:info[1]-0,pitch:isNaN(info[2])?100:info[2]-0,pan:info[3]-0||0,pos:info[4]-0||0,});
 		state.txt+="AUDIO";
+		state.txt+=arr._key;
+		state.txt+='[';
+		state.txt+=arr.length-1;
+		state.txt+=']';
+	}
+	return last;
+},
+FUNC_PARSEINFO_EVALJSCODE:function(state,txt,strt,isScMsgWnd){
+	if(txt[strt]!=='"') return strt-1;
+	let arr;
+	if(isScMsgWnd && !(arr=this._evaljscodeInfo)) (arr=this._evaljscodeInfo=[])._key="";
+	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\EVALJSCODE format error');
+	state.x=last;
+	if(strt===last) return last; // empty info
+	if(arr){
+		const info=getCStyleStringStartAndEndFromString(txt,strt-1,last+1);
+		arr.push(JSON.parse(txt.slice(info.start,info.end)));
+		state.txt+="EVALJSCODE";
 		state.txt+=arr._key;
 		state.txt+='[';
 		state.txt+=arr.length-1;
@@ -20723,6 +20743,7 @@ SE:function(state,text,x,isScMsgWnd,func_parseInfo){
 },
 },
 STR_AUDIOPREFIX:"AUDIO_",
+STR_EVALJSCODE:"EVALJSCODE",
 STR_SHAKESCREEN:"SHAKESCREEN",
 };
 t=[];
@@ -20743,6 +20764,10 @@ t[k.STATE_SLASH1]=function f(state,text){
 		if(f.tbl.STR_AUDIOPREFIX===text.slice(state.x,x)){
 			const func=f.tbl.FUNCS_SLASH1[text.slice(x,x+2)];
 			if(func && x<func.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this),f.tbl.FUNC_PARSEINFO_AUDIO)) return ++state.x; // matched
+		}
+		x=f.tbl.STR_EVALJSCODE.length+state.x;
+		if(f.tbl.STR_EVALJSCODE===text.slice(state.x,x)){
+			if(x<f.tbl.FUNC_PARSEINFO_EVALJSCODE.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this))) return ++state.x; // matched
 		}
 		x=f.tbl.STR_SHAKESCREEN.length+state.x;
 		if(f.tbl.STR_SHAKESCREEN===text.slice(state.x,x)){
@@ -20781,11 +20806,17 @@ AUDIOSE:function(textState){
 	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_se,textState);
 	if(info) AudioManager.playSe(info);
 },
+EVALJSCODE:function(textState){
+	const info=this.processEscapeCharacter_getEvaljscodeInfo(this._evaljscodeInfo,textState);
+	if(info) evaljs(info,this);
+},
 SHAKESCREEN:function(textState){
 	const info=this.processEscapeCharacter_getShakescreenInfo(this._shakescreenInfo,textState);
 	if(info) Game_Screen.prototype.startShake.apply($gameScreen,info);
 },
 }).add('processEscapeCharacter_getAudioInfo',function f(arr,textState){
+	return arr&&arr[this.obtainEscapeParam(textState)];
+}).add('processEscapeCharacter_getEvaljscodeInfo',function f(arr,textState){
 	return arr&&arr[this.obtainEscapeParam(textState)];
 }).add('processEscapeCharacter_getShakescreenInfo',function f(arr,textState){
 	return arr&&arr[this.obtainEscapeParam(textState)];
@@ -23623,9 +23654,14 @@ cost:"材料",
 gain:"獲得",
 display:"製作名稱",
 description:"說明",
+hideNameInRequirement:"hideNameInRequirement",
+hideGain:"hideGain",
+head:"head",
+tail:"tail",
 };
 const itemListWidth=256;
-const amountsHeight=128;
+const descriptionsHeight=128;
+const descriptionsLineNum=3;
 const putDataArrByType=tbl=>{
 	if(!tbl.dataArrByType) tbl.dataArrByType={
 		i:$dataItems,
@@ -23634,6 +23670,7 @@ const putDataArrByType=tbl=>{
 	};
 };
 
+const evaljs=(s,self)=>eval(s);
 
 {
 new cfc(Game_System.prototype).add('synthesis_getCont',function f(){
@@ -23766,10 +23803,11 @@ function f(info){
 	for(let x=0,arr=costs,xs=arr.length;x!==xs;++x){
 		const info=arr[x];
 		if('g'===info[0]){ if(!($gameParty.gold()>=info[1])) return false; }
+		else if('j'===info[0]){ if(!f.tbl[2](info[1],this)) return false; }
 		else{ if(!($gameParty.numItems(f.tbl.dataArrByType[info[0]][info[1]])>=info[2])) return false; }
 	}
 	return true;
-},[properties,putDataArrByType]).add('getCurrentInfo',function(index){
+},[properties,putDataArrByType,evaljs]).add('getCurrentInfo',function(index){
 	const idx=index===undefined?this._index:index;
 	return this._data[idx];
 }).add('isCommandEnabled',function f(index){
@@ -23801,7 +23839,7 @@ function f(info){
 		const info=this._data[this._index]; if(info){
 			const rw=this._requirementsWindow;
 			if(rw) rw.refreshHelp(info);
-			const aw=this._amountsWindow;
+			const aw=this._descriptionsWindow;
 			if(aw) aw.refreshHelp(info);
 		}
 	}
@@ -23846,7 +23884,7 @@ a.ori,
 {
 itemList:{x:0,y:0,w:itemListWidth,h:undefined,align:""},
 requirements:{x:itemListWidth,y:0,w:undefined,h:undefined,align:"afterX",},
-amounts:{x:itemListWidth,y:undefined,w:undefined,h:amountsHeight,align:"afterY",},
+descriptions:{x:itemListWidth,y:undefined,w:undefined,h:descriptionsHeight,align:"afterY",lineNum:descriptionsLineNum,},
 }, // 3
 [
 dataPath, // 4-0
@@ -23865,7 +23903,9 @@ properties, // 5
 function f(){
 	const ori=Window_Base.prototype.standardFontSize.apply(this,arguments);
 	return (ori>>1)+(ori>>2);
-},
+}, // 8-0
+jsInfo=>jsInfo[2], // 8-1
+evaljs, // 8-2
 ], // 8: funcs
 [putDataArrByType,], // 9: make tbl
 ];
@@ -23889,7 +23929,7 @@ new cfc(p).add('initialize',function f(){
 	this.createAll_root();
 	this.createWindow_itemListWindow();
 	this.createWindow_requirementsWindow();
-	this.createWindow_amountsWindow();
+	this.createWindow_descriptionsWindow();
 	this.createAll_finalTune();
 },t).add('createAll_parseData',function f(){
 	const raw=ImageManager.otherFiles_getData(f.tbl[4][0]);
@@ -23915,13 +23955,6 @@ new cfc(p).add('initialize',function f(){
 	const conf=f.tbl[3].itemList; conf.h=Graphics.boxHeight;
 	sp.positioning(conf);
 	this.getRoot().addChild(sp);
-},t).add('checkCostsEnough',function f(costs){
-	for(let x=0,arr=costs,xs=arr.length;x!==xs;++x){
-		const info=arr[x];
-		if('g'===info[0]){ if(!($gameParty.gold()>=info[1])) return false; }
-		else{ if(!($gameParty.numItems(f.tbl.dataArrByType[info[0]][info[1]])>=info[2])) return false; }
-	}
-	return true;
 },t).add('createWindow_itemListWindow_okHandler',function f(){
 	// bind `this` to scene
 	const self=this._itemListWindow; if(!self.isCurrentItemEnabled()){ SoundManager.playBuzzer(); return self.activate(); }
@@ -23932,9 +23965,9 @@ new cfc(p).add('initialize',function f(){
 		const coef=1-(z<<1);
 		for(let i=0,arr=info[f.tbl[5][keys[z]]],xs=arr.length;i!==xs;++i){
 			const info=arr[i];
-			if(info[0]==='g'){
-				$gameParty.gainGold(coef*info[1]);
-			}else{
+			if('g'===info[0]) $gameParty.gainGold(coef*info[1]);
+			else if('j'===info[0]) f.tbl[8][2](info[1],this);
+			else{
 				const item=f.tbl.dataArrByType[info[0]][info[1]];
 				$gameParty.gainItem(item,coef*info[2]);
 			}
@@ -23946,7 +23979,7 @@ new cfc(p).add('initialize',function f(){
 	const sp=this._requirementsWindow=new Window_Base();
 	sp.processNormalCharacter=Window_Message.prototype.processNormalCharacter;
 	sp.standardFontSize=f.tbl[8][0];
-	const conf=f.tbl[3].requirements; conf.w=Graphics.width-f.tbl[3].itemList.w; conf.h=Graphics.boxHeight-f.tbl[3].amounts.h;
+	const conf=f.tbl[3].requirements; conf.w=Graphics.width-f.tbl[3].itemList.w; conf.h=Graphics.boxHeight-f.tbl[3].descriptions.h;
 	sp.positioning(conf);
 	this.getRoot().addChild(sp);
 	if($gameTemp.popupMsg) $gameTemp.popupMsg(f.tbl[4][4]);
@@ -23955,16 +23988,20 @@ new cfc(p).add('initialize',function f(){
 	// this._requirementsWindow.refreshHelp=this.createWindow_requirementsWindow_refreshHelp;
 	this.createContents();
 	const lh=this.lineHeight(),x0=this.textPadding();
-	let x=0,y=0,res={};
-	this.drawTextEx("\\TXTCENTER:\""+f.tbl[5].display+"\"",x,y,undefined,undefined,res); y=res.y+lh;
-	this.drawTextEx(info[f.tbl[5].display],x,y,undefined,undefined,res); y=res.y+lh;
+	let x=x0,y=0,res={};
+	if(info[f.tbl[5].head]){ this.drawTextEx(info[f.tbl[5].head],x,y,undefined,undefined,res); y=res.y+lh; }
+	if(!info[f.tbl[5].hideNameInRequirement]){
+		this.drawTextEx("\\TXTCENTER:\""+f.tbl[5].display+"\"",x,y,undefined,undefined,res); y=res.y+lh;
+		this.drawTextEx(info[f.tbl[5].display],x,y,undefined,undefined,res); y=res.y+lh;
+	}
 	for(let z=0,keys=f.tbl[6],cw2=this.contentsWidth()>>1;z<keys.length;++z){
+		if(info[f.tbl[5].hideGain]&&'gain'===keys[z]) continue;
 		x=x0;
 		y+=lh;
 		this.drawTextEx("\\TXTCENTER:\""+f.tbl[5][keys[z]]+"\"",x,y,undefined,undefined,res); y=res.y+lh;
 		for(let i=0,arr=info[f.tbl[5][keys[z]]],xs=arr.length;i!==xs;++i){
 			const info=arr[i];
-			if(info[0]==='g'){
+			if('g'===info[0]){
 				const usingGoldIcon=this.usingGoldIcon&&this.usingGoldIcon(TextManager.currencyUnit);
 				if(usingGoldIcon){
 					this.drawIcon(Yanfly.Icon.Gold, x, y);
@@ -23974,6 +24011,8 @@ new cfc(p).add('initialize',function f(){
 				if(usingGoldIcon){
 					x-=Window_Base._iconWidth+f.tbl[7][0];
 				}
+			}else if('j'===info[0]){
+				if(info[2]) this.drawTextEx(info[2],x,y,undefined,undefined,res);
 			}else{
 				const item=f.tbl.dataArrByType[info[0]][info[1]];
 				if(item.iconIndex){
@@ -23994,29 +24033,60 @@ new cfc(p).add('initialize',function f(){
 			}
 		}
 	}
-},t).add('createWindow_amountsWindow',function f(){
-	const sp=this._amountsWindow=new Window_Help();
-	const conf=f.tbl[3].amounts; conf.y=f.tbl[3].requirements.h; conf.w=f.tbl[3].requirements.w;
+	if(info[f.tbl[5].tail]){ this.drawTextEx(info[f.tbl[5].tail],x,y,undefined,undefined,res); y=res.y+lh; }
+},t).add('createWindow_descriptionsWindow',function f(){
+	const sp=this._descriptionsWindow=new Window_Help();
+	const conf=f.tbl[3].descriptions; conf.y=f.tbl[3].requirements.h; conf.w=f.tbl[3].requirements.w;
 	sp.positioning(conf,this._requirementsWindow);
 	this.getRoot().addChild(sp);
-},t).add('createWindow_amountsWindow_refreshHelp',function f(info){
+},t).add('createWindow_descriptionsWindow_refreshHelp',function f(info){
 	this.setText(info[f.tbl[5].description]);
 },t).add('createAll_finalTune',function f(){
+	// rwd (to font size setting) size
+	{
+		const h=Math.max(this._descriptionsWindow.fittingHeight(f.tbl[3].descriptions.lineNum),this._descriptionsWindow.height);
+		if(h!==this._descriptionsWindow.height){
+			this._requirementsWindow.height-=h-this._descriptionsWindow.height;
+			this._descriptionsWindow.height=h;
+			this._descriptionsWindow.createContents();
+		}
+	}
 	// link
 	this._itemListWindow._requirementsWindow=this._requirementsWindow;
-	this._itemListWindow._amountsWindow=this._amountsWindow; // as help window
+	this._itemListWindow._descriptionsWindow=this._descriptionsWindow; // as help window
 	this._requirementsWindow.refreshHelp=this.createWindow_requirementsWindow_refreshHelp;
-	this._amountsWindow.refreshHelp=this.createWindow_amountsWindow_refreshHelp;
+	this._descriptionsWindow.refreshHelp=this.createWindow_descriptionsWindow_refreshHelp;
 	// display
 	this._itemListWindow.refresh();
 	this._itemListWindow.reselect();
-	this._amountsWindow.deactivate();
+	this._descriptionsWindow.deactivate();
 	// input
 	this._itemListWindow.setHandler('cancel',this.popScene.bind(this));
 	this._itemListWindow.setHandler('ok',this.createWindow_itemListWindow_okHandler.bind(this));
+	// re-adjust loc
+	this._requirementsWindow.y+=this._descriptionsWindow.height;
+	this._descriptionsWindow.y=0;
 },t).add('getInfo',function f(key){
 	return this._data._key2info.get(key);
 },t);
+}
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 清單中的說明
+ * @author agold404
+ * @help 詳細說明
+ * 第二行
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+{
 }
 
 })();
