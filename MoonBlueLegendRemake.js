@@ -183,7 +183,7 @@ const getCStyleStringStartAndEndFromString=window.getCStyleStringStartAndEndFrom
 	return {start:strt,end:ende};
 };
 const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
-	const txtin=d.ce("input").sa("class","outofscreen");
+	const txtin=d.ce("textarea").sa("class","outofscreen");
 	d.body.ac(txtin);
 	txtin.value=""+s;
 	txtin.select();
@@ -8399,7 +8399,7 @@ new金手指(function(f){
 },function(f){
 	currentlyEnabled=true;
 	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
-},[38,38,40,40,37,39,37,39,66,65,]);
+},[82,190,73,190,80,190,]);
 
 new金手指(()=>$dataItems&&$gameParty,function(f){
 	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
@@ -15651,11 +15651,11 @@ addChild:function f(c){
 		if(this._atBtm){
 			if(this.children.back.y+this.children.back.height<c.height) this.removeChildAt(len-1);
 			c.y=this._maxHeight-c.height;
-			arr[0].y=c.y-arr[0].height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x].height;
+			arr[0].y=c.y-arr[0].height; for(let x=1;x!==len;++x) if(arr[x]) arr[x].y=arr[x-1].y+arr[x].height;
 		}else{
 			if(c.height+this.children.back.y>=this._maxHeight) this.removeChildAt(len-1);
 			c.y=0;
-			arr[0].y=c.height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x-1].height;
+			arr[0].y=c.height; for(let x=1;x!==len;++x) if(arr[x]) arr[x].y=arr[x-1].y+arr[x-1].height;
 		}
 	}
 	return Sprite.prototype.addChildAt.call(this,c,0);
@@ -18434,7 +18434,16 @@ const kwgetinfo="get_"+kwbase+"_info";
 
 gbb.addEnum(kwtrait);
 
-t=[kwbase,kwtxt,'(empty)',kwtrait,gbb[kwtrait],kwgetinfo,kwinfo,info=>info&&info[0]&&0<info[1]-0,];
+t=[
+kwbase, // 0
+kwtxt, // 1
+'(empty)', // 2
+kwtrait, // 3
+gbb[kwtrait], // 4
+kwgetinfo, // 5
+kwinfo, // 6
+info=>info&&info[0]&&0<info[1]-0, // 7
+];
 
 
 cf(Scene_Boot.prototype,'start',function f(){
@@ -18461,6 +18470,12 @@ new cfc(gbb.prototype).add(t[0],function f(){
 	return this.traitsSum(f.tbl[4],0);
 },t).add(t[5],function f(){
 	let rtv=this[f.tbl[6]]; if(!rtv) rtv=this[f.tbl[6]]=[[1,1],[2,1],];
+	if(this.skills){
+		const skills=new Set(this.skills());
+		const ori=rtv.slice(2);
+		rtv.length=2;
+		for(let x=0,xs=ori.length;x!==xs;++x) if(skills.has($dataSkills[ori[x][0]])) rtv.push(ori[x]);
+	}
 	return rtv;
 },t);
 
@@ -23504,6 +23519,7 @@ Math.PI/2, // pre-cal.
  * # 標題或說明。無視註解(包含井字號)後若為空列(只剩下tab或空白)，則無視此組。
  * # 每圖幾幀。用井字號使該列成為空列則使用預設值，預設值=1。
  * # 會變成候選者的條件。使用 javascript 的 eval ，故可直接輸入 js ，另可參考 title 。用井字號使該列成為空列則使用預設值，預設值=true。
+ * # 隨機出現時的權重，負不計且不會被選到。用井字號使該列成為空列則使用預設值，預設值=1。
  * # 幀額外設定這圖幾幀，預設用上面的每圖幾幀 |圖1路徑
  * # 幀額外設定這圖幾幀，預設用上面的每圖幾幀|圖2路徑
  * # 圖3路徑
@@ -23514,16 +23530,23 @@ Math.PI/2, // pre-cal.
 
 (()=>{ let k,r,t;
 
+const imgsStartIdx=4;
+
 const parsing=t=function f(lines){
 	const rtv=lines.split('\n').map(f.tbl[0]);
-	if(rtv.length<4) return rtv;
+	if(rtv.length<=imgsStartIdx) return rtv;
 	const errPre="Error: In '"+rtv[0]+"':\n got '";
 	const errSuf="' parsing as Number. The result should not be an NaN.";
-	const rtv1=(!rtv[1]||rtv[1].match(f.tbl[1]))?4:rtv[1]-0;
+	const rtv1=(!rtv[1]||rtv[1].match(f.tbl[1]))?1:rtv[1]-0;
 	if(isNaN(rtv1)){
 		throw new Error(errPre+rtv[1]+errSuf);
 	}
 	rtv[1]=rtv1;
+	const rtv3=(!rtv[3]||rtv[3].match(f.tbl[1]))?1:rtv[3]-0;
+	if(isNaN(rtv3)){
+		throw new Error(errPre+rtv[3]+errSuf);
+	}
+	rtv[3]=rtv3;
 	for(let x=f.tbl[2],xs=rtv.length;x!==xs;++x){
 		if(rtv[x].indexOf("|")>=0){
 			rtv[x]=rtv[x].split("|");
@@ -23539,14 +23562,14 @@ t.ori=undefined;
 t.tbl=[
 line=>line.replace(/#.*$/,''),
 /^[ \t]+$/,
-3,
+imgsStartIdx,
 ];
 
 t=[
 "BLR_custom/GAMEOVER/GAMEOVER.txt", // 0: txt path
 [/\r/g,'',/\n\n+/g], // 1: replace,split
 parsing, // 2: map
-lines=>lines&&lines[0]&&lines.length>=4, // 3: filter
+lines=>lines&&lines[0]&&lines.length>imgsStartIdx, // 3: filter
 group=>Scene_Title.prototype.create_customTitle.tbl[3](group), // 4: condition fitler
 function(bm){
 	const scale=this.scale;
@@ -23570,7 +23593,11 @@ new cfc(Scene_Gameover.prototype).add('initialize',function f(){
 }).add('parseData',function f(){
 	const raw=ImageManager.otherFiles_getData(f.tbl[0]); if(!raw) return this._groups=[];
 	const groups=this._groups=raw.replace(f.tbl[1][0],f.tbl[1][1]).split(f.tbl[1][2]).map(f.tbl[2]).filter(f.tbl[3]);
-	this._group=groups.filter(f.tbl[4]).rnd1();
+	const candis=groups.filter(f.tbl[4]);
+	let s=0; for(let x=0,xs=candis.length;x!==xs;++x) s+=candis[x][3];
+	let r=Math.random()*s,group;
+	for(let x=0,xs=candis.length;x!==xs;++x) if((r-=candis[x][3])<0){ group=candis[x]; break; }
+	this._group=group;
 	this.parseData_preloadBitmap();
 },t).add('parseData_preloadBitmap',function f(){
 	if(!this._group) return;
@@ -23674,13 +23701,14 @@ const evaljs=(s,self)=>eval(s);
 
 {
 new cfc(Game_System.prototype).add('synthesis_getCont',function f(){
-	let rtv=this._synthesis_cont; if(!rtv) (rtv=this._synthesis_cont=[])._inlineMap=new Map();
+	let rtv=this._synthesis_cont; if(!rtv) rtv=this._synthesis_cont=[];
+	if(!rtv._inlineMap) rtv._inlineMap=new Map();
 	return rtv;
 }).add('synthesis_setEnabled',function f(key){
 	const s=this._synthesis_disabledSet;
 	if(s) s.delete(key);
 }).add('synthesis_setDisabled',function f(key){
-	let s=this._synthesis_disabledSet; if(!s) s=new Set();
+	let s=this._synthesis_disabledSet; if(!(s instanceof Set)) s=this._synthesis_disabledSet=new Set();
 	s.add(key);
 	return s;
 }).add('synthesis_clearAll',function f(){
