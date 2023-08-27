@@ -8360,7 +8360,7 @@ r=p[k]; (p[k]=function f(item){
 /*:
  * @plugindesc 密技喔
  * @author agold404
- * @help 上上下下(下略)
+ * @help ?
  * 
  * This plugin can be renamed as you want.
  */
@@ -8436,64 +8436,63 @@ new金手指(function(f){
 	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
 },[82,190,73,190,80,190,]);
 
-new金手指(()=>$dataItems&&$gameParty,function(f){
+// common funcs
+
+const gainLvUpExp=f=>{
+	const actr=$gameActors._data[f.actorId];
+	if(actr){
+		actr.gainExp(actr.expForLevel(actr.level+1)-actr.expForLevel(actr.level));
+		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
+	}else SoundManager.playBuzzer();
+},isInMap=f=>SceneManager.isScene_map(),gainItems=f=>{
 	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
 	if(f.tbl.items.length){
-		AudioManager.playSe({name: "Ice4", volume: 75, pitch: 100});
-		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],10);
+		AudioManager.playSe(f.se);
+		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],f.gainAmount);
 	}
-},[76,70,50,190,78,69,84,],undefined,{
+},canGain=f=>$dataItems&&$gameParty;
+
+// gain
+
+new金手指(canGain,gainItems,[76,70,50,190,78,69,84,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("鑽石")>=0,
+se:{name: "Ice4", volume: 75, pitch: 100},
+gainAmount:10,
 });
-
-new金手指(()=>$dataItems&&$gameParty,function(f){
-	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
-	if(f.tbl.items.length){
-		AudioManager.playSe({name: "Magic1", volume: 75, pitch: 100});
-		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],10);
-	}
-},[65,71,79,76,68,52,48,52,],undefined,{
+new金手指(canGain,gainItems,[65,71,79,76,68,52,48,52,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0,
+se:{name: "Magic1", volume: 75, pitch: 100},
+gainAmount:1,
 });
-
-new金手指(function(f){
-	return SceneManager.isScene_map();
-},function(f){
-	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
-	if(f.tbl.items.length){
-		AudioManager.playSe({name: "Attack3", volume: 75, pitch: 100});
-		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],99);
-	}
-},[53,53,53,53,53,53,53,53,53,53,],undefined,{
+new金手指(canGain,gainItems,[53,53,53,53,53,53,53,53,53,53,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("箭矢")>=0,
+se:{name: "Attack3", volume: 75, pitch: 100},
+gainAmount:99,
 });
 
-new金手指(()=>true,function(f){
+// var
+
+new金手指(()=>$gameVariables,function(f){
 	const tmp=$dataSystem.variables.filter(f.cmp);
 	if(tmp.length) AudioManager.playSe({name: "Applause1", volume: 75, pitch: 100});
 },[73, 76, 79, 86, 69, 89, 79, 85, 65, 78, 71, 69, 76, 67, 65, 75, 69],undefined,{
 cmp:(s,i)=>s&&s.indexOf("好感")>=0&&($gameVariables.setValue(i,$gameVariables.value(i)+10)||true),
 });
 
-new金手指(function(f){
-	return SceneManager.isScene_map();
-},function(f){
-	const actr=$gameActors._data[4];
-	if(actr){
-		actr.gainExp(actr.expForLevel(actr.level));
-		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
-	}else SoundManager.playBuzzer();
-},[76, 79, 86, 69, 67, 65, 78, 68, 89]);
+// lv up
 
-new金手指(function(f){
-	return SceneManager.isScene_map();
-},function(f){
-	const actr=$gameActors._data[5];
-	if(actr){
-		actr.gainExp(actr.expForLevel(actr.level));
-		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
-	}else SoundManager.playBuzzer();
-},[83, 77, 71, 73, 82, 76]);
+new金手指(isInMap,gainLvUpExp,[76, 79, 86, 69, 67, 65, 78, 68, 89],undefined,{
+actorId:4,
+gainLvUpExp:gainLvUpExp,
+});
+new金手指(isInMap,gainLvUpExp,[83, 77, 71, 73, 82, 76],undefined,{
+actorId:5,
+gainLvUpExp:gainLvUpExp,
+});
+
+// mixed/others
+
+// END
 
 new cfc(Input).add('_onKeyDown',function f(evt){
 	this._金手指(evt);
