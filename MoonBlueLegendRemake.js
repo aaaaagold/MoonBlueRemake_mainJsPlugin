@@ -8438,10 +8438,11 @@ new金手指(function(f){
 
 // common funcs
 
-const gainLvUpExp=f=>{
+const always=()=>true,gainLvUpExp=f=>{
 	const actr=$gameActors._data[f.actorId];
 	if(actr){
-		actr.gainExp(actr.expForLevel(actr.level+1)-actr.expForLevel(actr.level));
+		const lv=actr.level;
+		actr.changeExp(actr.currentExp()+actr.expForLevel(lv+1)-actr.expForLevel(lv));
 		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
 	}else SoundManager.playBuzzer();
 },isInMap=f=>SceneManager.isScene_map(),gainItems=f=>{
