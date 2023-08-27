@@ -3347,8 +3347,8 @@ p[_k+'Tp']=function(){
 	const rate=isNaN(this._regenRate)?1:this._regenRate-0;
 	const eles={};
 	let value=Math.floor(this.maxTp() * (this._regenerate$p(gbb.TRAIT_REGENRATED_TP,eles)+this.trg) ) + this._regenerate$p(gbb.TRAIT_REGENFIXED_TP,eles);
-	for(let x=128,M=1<<30;x>>=1;){
-		if(value*x<M){
+	for(let x=128,M=1<<30,a=Math.abs(value);x>>=1;){
+		if(a*x<M){
 			value=1.0*~~(value*x)/x;
 			break;
 		}
