@@ -3327,21 +3327,51 @@ p["_"+_k+'$p']=function f(code,eles){
 	for(let x=0;x!==arr.length;++x) rtv+=eles[arr[x].dataId]*arr[x].value;
 	return rtv;
 };
+p["_"+_k+'_alignValue']=value=>value-0?~~(value<0?Math.min(-1,value):Math.max(1,value)):0;
 p[_k+'Hp']=function(){
+	const rate=isNaN(this._regenRate)?1:this._regenRate-0;
 	const eles={};
 	let value = ( this.mhp * (this._regenerate$p(gbb.TRAIT_REGENRATED_HP,eles)+this.hrg) + this._regenerate$p(gbb.TRAIT_REGENFIXED_HP,eles) );
-	value = ~~Math.max(value, -this.maxSlipDamage());
+	value=this._regenerate_alignValue(rate*value);
+	value=Math.max(value, -this.maxSlipDamage());
 	if(value) this.gainHp(value);
 };
 p[_k+'Mp']=function(){
+	const rate=isNaN(this._regenRate)?1:this._regenRate-0;
 	const eles={};
-	const value = ~~( this.mmp * (this._regenerate$p(gbb.TRAIT_REGENRATED_MP,eles)+this.mrg) + this._regenerate$p(gbb.TRAIT_REGENFIXED_MP,eles) );
+	let value = ( this.mmp * (this._regenerate$p(gbb.TRAIT_REGENRATED_MP,eles)+this.mrg) + this._regenerate$p(gbb.TRAIT_REGENFIXED_MP,eles) );
+	value=this._regenerate_alignValue(rate*value);
 	if(value) this.gainMp(value);
 };
 p[_k+'Tp']=function(){
+	const rate=isNaN(this._regenRate)?1:this._regenRate-0;
 	const eles={};
-	this.gainSilentTp( Math.floor(this.maxTp() * (this._regenerate$p(gbb.TRAIT_REGENRATED_TP,eles)+this.trg) ) + this._regenerate$p(gbb.TRAIT_REGENFIXED_TP,eles) );
+	let value=Math.floor(this.maxTp() * (this._regenerate$p(gbb.TRAIT_REGENRATED_TP,eles)+this.trg) ) + this._regenerate$p(gbb.TRAIT_REGENFIXED_TP,eles);
+	value=this._regenerate_alignValue(rate*value);
+	if(value) this.gainSilentTp(value);
 };
+new cfc(Game_Actor.prototype).add('turnEndOnMap',function f(){
+	const stepsForTurn=this.stepsForTurn();
+	const isUpdateTurn=0===$gameParty.steps()%stepsForTurn;
+	this._regenRate=1.0/stepsForTurn;
+	if(isUpdateTurn||!(0<stepsForTurn)) this.onTurnEnd();
+	else{
+		this.clearResult();
+		this.regenerateAll();
+	}
+	if(0<this.result().hpDamage) this.performMapDamage();
+	this._regenRate=undefined;
+	return isUpdateTurn;
+},undefined,true,true);
+new cfc(Game_Screen.prototype).add('startFlashForDamage',function f(){
+	// only be called in Scene_Map
+	f.tbl[0][3]=f.tbl[1];
+	this.startFlash(f.tbl[0], f.tbl[2]);
+},[
+[255, 0, 0, 64],
+64,
+32,
+]);
 }
 
 })();
@@ -8420,6 +8450,45 @@ new金手指(()=>$dataItems&&$gameParty,function(f){
 },[65,71,79,76,68,52,48,52,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0,
 });
+
+new金手指(function(f){
+	return SceneManager.isScene_map();
+},function(f){
+	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
+	if(f.tbl.items.length){
+		AudioManager.playSe({name: "Attack3", volume: 75, pitch: 100});
+		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],99);
+	}
+},[53,53,53,53,53,53,53,53,53,53,],undefined,{
+cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("箭矢")>=0,
+});
+
+new金手指(()=>true,function(f){
+	const tmp=$dataSystem.variables.filter(f.cmp);
+	if(tmp.length) AudioManager.playSe({name: "Applause1", volume: 75, pitch: 100});
+},[73, 76, 79, 86, 69, 89, 79, 85, 65, 78, 71, 69, 76, 67, 65, 75, 69],undefined,{
+cmp:(s,i)=>s&&s.indexOf("好感")>=0&&($gameVariables.setValue(i,$gameVariables.value(i)+10)||true),
+});
+
+new金手指(function(f){
+	return SceneManager.isScene_map();
+},function(f){
+	const actr=$gameActors._data[4];
+	if(actr){
+		actr.gainExp(actr.expForLevel(actr.level));
+		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
+	}else SoundManager.playBuzzer();
+},[76, 79, 86, 69, 67, 65, 78, 68, 89]);
+
+new金手指(function(f){
+	return SceneManager.isScene_map();
+},function(f){
+	const actr=$gameActors._data[5];
+	if(actr){
+		actr.gainExp(actr.expForLevel(actr.level));
+		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
+	}else SoundManager.playBuzzer();
+},[83, 77, 71, 73, 82, 76]);
 
 new cfc(Input).add('_onKeyDown',function f(evt){
 	this._金手指(evt);
@@ -15646,16 +15715,18 @@ update:function f(){
 },
 addChild:function f(c){
 	const arr=this.children;
-	const len=arr&&arr.length;
-	if(len){
-		if(this._atBtm){
-			if(this.children.back.y+this.children.back.height<c.height) this.removeChildAt(len-1);
-			c.y=this._maxHeight-c.height;
-			arr[0].y=c.y-arr[0].height; for(let x=1;x!==len;++x) if(arr[x]) arr[x].y=arr[x-1].y+arr[x].height;
-		}else{
-			if(c.height+this.children.back.y>=this._maxHeight) this.removeChildAt(len-1);
-			c.y=0;
-			arr[0].y=c.height; for(let x=1;x!==len;++x) if(arr[x]) arr[x].y=arr[x-1].y+arr[x-1].height;
+	let len=arr&&arr.length;
+	if(this._atBtm){
+		if(len&&arr.back.y+arr.back.height<c.height) this.removeChildAt(--len);
+		c.y=this._maxHeight-c.height;
+		if(len){
+			arr[0].y=c.y-arr[0].height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y-arr[x].height;
+		}
+	}else{
+		if(len&&c.height+arr.back.y>=this._maxHeight) this.removeChildAt(--len);
+		c.y=0;
+		if(len){
+			arr[0].y=c.height; for(let x=1;x!==len;++x) arr[x].y=arr[x-1].y+arr[x-1].height;
 		}
 	}
 	return Sprite.prototype.addChildAt.call(this,c,0);
@@ -23534,7 +23605,7 @@ const imgsStartIdx=4;
 
 const parsing=t=function f(lines){
 	const rtv=lines.split('\n').map(f.tbl[0]);
-	if(rtv.length<=imgsStartIdx) return rtv;
+	if(rtv.length<=f.tbl[2]) return rtv;
 	const errPre="Error: In '"+rtv[0]+"':\n got '";
 	const errSuf="' parsing as Number. The result should not be an NaN.";
 	const rtv1=(!rtv[1]||rtv[1].match(f.tbl[1]))?1:rtv[1]-0;
@@ -23937,6 +24008,8 @@ jsInfo=>jsInfo[2], // 8-1
 evaljs, // 8-2
 ], // 8: funcs
 [putDataArrByType,], // 9: make tbl
+{loc:"DR",}, // 10: opt of popupMsg
+{name:"Item3",volume:75,pitch:100}, // 11: success sound effect
 ];
 
 new cfc(p).add('initialize',function f(){
@@ -24002,7 +24075,10 @@ new cfc(p).add('initialize',function f(){
 			}
 		}
 	}
-	if($gameTemp.popupMsg) $gameTemp.popupMsg(f.tbl[4][5]+info[f.tbl[5].display]);
+	if($gameTemp.popupMsg){
+		$gameTemp.popupMsg(f.tbl[4][5]+info[f.tbl[5].display],f.tbl[10]);
+		AudioManager.playSe(f.tbl[11]);
+	}
 	self.activate();
 },t).add('createWindow_requirementsWindow',function f(){
 	const sp=this._requirementsWindow=new Window_Base();
@@ -24011,7 +24087,7 @@ new cfc(p).add('initialize',function f(){
 	const conf=f.tbl[3].requirements; conf.w=Graphics.width-f.tbl[3].itemList.w; conf.h=Graphics.boxHeight-f.tbl[3].descriptions.h;
 	sp.positioning(conf);
 	this.getRoot().addChild(sp);
-	if($gameTemp.popupMsg) $gameTemp.popupMsg(f.tbl[4][4]);
+	if($gameTemp.popupMsg) $gameTemp.popupMsg(f.tbl[4][4],f.tbl[10]);
 },t).add('createWindow_requirementsWindow_refreshHelp',function f(info){
 	f.tbl[9][0](f.tbl);
 	// this._requirementsWindow.refreshHelp=this.createWindow_requirementsWindow_refreshHelp;
