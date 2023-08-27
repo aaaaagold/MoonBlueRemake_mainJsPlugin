@@ -3347,7 +3347,12 @@ p[_k+'Tp']=function(){
 	const rate=isNaN(this._regenRate)?1:this._regenRate-0;
 	const eles={};
 	let value=Math.floor(this.maxTp() * (this._regenerate$p(gbb.TRAIT_REGENRATED_TP,eles)+this.trg) ) + this._regenerate$p(gbb.TRAIT_REGENFIXED_TP,eles);
-	value=this._regenerate_alignValue(rate*value);
+	for(let x=128,M=1<<30;x>>=1;){
+		if(value*x<M){
+			value=1.0*~~(value*x)/x;
+			break;
+		}
+	}
 	if(value) this.gainSilentTp(value);
 };
 new cfc(Game_Actor.prototype).add('turnEndOnMap',function f(){
