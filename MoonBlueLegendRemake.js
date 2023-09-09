@@ -5903,10 +5903,12 @@ r=p[k]; (p[k]=function f(){
 { const p=Scene_Boot.prototype;
 k='start';
 r=p[k]; (p[k]=function f(){
-	$dataTroops.forEach(f.applyAlways);
+	$dataTroops.forEach(f.applyParallel);
 	return f.ori.apply(this,arguments);
 }).ori=r;
-p[k].applyAlways=(dataobj)=>{ if(!dataobj) return;
+p[k].applyParallel=(dataobj)=>{ if(!dataobj) return;
+	const idxs=new Set();
+	dataobj.pages_parallelSet=undefined;
 	for(let pgs=dataobj.pages,p=0;p!==pgs.length;++p){
 		pgs[p].always=undefined; // non-number-able
 		for(let cmds=pgs[p].list,c=0;c!==cmds.length;++c){
@@ -5922,7 +5924,9 @@ p[k].applyAlways=(dataobj)=>{ if(!dataobj) return;
 				break;
 			}
 		}
+		if(pgs[p].parallel && !pgs[p].always) idxs.add(p);
 	}
+	if(idxs.size) dataobj.pages_parallelSet=idxs;
 };
 }
 
@@ -6003,9 +6007,12 @@ r=p[k]; (p[k]=function f(){
 	const itrp=this._interpreter;
 	if(!itrp.isRunning() && this._toBeSetPageIdx===undefined){
 		if(itrp.setupReservedCommonEvent()) return;
-		const pgs=this.troop().pages;
+		const troop=this.troop();
+		const parallelSet=troop.pages_parallelSet;
+		const pgs=troop.pages;
 		itrp._pageId=undefined;
 		for(let p=0;p!==pgs.length;++p){
+			if(parallelSet && parallelSet.has(p)) continue;
 			if(!this._eventFlags[p] && this.meetsConditions(pgs[p])){
 				this._toBeSetPageIdx=p;
 				if(0&&f.tbl[0].has(BattleManager._phase)) BattleManager._actionList.push(['EVAL',['$gameTroop.setupBattleEventPendedByActionSequence()',]]);
@@ -24183,6 +24190,35 @@ new cfc(p).add('initialize',function f(){
 	return this._data._key2info.get(key);
 },t);
 }
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc battler複製能力API
+ * @author agold404
+ * @help battler.setSame_東西(另一個btlr)
+ * 東西: 能力值/狀態
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Battler.prototype).add('setSame_能力值',function f(btlr){
+	if(this===btlr) return;
+	for(let x=0,_=btlr._paramPlus,xs=_.length;x!==xs;++x) this._paramPlus[x]=(btlr.paramBase(x)+btlr.paramPlus(x)-0||0)-(this.paramBase(x)-0||0);
+},undefined,true,true).add('setSame_狀態',function f(btlr){
+	if(this===btlr) return;
+	this.clearStates();
+	if(btlr._states){ for(let x=0,arr=btlr._states.slice(),xs=arr.length,id;x!==xs;++x){
+		id=arr[x];
+		this.addState(id);
+		if(this._stateTurns && btlr._stateTurns && !isNaN(btlr._stateTurns[id])) this._stateTurns[id]=btlr._stateTurns[id];
+		if(this._stateSteps && btlr._stateSteps && !isNaN(btlr._stateSteps[id])) this._stateSteps[id]=btlr._stateSteps[id];
+	} }
+},undefined,true,true);
 
 })();
 
