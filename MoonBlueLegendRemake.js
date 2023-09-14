@@ -13497,6 +13497,7 @@ r=p[k]; (p[k]=function(){
 		sp.visible = this._battler.isSpriteVisible();
 	}
 }).ori=r;
+if(typeof _alias_mog_bhud_sprt_actor_setupAnimation!=='undefined') delete Sprite_Actor.prototype.setupAnimation;
 }
 
 { const p=Sprite_Base.prototype;
@@ -17084,6 +17085,75 @@ cf(Scene_Options.prototype,'terminate',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 全域動畫選項(dataOnly)
+ * @author agold404
+ * @help $gameSystem.animationOptions_*()
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+[['rotate',0],['scalex',1],['scaley',1],],
+undefined, // 1: default values // not used
+];
+t[1]=new Map(t[0]);
+new cfc(Game_System.prototype).add('animationOptions_get',function f(){
+	let rtv=this._aniOpt;
+	if(!rtv){
+		rtv=this._aniOpt={};
+		for(let x=0,arr=f.tbl[0],xs=arr.length;x!==xs;++x) rtv[arr[x][0]]=arr[x][1];
+	}
+	return rtv;
+},t,true,true).add('animationOptions_reset',function f(){
+	const opt=this.animationOptions_get();
+	for(let x=0,arr=f.tbl[0],xs=arr.length;x!==xs;++x) opt[arr[x][0]]=arr[x][1];
+	return this;
+},t,true,true).add('animationOptions_setRotate',function f(rotate){
+	const opt=this.animationOptions_get();
+	opt.rotate=rotate;
+	return this;
+},t,true,true).add('animationOptions_setScaleX',function f(scalex){
+	const opt=this.animationOptions_get();
+	opt.scalex=scalex;
+	return this;
+},t,true,true).add('animationOptions_setScaleY',function f(scaley){
+	const opt=this.animationOptions_get();
+	opt.scaley=scaley;
+	return this;
+},t,true,true).add('animationOptions_set',function f(newOpt){
+	const opt=this.animationOptions_get();
+	for(let x=0,arr=f.tbl[0],xs=arr.length;x!==xs;++x) if(arr[x][0] in newOpt) opt[arr[x][0]]=newOpt[arr[x][0]];
+	return this;
+},t,true,true).add('animationOptions_applyTo',function f(opt,carryingOn){
+	const sysOpt=this.animationOptions_get(),tbl0=f.tbl[0];
+	let rotate=0;
+	let scalex=1;
+	let scaley=1;
+	if((tbl0[0][0] in sysOpt) && sysOpt.rotate!==0) rotate+=sysOpt.rotate;
+	if((tbl0[1][0] in sysOpt) && sysOpt.scalex!==1) scalex*=sysOpt.scalex;
+	if((tbl0[2][0] in sysOpt) && sysOpt.scaley!==1) scaley*=sysOpt.scaley;
+	if(rotate!==0){
+		if(carryingOn && (tbl0[0][0] in opt)) opt.rotate+=rotate;
+		else opt.rotate=rotate;
+	}
+	if(scalex!==1){
+		if(carryingOn && (tbl0[1][0] in opt)) opt.scalex*=scalex;
+		else opt.scalex=scalex;
+	}
+	if(scaley!==1){
+		if(carryingOn && (tbl0[2][0] in opt)) opt.scalex*=scaley;
+		else opt.scaley=scaley;
+	}
+	return this;
+},t,true,true);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 使全螢幕動畫位於圖片上層
  * @author agold404
  * @help SceneManager.screenAniOnTopOfPic_set, SceneManager.screenAniOnTopOfPic_clear, SceneManager.screenAniOnTopOfPic_get, 
@@ -17103,17 +17173,27 @@ cf(cf(cf(SceneManager,k+'_get',function f(){
 	this._screenAniOnTopOfPic=false;
 })._aniOnTopOfPic=false;
 
-cf(Game_CharacterBase.prototype,'requestAnimation',function f(){
+t=[
+"_"+k,
+k+"_get",
+Game_System.prototype.animationOptions_get.tbl[0],
+]
+
+cf(Game_CharacterBase.prototype,'requestAnimation',function f(aniId,aniNamingKey,aniOpt){
 	const rtv=f.ori.apply(this,arguments);
-	this[f.tbl[0]]=SceneManager[f.tbl[1]]();
+	let opt=this._aniOpt=aniOpt; if(!opt) opt=this._aniOpt={};
+	opt[f.tbl[0]]=SceneManager[f.tbl[1]]();
+	$gameSystem.animationOptions_applyTo(opt,true);
+	this._aniNamingKey=aniNamingKey;
 	return rtv;
-},t=["_"+k,k+"_get"]);
+},t);
 
 cf(Game_Battler.prototype,'startAnimation',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	const aniInfo=this._animations.back;
-	if(!aniInfo.opt) aniInfo.opt={};
-	aniInfo.opt[f.tbl[0]]=SceneManager[f.tbl[1]]();
+	let opt=aniInfo.opt; if(!opt) opt=aniInfo.opt={};
+	opt[f.tbl[0]]=SceneManager[f.tbl[1]]();
+	$gameSystem.animationOptions_applyTo(opt,true);
 	return rtv;
 },t);
 
@@ -17136,7 +17216,12 @@ cf(Sprite_Character.prototype,'setupAnimation',function f(){
 	const chr=this._character;
 	if(chr.animationId()>0){
 		const animation=$dataAnimations[chr.animationId()];
-		const opt={}; opt[f.tbl[0]]=chr[f.tbl[0]];
+		const srcOpt=chr._aniOpt;
+		const opt={};
+		if(srcOpt){
+			opt[f.tbl[0]]=srcOpt[f.tbl[0]];
+			for(let x=0,arr=f.tbl[2],xs=arr.length;x!==xs;++x) if(arr[x][0] in srcOpt) opt[arr[x][0]]=srcOpt[arr[x][0]];
+		}
 		this.startAnimation(animation,false,0,undefined,opt);
 		chr.startAnimation();
 	}
@@ -21121,6 +21206,7 @@ console.log('戰鬥插件亂設定戰鬥狀態真的笑死');
  * @plugindesc 自行施放之技能/道具之action sequenceㄉ動畫將跟著該seqㄉ時間：動就動；暫停就暫停。
  * @author agold404
  * @help .
+ * 還有: 旋轉、縮放 option (data from 全域動畫選項)
  * 
  * This plugin can be renamed as you want.
  */
@@ -21264,8 +21350,23 @@ new cfc(Sprite_Base.prototype).add('startAnimation',function f(ani,mir,dly,r,opt
 	const rtv=f.ori.apply(this,arguments);
 	const sp=this._animationSprites.back;
 	sp._opt=opt;
+	if(opt){ // loop-ani does not fill it
+		let rotate=0;
+		let scalex=1;
+		let scaley=1;
+		if((f.tbl[0][0] in opt) && opt.rotate!==0) rotate+=opt.rotate;
+		if((f.tbl[0][1] in opt) && opt.scalex!==1) scalex*=opt.scalex;
+		if((f.tbl[0][2] in opt) && opt.scaley!==1) scaley*=opt.scaley;
+		// fixed effects
+		if(rotate!==0) sp.rotation=opt.rotate;
+		if(scalex!==1) sp.scale.x=opt.scalex;
+		if(scaley!==1) sp.scale.y=opt.scaley;
+		// dynamic effects
+	}
 	return rtv;
-});
+},[
+Game_System.prototype.animationOptions_get.tbl[0].map(x=>x[0]),
+]);
 
 new cfc(Sprite_Animation.prototype).add('updateMain',function f(){
 	if(!this.updateMain_checkActSeqSubjectPaused()){
