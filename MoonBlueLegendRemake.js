@@ -8453,12 +8453,12 @@ const always=()=>true,gainLvUpExp=f=>{
 		AudioManager.playSe({name:"Powerup",volume:75,pitch:100});
 	}else SoundManager.playBuzzer();
 },isInMap=f=>SceneManager.isScene_map(),gainItems=f=>{
-	if(!f.tbl.items) f.tbl.items=$dataItems.filter(f.cmp);
+	if(!f.tbl.items) f.tbl.items=(f.getObjArr&&f.getObjArr()||$dataItems).filter(f.cmp);
 	if(f.tbl.items.length){
 		AudioManager.playSe(f.se);
 		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],f.gainAmount);
 	}
-},canGain=f=>$dataItems&&$gameParty;
+},canGain=f=>(f.getObjArr&&f.getObjArr()||$dataItems)&&$gameParty;
 
 // gain
 
@@ -8476,6 +8476,12 @@ new金手指(canGain,gainItems,[53,53,53,53,53,53,53,53,53,53,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("箭矢")>=0,
 se:{name: "Attack3", volume: 75, pitch: 100},
 gainAmount:99,
+});
+new金手指(canGain,gainItems,[79,76,68,75,83,80,65,78,84,83],undefined,{
+cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("老K的內褲")>=0, // 636
+se:{name: "男叫1.ogg", volume: 75, pitch: 100},
+gainAmount:1,
+getObjArr:()=>$dataArmors,
 });
 
 // var
