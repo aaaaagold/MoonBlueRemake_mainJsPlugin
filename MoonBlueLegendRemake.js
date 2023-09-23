@@ -3370,12 +3370,15 @@ new cfc(Game_Actor.prototype).add('turnEndOnMap',function f(){
 },undefined,true,true);
 new cfc(Game_Screen.prototype).add('startFlashForDamage',function f(){
 	// only be called in Scene_Map
+	if(Graphics.frameCount<this._nextFlashFrameCount) return;
+	this._nextFlashFrameCount=Graphics.frameCount+f.tbl[3];
 	f.tbl[0][3]=f.tbl[1];
 	this.startFlash(f.tbl[0], f.tbl[2]);
 },[
 [255, 0, 0, 64],
 64,
 32,
+113, // d(nextFlashFrameCount)
 ]);
 }
 
@@ -8458,21 +8461,24 @@ const always=()=>true,gainLvUpExp=f=>{
 		AudioManager.playSe(f.se);
 		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],f.gainAmount);
 	}
-},canGain=f=>(f.getObjArr&&f.getObjArr()||$dataItems)&&$gameParty;
+},canGain=f=>(f.getObjArr&&f.getObjArr()||$dataItems)&&$gameParty,varEditTry=f=>{
+	const tmp=$dataSystem.variables.filter(f.cmp);
+	if(tmp.length) AudioManager.playSe(f.se);
+},canEditVar=()=>$gameVariables;
 
 // gain
 
 new金手指(canGain,gainItems,[76,70,50,190,78,69,84,],undefined,{
-cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("鑽石")>=0,
+cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("白粉")>=0,
 se:{name: "Ice4", volume: 75, pitch: 100},
-gainAmount:10,
+gainAmount:99,
 });
 new金手指(canGain,gainItems,[65,71,79,76,68,52,48,52,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0,
 se:{name: "Magic1", volume: 75, pitch: 100},
 gainAmount:1,
 });
-new金手指(canGain,gainItems,[53,53,53,53,53,53,53,53,53,53,],undefined,{
+if(0)new金手指(canGain,gainItems,[53,53,53,53,53,53,53,53,53,53,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("箭矢")>=0,
 se:{name: "Attack3", volume: 75, pitch: 100},
 gainAmount:99,
@@ -8486,15 +8492,18 @@ getObjArr:()=>$dataArmors,
 
 // var
 
-new金手指(()=>$gameVariables,function(f){
-	const tmp=$dataSystem.variables.filter(f.cmp);
-	if(tmp.length) AudioManager.playSe({name: "Applause1", volume: 75, pitch: 100});
-},[73, 76, 79, 86, 69, 89, 79, 85, 65, 78, 71, 69, 76, 67, 65, 75, 69],undefined,{
+new金手指(canEditVar,varEditTry,[73,76,79,86,69,89,79,85,65,78,71,69,76,67,65,75,69],undefined,{
 cmp:(s,i)=>s&&s.indexOf("好感")>=0&&($gameVariables.setValue(i,$gameVariables.value(i)+10)||true),
+se:{name: "Applause1", volume: 75, pitch: 100},
+});
+new金手指(canEditVar,varEditTry,[72,65,82,84,72,69,65,82,84,72,79,84],undefined,{
+cmp:(s,i)=>s&&s.indexOf("技能之心")>=0&&($gameVariables.setValue(i,8)||true),
+se:{name: "Up2", volume: 75, pitch: 100},
 });
 
 // lv up
 
+if(0){
 new金手指(isInMap,gainLvUpExp,[76, 79, 86, 69, 67, 65, 78, 68, 89],undefined,{
 actorId:4,
 gainLvUpExp:gainLvUpExp,
@@ -8503,6 +8512,7 @@ new金手指(isInMap,gainLvUpExp,[83, 77, 71, 73, 82, 76],undefined,{
 actorId:5,
 gainLvUpExp:gainLvUpExp,
 });
+}
 
 // mixed/others
 
@@ -17391,7 +17401,7 @@ eff=>Game_Action.EFFECT_COMMON_EVENT===eff.code,
 cf(cf(cf(cf(Game_System.prototype,t[0],function f(){
 	return !this[f.tbl[2]];
 },t),t[1],function f(item){
-	if(!item) return false;
+	if(!item || !item.effects) return false;
 	return item.effects.some(f.tbl[3]);
 },t),"enable_"+k,function f(){
 	this[f.tbl[2]]=false;
