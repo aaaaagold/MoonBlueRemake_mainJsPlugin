@@ -5984,8 +5984,8 @@ new cfc(Game_Interpreter.prototype).add('command339',function f(){
 }).add('command339_chkCnt',function f(){
 	if(++this._checkForceActionCnt>=f.tbl[0]) throw new Error(f.tbl[1]+$gameTroop._troopId);
 },[
-2,
-"@PARALLEL 裡面放超過1個\"強制行動\"可能會使動畫不會消失，還請這場戰鬥ㄉ作者更正ㄛ\ntroop id = ",
+1,
+"@PARALLEL 裡面放\"強制行動\"可能會使 @PARALLEL 在非預期的時候被執行；放超過1個\"強制行動\"可能會使動畫不會消失，還請這場戰鬥ㄉ作者更正ㄛ\ntroop id = ",
 ]).add('setupChild',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._childInterpreter._checkForceActionCnt=this._checkForceActionCnt;
