@@ -20117,7 +20117,21 @@ new cfc(p).add('initMembers',function f(){
 	return isNaN(this._windowHeight)?Graphics.boxHeight:this._windowHeight;
 }).add('updatePlacement',function f(){
 	
-},undefined,true,true).add('createSubWindows',function f(){}).add('subWindows',function f(){
+},undefined,true,true).add('createSubWindows',function f(){
+	if(!f.tbl[0]){
+		const dummy={y:0,height:0,terminateMessage:none,};
+		f.tbl[0]={
+			_goldWindow:new Window_Gold(0,0),
+			_choiceWindow:new Window_ChoiceList(dummy),
+			_numberWindow:new Window_NumberInput(dummy),
+			_itemWindow:new Window_EventItem(dummy),
+		};
+	}
+	for(let x=0,arr=f.tbl[1],xs=arr.length;x!==xs;++x) this[arr[x]]=f.tbl[0][arr[x]];
+},[
+undefined,
+['_goldWindow','_choiceWindow','_numberWindow','_itemWindow',],
+]).add('subWindows',function f(){
 	return f.tbl[0];
 },[
 [],
@@ -20223,7 +20237,8 @@ t=undefined;
 new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx){
 	if($gameSystem && $gameSystem._flashbackText_disabled) return;
 	if(!f.tbl[0].re) f.tbl[0].re=/(?<!(\\))((\\\\)*)(\\([VPNvpn])\[(\d+)\])/g;
-	this._flashbackText_getCont().push({txt:txt.replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},y:undefined,height:undefined,});
+	if(!f.tbl[0].re_discards) f.tbl[0].re_discards=/\f/g;
+	this._flashbackText_getCont().push({txt:txt.replace(f.tbl[0].re_discards,'').replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},y:undefined,height:undefined,_debug:{_mapId:$gameMap&&$gameMap._mapId,},});
 },[
 function f(){
 	if(!f.tbl){
@@ -24342,6 +24357,40 @@ new cfc(Game_Battler.prototype).add('setSame_能力值',function f(btlr){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 指定特定道具會在戰鬥中的道具類別中顯示
+ * @author agold404
+ * @help <shownInBattle>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw='shownInBattle';
+
+t=[
+kw,
+function(dataobj){ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	dataobj[this[0]]=!!meta[this[0]];
+},
+];
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataItems   .forEach(f.tbl[1],f.tbl);
+	$dataWeapons .forEach(f.tbl[1],f.tbl);
+	$dataArmors  .forEach(f.tbl[1],f.tbl);
+	return f.ori.apply(this,arguments);
+},t);
+
+new cfc(Window_BattleItem.prototype).add('includes',function f(item){
+	return item && item[f.tbl[0]] || f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -24824,7 +24873,7 @@ r=p[k]; (p[k]=function f(){
 k='add';
 r=p[k]; (p[k]=function f(){
 	if(arguments[0] && arguments[0].constructor===String) arguments[0]=arguments[0]
-		.replace(/(?<![0-9])89\.34%/g,'89.64%')
+		.replace(/(?<![0-9])(89\.)3(4%)/g,'$16$2')
 		.replace(/(?<=被)激活/g,'啟動')
 		.replace(/組合拳(?!套)/g,'連續技')
 		.replace(/(?<![刺偏])激活/g,'啟用')
