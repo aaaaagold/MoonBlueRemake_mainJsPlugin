@@ -445,7 +445,13 @@ new cfc(Window_Base.prototype).add('positioning',function f(setting,ref){
 	this.y=y;
 	this.width=w;
 	this.height=h;
-},{});
+},{}).add('processCStyleStringContent',function f(textState){
+	const info=getCStyleStringStartAndEndFromString(textState.text,textState.index);
+	if(info.start<info.end){
+		textState.index=info.end;
+		return JSON.parse(textState.text.slice(info.start,info.end));
+	}else return f.tbl[0];
+},[''],true,true);
 //
 cf(cf(cf(Window_Selectable.prototype,'processCursorMove',t=function f(){
 	const idx=this.index();
@@ -1954,12 +1960,14 @@ r=p[k]; (p[k]=function f(){
 }).tbl=[
 ()=>{},
 function(renderer){
-	// if not visible or the alpha is 0 then no need to render this
-	if(!this.visible || this.worldAlpha <= 0 || !this.renderable){
-		return;
-	}
-	const x=this.x,y=this.y,w=this.width,h=this.height;
-	if(x>=Graphics._boxWidth||x+w<0||y>=Graphics._boxHeight||y+h<0) return;
+	if(!this.visible || !this.renderable) return;
+	const a=this.anchor,s=this.scale;
+	const sx=s.x,sy=s.y;
+	const xo=this.x,yo=this.y,wo=this.width,ho=this.height;
+	let x=sx<0?xo+wo*a.x:xo-wo*a.x,xe=x+wo*sx; if(xe<x){ let t=x; x=xe; xe=t; }
+	let y=sy<0?yo+ho*a.y:yo-ho*a.y,ye=y+ho*sy; if(ye<y){ let t=y; y=ye; ye=t; }
+	if(x>=Graphics._boxWidth||xe<0||y>=Graphics._boxHeight||ye<0) return; // out-of-bound
+	if(!(0<this.worldAlpha)) return;
 	
 	this._renderCanvas(renderer);
 },
@@ -3316,6 +3324,12 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 }
 
+new cfc(Game_System.prototype).add('isRegenOnLongSteps',function f(){
+	return !!this._isRegenOnLongSteps;
+},undefined,true,true).add('isRegenOnLongSteps_set',function f(val){
+	return this._isRegenOnLongSteps=val;
+},undefined,true,true);
+
 { const p=Game_Battler.prototype,_k='regenerate';
 p["_"+_k+'$p']=function f(code,eles){
 	const arr=this.traits(code);
@@ -3358,13 +3372,18 @@ p[_k+'Tp']=function(){
 new cfc(Game_Actor.prototype).add('turnEndOnMap',function f(){
 	const stepsForTurn=this.stepsForTurn();
 	const isUpdateTurn=0===$gameParty.steps()%stepsForTurn;
-	this._regenRate=1.0/stepsForTurn;
-	if(isUpdateTurn||!(0<stepsForTurn)) this.onTurnEnd();
-	else{
+	this._regenRate=$gameSystem.isRegenOnLongSteps()?undefined:1.0/stepsForTurn;
+	let regened=false;
+	if(isUpdateTurn||!(0<stepsForTurn)){
+		this.onTurnEnd();
+		regened=true;
+	}else if(this._regenRate!==undefined){
 		this.clearResult();
 		this.regenerateAll();
+		regened=true;
 	}
-	if(0<this.result().hpDamage) this.performMapDamage();
+	if(regened&&0<this.result().hpDamage) this.performMapDamage();
+	
 	this._regenRate=undefined;
 	return isUpdateTurn;
 },undefined,true,true);
@@ -8471,7 +8490,7 @@ const always=()=>true,gainLvUpExp=f=>{
 new金手指(canGain,gainItems,[76,70,50,190,78,69,84,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("白粉")>=0,
 se:{name: "Ice4", volume: 75, pitch: 100},
-gainAmount:99,
+gainAmount:1,
 });
 new金手指(canGain,gainItems,[65,71,79,76,68,52,48,52,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0,
@@ -20224,7 +20243,7 @@ undefined,
 	if(Input.isTriggered('pagedown' ) || Input.isLongPressed('pagedown' )) delta+=this.contentsHeight();
 	if(Input.isTriggered('home')^Input.isTriggered('end')){
 		if(Input.isTriggered('home')) delta=-this._scrollTxtY;
-		else delta=this._scrollTxtY-this._scrollTxtY_max||0;
+		else delta=this._scrollTxtY_max-this._scrollTxtY||0;
 	}
 	if(delta) SoundManager.playCursor();
 	this.setScrollTxtY(this._scrollTxtY+delta);
@@ -20855,6 +20874,7 @@ new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
  * @author agold404
  * @help \AUDIO_SE"path|vol|pitch|pan|pos"
  * \AUDIO_SE \AUDIO_ME \AUDIO_BGS \AUDIO_BGM
+ * \EVALJSCODE
  * \SHAKESCREEN"power|speed|duration"
  * 
  * This plugin can be renamed as you want.
@@ -24385,6 +24405,51 @@ new cfc(Scene_Boot.prototype).add('start',function f(){
 new cfc(Window_BattleItem.prototype).add('includes',function f(item){
 	return item && item[f.tbl[0]] || f.ori.apply(this,arguments);
 },t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 符合美術ㄉ文字調色，以指定色碼來變色
+ * @author agold404
+ * @help \TXTCOLOR"CSS顏色"
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Bitmap.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._bak_outlineColor=this.outlineColor;
+	return rtv;
+});
+
+new cfc(Window_Base.prototype).add('processEscapeCharacter',function f(code,textState){
+	return (code===f.tbl[0])?this.changeTextColor(this.processCStyleStringContent(textState)):f.ori.apply(this,arguments);
+},[
+"TXTCOLOR",
+]).add('changeTextColor',function f(color){
+	let changed=false;
+	if(color&&color.constructor===String){ const m=color.match(f.tbl[0]); if(m){
+		let alpha;
+		{
+			const m=this.contents._bak_outlineColor.match(f.tbl[0]);
+			if(m) alpha=Number(m[1]); 
+		}
+		alpha*=m[1];
+		if(isNaN(alpha)) alpha=f.tbl[1];
+		this.contents.outlineColor=f.tbl[2][0]+alpha+f.tbl[2][1];
+		changed=true;
+	} }
+	if(!changed) this.contents.outlineColor=this.contents._bak_outlineColor;
+	return f.ori.apply(this,arguments);
+},[
+/rgba[ \t]*\([^,]+,[^,]+,[^,]+,([^)]+)\)/,
+0.5,
+['rgba(0,0,0,',')'],
+]);
 
 })();
 
