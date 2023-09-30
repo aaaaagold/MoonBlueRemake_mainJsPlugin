@@ -8397,6 +8397,7 @@ r=p[k]; (p[k]=function f(item){
 (()=>{ let k,r,t;
 
 let currentlyEnabled=false;
+const currentlyEnableds={};
 
 { const p=Scene_Title.prototype;
 (p._奇蹟之靈999=function f(){
@@ -8416,10 +8417,22 @@ p._金手指=function(){
 		$gameSystem.金手指=true;
 	}else $gameSystem.金手指=false;
 };
+p._更多金手指1=function(kw){
+	if(currentlyEnableds[kw]){
+		currentlyEnableds[kw]=false;
+		if(!$gameSystem.cheats) $gameSystem.cheats={};
+		$gameSystem.cheats[kw]=true;
+	}else if($gameSystem.cheats) $gameSystem.cheats[kw]=false;
+};
+p._更多金手指=function(){
+	const arr=[]; for(let k in currentlyEnableds) arr.push(k);
+	for(let x=0,xs=arr.length;x!==xs;++x) this._更多金手指1(arr[x]);
+};
 k='terminate';
 r=p[k]; (p[k]=function f(){
 	Input._onKeyDown.idx=0;
 	this._金手指();
+	this._更多金手指();
 	return f.ori.apply(this,arguments);
 }).ori=r;
 }
@@ -8465,6 +8478,42 @@ new金手指(function(f){
 	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
 },[82,190,73,190,80,190,]);
 
+{ const kw='cheat老K的內褲';
+new金手指(function(f){
+	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
+},function(f){
+	currentlyEnableds[kw]=true;
+	AudioManager.playSe({name: "男叫1", volume: 75, pitch: 100});
+},[79,76,68,75,83,80,65,78,84,83,]);
+}
+
+{ const kw='cheat九五的墨鏡';
+new金手指(function(f){
+	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
+},function(f){
+	currentlyEnableds[kw]=true;
+	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+},[72,69,76,76,79,57,53]);
+}
+
+{ const kw='cheat幻影劍環';
+new金手指(function(f){
+	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
+},function(f){
+	currentlyEnableds[kw]=true;
+	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+},[87,72,79,65,77,73]);
+}
+
+{ const kw='cheat兔耳雷神水壺槌';
+new金手指(function(f){
+	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
+},function(f){
+	currentlyEnableds[kw]=true;
+	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+},[54,54,54,65,71,69]);
+}
+
 // common funcs
 
 const always=()=>true,gainLvUpExp=f=>{
@@ -8502,9 +8551,9 @@ cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("箭矢")>=0,
 se:{name: "Attack3", volume: 75, pitch: 100},
 gainAmount:99,
 });
-new金手指(canGain,gainItems,[79,76,68,75,83,80,65,78,84,83],undefined,{
+if(0)new金手指(canGain,gainItems,[79,76,68,75,83,80,65,78,84,83],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("老K的內褲")>=0, // 636
-se:{name: "男叫1.ogg", volume: 75, pitch: 100},
+se:{name: "男叫1", volume: 75, pitch: 100},
 gainAmount:1,
 getObjArr:()=>$dataArmors,
 });
@@ -24944,8 +24993,8 @@ r=p[k]; (p[k]=function f(){
 		.replace(/(?<![刺偏])激活/g,'啟用')
 		.replace(/(?<=遺漏的)信息(?=，)/g,'訊息')
 		.replace(/(?<=根本不是同一個)水平(?=的)/g,'等級')
-		.replace(/(?<=文化)水平(?=相差太多了)|(?<=不太像該有的)水平(?=呢。)/g,'水準')
 		.replace(/(?<=極低)水平(?=．．．)|(?<=你的雷魂跟土魂一直處在低)水平(?=，)/g,'準位')
+		.replace(/(?<=文化)水平(?=相差太多了)|(?<=不太像(平常)?該有的)水平(?=呢。)/g,'水準')
 		;
 	return f.ori.apply(this,arguments);
 }).ori=r;
@@ -24965,6 +25014,7 @@ p[k].tbl=[
 dataobj=>{ if(!dataobj || !dataobj.description) return;
 	dataobj.description=dataobj.description
 		.replace(/質量(特別|很)高的拳套/g,"重量$1重的拳套")
+		.replace(/(?<=(的|之))高能(?=暗器，)/g,'超級')
 		.replace(/(?<=達到頂尖)水平/g,'水準')
 		.replace(/．．．/g,'…')
 		;
