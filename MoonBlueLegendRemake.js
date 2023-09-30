@@ -8420,11 +8420,11 @@ p._金手指=function(){
 p._更多金手指1=function(kw){
 	if(currentlyEnableds[kw]){
 		currentlyEnableds[kw]=false;
-		if(!$gameSystem.cheats) $gameSystem.cheats={};
 		$gameSystem.cheats[kw]=true;
-	}else if($gameSystem.cheats) $gameSystem.cheats[kw]=false;
+	}else $gameSystem.cheats[kw]=false;
 };
 p._更多金手指=function(){
+	if(!$gameSystem.cheats) $gameSystem.cheats={};
 	const arr=[]; for(let k in currentlyEnableds) arr.push(k);
 	for(let x=0,xs=arr.length;x!==xs;++x) this._更多金手指1(arr[x]);
 };
