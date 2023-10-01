@@ -30,10 +30,12 @@ const cf=(p,k,f,tbl,is_putDeepest,is_notUsingOri)=>{
 				fc=fc.ori;
 			}else break;
 		}while(fc);
+		f._dbg=fc;
 		(fp.ori=f).ori=fc;
 	}else{
 		const r=p[k];
 		p[k]=f;
+		f._dbg=r;
 		f.ori=r;
 	}
 	if(is_notUsingOri) f.ori=undefined;
@@ -24499,6 +24501,71 @@ new cfc(Window_Base.prototype).add('processEscapeCharacter',function f(code,text
 0.5,
 ['rgba(0,0,0,',')'],
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 存檔人物會動
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Window_Base.prototype).add('drawCharacter',function f(characterName,characterIndex,x,y,patternIdx){
+	if(isNaN(patternIdx)) patternIdx=1;
+	const bmp=ImageManager.loadCharacter(characterName);
+	const isBig=ImageManager.isBigCharacter(characterName);
+	const n=characterIndex;
+	const pw=bmp.width/(isBig?3:12),sx=((n&3)*3+patternIdx)*pw; // n===0 if isBig
+	const ph=bmp.height/(isBig?4:8),sy=(n>>2<<2)*ph;
+	this.contents.blt(bmp,sx,sy,pw,ph,x-pw/2,y-ph);
+});
+
+t=[
+0,1,2,1,
+3, // 4: msk
+12, // 5: $gamePlayer.animationWait
+];
+
+new cfc(Window_SavefileList.prototype).add('drawPartyCharacters',function f(info,x,y){
+	const arr=info.characters;
+	const sz=arr&&arr.length;
+	if(0<sz){
+		const cpi=this.chrPatternIdx_get();
+		for(let i=0;i!==sz;++i){
+			const data=arr[i];
+			this.drawCharacter(data[0],data[1],x+i*48,y,cpi);
+		}
+	}
+},undefined,true,true).add('select',function f(idx){
+	if(this._index!==idx){
+		this.chrPatternIdx_reset();
+		this.chrPatternIdx_redraw();
+	}
+	return f.ori.apply(this,arguments);
+},undefined).add('chrPatternIdx_reset',function f(){
+	this._chrPatternIdx=1;
+	this._chrPatternIdxAniCnt=0;
+},undefined,true,true).add('chrPatternIdx_next',function f(){
+	if(++this._chrPatternIdxAniCnt<f.tbl[5]) return;
+	this._chrPatternIdxAniCnt=0;
+	++this._chrPatternIdx;
+	this._chrPatternIdx&=f.tbl[4];
+	this.chrPatternIdx_redraw();
+},t,true,true).add('chrPatternIdx_get',function f(){
+	return f.tbl[this._chrPatternIdx&f.tbl[4]];
+},t,true,true).add('chrPatternIdx_redraw',function f(){
+	if(this._index>=0 && this._index<this.maxItems()) this.redrawItem(this._index);
+},undefined,true,true).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.chrPatternIdx_next();
+	return rtv;
+});
 
 })();
 
