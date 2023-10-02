@@ -18290,8 +18290,7 @@ const oriIdx=15;
 new cfc(Game_Interpreter.prototype).add('setupChoices',function f(params){
 	const oriParam=params[oriIdx]||(params[oriIdx]=params[0].slice());
 	const arr=this.setupChoices_dontShow_get(),choicesN=oriParam.length;
-	let tbl=this._mappingTable; if(!tbl) tbl=this._mappingTable=[];
-	tbl.length=0;
+	let tbl=this._mappingTable; if(tbl) tbl.length=0; else tbl=this._mappingTable=[];
 	params[0].length=0;
 	for(let x=0,arrLen=arr.length;x!==choicesN;++x){
 		if(!(arrLen && arr.uniqueHas(x))){
@@ -18299,7 +18298,7 @@ new cfc(Game_Interpreter.prototype).add('setupChoices',function f(params){
 			tbl.push(x);
 		}
 	}
-	params[1]=tbl[params[1]];
+	if(params[1]>=0) params[1]=tbl[params[1]];
 	return f.ori.apply(this,arguments);
 }).add('setupChoices_callBack',function f(n){
 	this._branch[this._indent]=this._mappingTable?this._mappingTable[n]:n;
@@ -18371,7 +18370,7 @@ new cfc(Game_Interpreter.prototype).add('setupChoices',function f(params){
 	}
 	return rtv;
 }).add('_setupChoices_concat',function f(args){
-	// suppose params=args[0] and is the object in '$dataMap'
+	// suppose params=args[0] and is the cmd object's parameters in '$dataMap'
 	let b=this._index;
 	const strt=b,indent=this._indent,cmds=this._list;
 	if(cmds[strt]._setupChoices_concat_isDetected) return; // another detecting guard: not modifying again
@@ -18382,6 +18381,7 @@ if(0){
 	args[0]=params=params.slice();
 	params[0]=params[0].slice();
 }
+	let cancelChoice=params[1];
 	let defaultChoice=params[2];
 	
 	const setIndentTo=indent+1; // Math.max(999999,this._indent+99999); // match the behavior of 'skipBranch'
@@ -18401,9 +18401,13 @@ if(0){
 				cmds[b-x].indent=setIndentTo;
 			}
 		}
+		//set first options
+		// set cancel if needed
+		if(!(cancelChoice>=0)&&cmds[b].parameters[1]>=0) cancelChoice=cmds[b].parameters[1]-(-choicesCnt);
 		// set default if needed
 		if(!(defaultChoice>=0)&&cmds[b].parameters[2]>=0) defaultChoice=cmds[b].parameters[2]-(-choicesCnt);
 	}
+	params[1]=cancelChoice;
 	params[2]=defaultChoice;
 	cmds[strt]._setupChoices_concat_isDetected=true; // another detecting guard
 	return b;
@@ -20946,7 +20950,10 @@ FUNC_PARSEINFO_AUDIO:(state,txt,strt,arr)=>{
 	if(txt[strt]!=='"') return strt-1;
 	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\AUDIO_* format error');
 	state.x=last;
-	if(strt===last) return last; // empty info
+	if(strt===last){
+		state.txt+=';';
+		return last; // empty info
+	}
 	if(arr){
 		const info=txt.slice(strt,last).split("|");
 		arr.push({name:info[0],volume:isNaN(info[1])?90:info[1]-0,pitch:isNaN(info[2])?100:info[2]-0,pan:info[3]-0||0,pos:info[4]-0||0,});
@@ -20964,7 +20971,10 @@ FUNC_PARSEINFO_EVALJSCODE:function(state,txt,strt,isScMsgWnd){
 	if(isScMsgWnd && !(arr=this._evaljscodeInfo)) (arr=this._evaljscodeInfo=[])._key="";
 	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\EVALJSCODE format error');
 	state.x=last;
-	if(strt===last) return last; // empty info
+	if(strt===last){
+		state.txt+=';';
+		return last; // empty info
+	}
 	if(arr){
 		const info=getCStyleStringStartAndEndFromString(txt,strt-1,last+1);
 		arr.push(JSON.parse(txt.slice(info.start,info.end)));
@@ -20982,7 +20992,10 @@ FUNC_PARSEINFO_SHAKESCREEN:function(state,txt,strt,isScMsgWnd){
 	if(isScMsgWnd && !(arr=this._shakescreenInfo)) (arr=this._shakescreenInfo=[])._key="";
 	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\SHAKESCREEN format error');
 	state.x=last;
-	if(strt===last) return last; // empty info
+	if(strt===last){
+		state.txt+=';';
+		return last; // empty info
+	}
 	if(arr){
 		const info=txt.slice(strt,last).split("|"); // power|speed|duration as function args order
 		arr.push(info);
@@ -25291,6 +25304,35 @@ mapName:name=>{
 trimPath:name=>name.replace(/^data\//,'').replace(/[:\/\\~]/g,"_"),
 useSrc:new Set(['$dataMap',]),
 }; // f.tbl
+}
+
+})();
+
+// log requested img or audio paths
+(()=>{ let k,r,t;
+
+{ const p=XMLHttpRequest.prototype;
+k='open';
+r=p[k]; (p[k]=function f(){
+	if($gameSystem) $gameSystem.logXhrPath(arguments);
+	return f.ori.apply(this,arguments);
+}).ori=r;
+}
+
+{ const p=Game_System.prototype;
+k='logXhrPath';
+r=p[k]; (p[k]=function f(args){
+	// path=args[1]
+	if(args[1].match(f.tbl[0])) return;
+	let arr=this._xhrPathLog; if(!arr) arr=this._xhrPathLog=[];
+	arr.uniquePush(args[1]);
+}).ori=r;
+p[k].tbl=[
+/^(blob|data):/,
+];
+p.copyXhrPathLog=function(){
+	copyToClipboard(JSON.stringify(this._xhrPathLog));
+};
 }
 
 })();
