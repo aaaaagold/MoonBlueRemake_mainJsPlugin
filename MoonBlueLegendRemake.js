@@ -14179,6 +14179,21 @@ r=p[k]; (p[k]=function f(dmg,v_,trgt){
 
 (()=>{ let k,r,t;
 
+new cfc(Bitmap.prototype).add('drawText',function f(text, x, y, W, lh, align){
+	const isTarget=f.tbl[0]===text;
+	let fontFaceOri;
+	if(isTarget){
+		fontFaceOri=this._makeFontNameText.tbl;
+		this._makeFontNameText.tbl=f.tbl[1];
+	}
+	const rtv=f.ori.apply(this,arguments);
+	if(isTarget) this._makeFontNameText.tbl=fontFaceOri;
+	return rtv;
+},[
+'…',
+'標楷體',
+]);
+
 { const p=Window_Base.prototype;
 k='textWidth';
 r=p[k]; (p[k]=function f(txt){
@@ -25154,7 +25169,6 @@ r=p[k]; (p[k]=function f(){
 k='add';
 r=p[k]; (p[k]=function f(){
 	if(arguments[0] && arguments[0].constructor===String) arguments[0]=arguments[0]
-		.replace(/(([．.]){3}){1,2}/g,'……')
 		.replace(/(?<![0-9])(89\.)3(4%)/g,'$16$2')
 		.replace(/(?<=被)激活/g,'啟動')
 		.replace(/組合拳(?!套)/g,'連續技')
@@ -25163,6 +25177,7 @@ r=p[k]; (p[k]=function f(){
 		.replace(/(?<=根本不是同一個)水平(?=的)/g,'等級')
 		.replace(/(?<=極低)水平(?=．．．)|(?<=你的雷魂跟土魂一直處在低)水平(?=，)/g,'準位')
 		.replace(/(?<=文化)水平(?=相差太多了)|(?<=不太像(平常)?該有的)水平(?=呢。)/g,'水準')
+		// .replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
 		;
 	return f.ori.apply(this,arguments);
 }).ori=r;
