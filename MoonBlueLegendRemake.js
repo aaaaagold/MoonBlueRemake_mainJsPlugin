@@ -192,7 +192,7 @@ const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	txtin.setSelectionRange(0,txtin.value.length);
 	d.execCommand("copy");
 	txtin.parentNode.removeChild(txtin);
-	if(typeof $gameMessage!=='undefined' && $gameMessage.popup) $gameMessage.popup("已複製: "+s.replace(/\\/g,"\\\\"),1);
+	if(typeof $gameMessage!=='undefined' && $gameMessage && $gameMessage.popup) $gameMessage.popup("已複製: "+s.replace(/\\/g,"\\\\"),1);
 };
 const pasteCanvas=window.pasteCanvas=c=>{
 	const img=document.createElement('img');
@@ -2892,7 +2892,7 @@ let r,d;
 Scene_Shop.prototype.maxBuy=function f(){ // overwrite
 	const max=$gameParty.maxItems(this._item)-$gameParty.unionCnt(this._item);
 	const price=this.buyingPrice();
-	return price>0 ? ~~Math.min((this.money() / price),max) : max;
+	return price>0 ? parseInt(Math.min((this.money() / price),max)) : max;
 };
 
 { const p=Game_Party.prototype , h=Object.hasOwnProperty;
@@ -3343,7 +3343,7 @@ p["_"+_k+'$p']=function f(code,eles){
 	for(let x=0;x!==arr.length;++x) rtv+=eles[arr[x].dataId]*arr[x].value;
 	return rtv;
 };
-p["_"+_k+'_alignValue']=value=>value-0?~~(value<0?Math.min(-1,value):Math.max(1,value)):0;
+p["_"+_k+'_alignValue']=value=>value-0?parseInt(value<0?Math.min(-1,value):Math.max(1,value)):0;
 p[_k+'Hp']=function(){
 	const rate=isNaN(this._regenRate)?1:this._regenRate-0;
 	const eles={};
@@ -3365,7 +3365,7 @@ p[_k+'Tp']=function(){
 	let value=Math.floor(this.maxTp() * (this._regenerate$p(gbb.TRAIT_REGENRATED_TP,eles)+this.trg) ) + this._regenerate$p(gbb.TRAIT_REGENFIXED_TP,eles);
 	for(let x=128,M=1<<30,a=Math.abs(value);x>>=1;){
 		if(a*x<M){
-			value=1.0*~~(value*x)/x;
+			value=1.0*parseInt(value*x)/x;
 			break;
 		}
 	}
@@ -9268,7 +9268,7 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 k='executeHpDamage';
 r=p[k]; (p[k]=function f(trgt,val){
 	if(val>0){ const 法力護盾=trgt[kw](); if(法力護盾!==Infinity){
-		const v2=~~(法力護盾*val);
+		const v2=parseInt(法力護盾*val);
 		if(trgt.mp>=v2) return this.executeMpDamage(trgt,v2);
 	} }
 	return f.ori.apply(this,arguments);
@@ -9340,7 +9340,7 @@ k='executeHpDamage';
 r=p[k]; (p[k]=function f(trgt,val){
 	if(val>0){ const 法力護盾_減傷=trgt[kw](); if(法力護盾_減傷){
 		if(trgt.mp>=法力護盾_減傷[1]){
-			arguments[1]=Math.max(0,~~(val-法力護盾_減傷[0]));
+			arguments[1]=Math.max(0,parseInt(val-法力護盾_減傷[0]));
 			const rtv=f.ori.apply(this,arguments);
 			this.executeMpDamage(trgt,~~(法力護盾_減傷[1]));
 			return rtv;
@@ -10426,11 +10426,13 @@ t[0]='BLR_custom/detail/windowColorToneRGB_shop.txt';
 
 new cfc(Scene_MenuBase.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
+	this._numberWindow=this._numberWindow;
 	this._toDetail_using=false;
 	this._detailWindow=undefined;
 	this._toDetail_shouldShow=0;
 	this._toDetail_showOnWindow_toPos=undefined;
 	this._toDetail_showOnWindow_deltaPos=undefined;
+	this._toDetail_disableToggle=false;
 	return rtv;
 }).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -10613,7 +10615,7 @@ ix:12,
 		const bm=dw.contents;
 		bm && bm.clear();
 	}
-	if(!item) return;
+	if(!item) return dw.drawTextExTop(f.tbl.nullItem,dw.textPadding(),0);
 	if(!item.detailTextMap) item.detailTextMap=new Map();
 	dw.toDetail_resetTxtOffsetY();
 	const path=this.toDetail_getPath(item); if(!path) return dw.drawTextExTop(f.tbl.noFile,dw.textPadding(),0);
@@ -10639,6 +10641,7 @@ ix:12,
 noFile:"\\TXTCENTER:\"\\{此項目沒有說明。\"",
 loading:"\\TXTCENTER:\"\\{讀取說明中......\"",
 loadFail:"\\TXTCENTER:\"\\{讀取說明失敗。\"",
+nullItem:"",
 }).add('toDetail_adjIwPos',function(lstPos){
 	if(!this._toDetail_using) return;
 	const dxy=this._toDetail_otherDxy;
@@ -10666,6 +10669,8 @@ loadFail:"\\TXTCENTER:\"\\{讀取說明失敗。\"",
 	}
 	// 
 	this._detailWindow.alpha=this._toDetail_ctr/this._toDetail_ctrMax;
+}).add('toDetail_disableToggle',function f(){
+	return this._toDetail_disableToggle || (this._numberWindow && this._numberWindow.active);
 });
 
 for(let x=0,arr=[Scene_Skill,Scene_MenuBase,Scene_Equip,];x!==arr.length;++x) new cfc(arr[x].prototype).add('update',function f(){
@@ -10677,7 +10682,7 @@ for(let x=0,arr=[Scene_Skill,Scene_MenuBase,Scene_Equip,];x!==arr.length;++x) ne
 		}
 		return rtv;
 	}
-	if(Input.isTriggered('shift')) this._toDetail_shouldShow^=1;
+	if(!this.toDetail_disableToggle()&&Input.isTriggered('shift')) this._toDetail_shouldShow^=1;
 	this.toDetail_adjIwPos(this._lstPos_iw);
 	if(this._toDetail_ctr) this.toDetail_loadDetail();
 	return rtv;
@@ -14177,7 +14182,32 @@ r=p[k]; (p[k]=function f(dmg,v_,trgt){
 { const p=Window_Base.prototype;
 k='textWidth';
 r=p[k]; (p[k]=function f(txt){
+	//return f.ori.apply(this,arguments); // debug
 	if(!this._tbl_txtW) this._tbl_txtW={};
+	if(!this._tbl_txtWUnitThresholdRate) this._tbl_txtWUnitThresholdRate= Math.pow(2,-4)+Math.pow(2,-5)+Math.pow(2,-8)+Math.pow(2,-9)+Math.pow(2,-12) +1; // ~= 1.1
+	if(!this._tbl_txtWUnits) this._tbl_txtWUnits=[];
+	let unit=this._tbl_txtWUnits[this.contents.fontSize]; if(!unit) unit=this._tbl_txtWUnits[this.contents.fontSize]={};
+if(1){
+	if(!unit._one) unit._one=f.ori.call(this,'金')/2;
+	if(txt==='…') return unit._one*2;
+	if(txt&&txt.length===1){
+		if(unit[txt]>=0) return unit[txt];
+		let w=f.ori.apply(this,arguments);
+		const r=w/unit._one;
+		if(1<r&&r<this._tbl_txtWUnitThresholdRate) w=unit._one;
+		return unit[txt]=w;
+	}
+}else{
+	if(!unit._two) unit._two=f.ori.call(this,'ag');
+	if(txt==='…') return unit._two;
+	if(txt&&txt.length===1){
+		if(unit[txt]>=0) return unit[txt];
+		let w=f.ori.apply(this,arguments);
+		const r=unit._two/w;
+		if(1<r&&r<this._tbl_txtWUnitThresholdRate) w=unit._two;
+		return unit[txt]=w;
+	}
+}
 	return this._tbl_txtW[txt]>=0?this._tbl_txtW[txt]:f.ori.apply(this,arguments);
 }).ori=r;
 k='drawText';
@@ -25067,6 +25097,7 @@ r=p[k]; (p[k]=function f(){
 k='add';
 r=p[k]; (p[k]=function f(){
 	if(arguments[0] && arguments[0].constructor===String) arguments[0]=arguments[0]
+		.replace(/(([．.]){3}){1,2}/g,'……')
 		.replace(/(?<![0-9])(89\.)3(4%)/g,'$16$2')
 		.replace(/(?<=被)激活/g,'啟動')
 		.replace(/組合拳(?!套)/g,'連續技')
