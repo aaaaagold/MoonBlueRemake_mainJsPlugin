@@ -11070,20 +11070,26 @@ p[k].tbl=new Set([355,655,]);
 
 if(1)(()=>{ let k,r,t;
 
+{ const d=document;
+(d.head||d.body).ac(d.ce('style').atxt("@font-face {\n\tfont-family: MBR刪節號;\n\tsrc: local('標楷體');\t\nunicode-range: U+2026;\n}"));
+}
+
 const a=Bitmap;
 { const p=a.prototype;
+if(0){
 k='initialize';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.fontFace="Consolas,'Courier New',Courier,微軟正黑體,標楷體,monospace";
 	return rtv;
 }).ori=r;
+}
 k='_makeFontNameText';
 r=p[k]; (p[k]=function f(){
 	this.fontFace=f.tbl;
 	return f.ori.apply(this,arguments);
 }).ori=r;
-p[k].tbl="Consolas,'Courier New',Courier,GameFont,微軟正黑體,標楷體,monospace";
+p[k].tbl="MBR刪節號,Consolas,'Courier New',Courier,GameFont,微軟正黑體,標楷體,monospace";
 }
 
 if(0){ const p=Window_Base.prototype;
@@ -14179,7 +14185,7 @@ r=p[k]; (p[k]=function f(dmg,v_,trgt){
 
 (()=>{ let k,r,t;
 
-new cfc(Bitmap.prototype).add('drawText',function f(text, x, y, W, lh, align){
+if(0) new cfc(Bitmap.prototype).add('drawText',function f(text, x, y, W, lh, align){
 	const isTarget=f.tbl[0]===text;
 	let fontFaceOri;
 	if(isTarget){
@@ -14204,7 +14210,7 @@ r=p[k]; (p[k]=function f(txt){
 	let unit=this._tbl_txtWUnits[this.contents.fontSize]; if(!unit) unit=this._tbl_txtWUnits[this.contents.fontSize]={};
 if(1){
 	if(!unit._one) unit._one=f.ori.call(this,'金')/2;
-	if(txt==='…') return unit._one*2;
+	//if(txt==='…') return unit._one*2;
 	if(txt&&txt.length===1){
 		if(unit[txt]>=0) return unit[txt];
 		let w=f.ori.apply(this,arguments);
@@ -14214,7 +14220,7 @@ if(1){
 	}
 }else{
 	if(!unit._two) unit._two=f.ori.call(this,'ag');
-	if(txt==='…') return unit._two;
+	//if(txt==='…') return unit._two;
 	if(txt&&txt.length===1){
 		if(unit[txt]>=0) return unit[txt];
 		let w=f.ori.apply(this,arguments);
