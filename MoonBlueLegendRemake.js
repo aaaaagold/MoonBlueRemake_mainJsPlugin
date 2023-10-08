@@ -5410,6 +5410,13 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 }
 
+k='svBattlerName';
+{ const p=Game_Enemy.prototype;
+if(p[k]) new cfc(p).add(k,function f(){
+    return this._battlerName_grayscalize(f.ori.apply(this,arguments));
+});
+}
+
 { const p=ImageManager;
 (p._parseQs_uqh=function f(uqh){
 	const rtv={};
@@ -5517,27 +5524,24 @@ r=p[k]; (p[k]=function f(){ // (path, hue)
 
 (()=>{ let k,r,t;
 
-{ const p=Game_Actor.prototype;
+{ const p=Game_Battler.prototype;
 (p.customMotion=function f(){
 	const stat=this.states().find(f.forEach);
 	if(stat) return stat.meta.motionIndex.split(',');
 }).forEach=stat=>stat.meta.motionIndex;
 }
 
-{ const a=Sprite_Actor,p=a.prototype;
-a.MOTIONS.custom={
+{ Sprite_Actor.MOTIONS.custom={
 	index:0,
 	loop:true,
-};
-k='updateMotionCount';
-r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
+}; for(let av=[Sprite_Enemy,Sprite_Actor,],x=av.length;x--;){
+new cfc(av[x].prototype).add('updateMotionCount',function f(){
+	const rtv=f.ori.apply(this,arguments);
 	if(this._motion===Sprite_Actor.MOTIONS.custom && this._custom_pattern>=0){
 		this._pattern=this._custom_pattern;
 	}
-}).ori=r;
-k='refreshMotion';
-r=p[k]; (p[k]=function f(){
+	return rtv;
+}).add('refreshMotion',function f(){
 	if(this._actor){ const cm=this._actor.customMotion(); if(cm){
 		this._motion=Sprite_Actor.MOTIONS.custom;
 		this._custom_index=Number(cm[0]);
@@ -5545,13 +5549,11 @@ r=p[k]; (p[k]=function f(){
 		if(this._custom_index>=0) return;
 	} }
 	return f.ori.apply(this,arguments);
-}).ori=r;
-k='updateFrame';
-r=p[k]; (p[k]=function f(){
+}).add('updateFrame',function f(){
 	if(this._motion===Sprite_Actor.MOTIONS.custom) this._motion.index=this._custom_index;
 	return f.ori.apply(this,arguments);
-}).ori=r;
-}
+});
+} }
 
 })();
 
@@ -16287,9 +16289,11 @@ cf(p,k,function f(){
 	st.height =(h-(cssPadding<<1))+"px";
 	st.left   =x+"px";
 	st.top    =y+"px";
+	st.fontFamily=f.tbl[2];
 },[
 t,
 'resize:none; white-space:pre; word-break:keep-all; text-justify:none; overflow:scroll; text-overflow:clip; background-color:rgba(0,0,0,0); color:#FFFFFF; ',
+'MBR刪節號,consolas,細明體',
 ]);
 
 k='updatePos_cmdDom';
