@@ -8403,6 +8403,13 @@ r=p[k]; (p[k]=function f(item){
 let currentlyEnabled=false;
 const currentlyEnableds={};
 
+Object.defineProperties(Game_System.prototype,{
+cheats:{
+	get:function(){ return this._cheats?this._cheats:(this._cheats={}); },
+	set:function(rhs){ return this._cheats=rhs; },
+configurable: true},
+});
+
 { const p=Scene_Title.prototype;
 (p._奇蹟之靈999=function f(){
 	if(f.tbl===0) f.tbl=$dataItems.find(x=>x&&x.name==="奇蹟之靈");
@@ -24691,6 +24698,58 @@ new cfc(Spriteset_Base.prototype).add('updatePosition',function f(){
 }).add('updatePosition_deltaY',function f(screen){
 	this.y+=Math.round(screen.shakeY());
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 地圖note放禁止從選單開存檔頁面
+ * @author agold404
+ * @help <disableOpenSavemenuFromMenu>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_System.prototype).add('isSaveEnabled',function f(){
+	return !($dataMap&&$dataMap.meta&&$dataMap.meta.disableOpenSavemenuFromMenu) && f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 直接指定文字大小
+ * @author agold404
+ * @help \TXTFONTSIZE"數字" 單位是px
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Bitmap.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._bak_outlineColor=this.outlineColor;
+	return rtv;
+});
+
+t=[
+"TXTFONTSIZE",
+];
+
+new cfc(Window_Base.prototype).add('processEscapeCharacter',function f(code,textState){
+	return (code===f.tbl[0])?this.changeFontSize(this.processCStyleStringContent(textState)):f.ori.apply(this,arguments);
+},t).add('changeFontSize',function f(fontSizeNum){
+	// currently 'fontSizeNum' only supports 'Number'
+	fontSizeNum-=0; 
+	if(isNaN(fontSizeNum)) this.contents.fontSize=this.standardFontSize();
+	else this.contents.fontSize=fontSizeNum;
+	return f.ori&&f.ori.apply(this,arguments);
+},t);
 
 })();
 
