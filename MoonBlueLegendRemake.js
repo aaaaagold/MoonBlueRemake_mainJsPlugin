@@ -10931,16 +10931,13 @@ r=p[k]; (p[k]=function f(){
 }).tbl=[0,0,1,1];
 }
 
-{ const p=Sprite_Character.prototype;
-k='initMembers';
-r=p[k]; (p[k]=function f(){
+new cfc(Sprite_Character.prototype).add('initMembers',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._patternRect=[0,0,1,1]; // 1,1 = ori pw,ph
 	return rtv;
-}).ori=r;
-p.patternRect=function(){ return this._character.patternRect(); };
-k='updateCharacterFrame';
-r=p[k]; (p[k]=function(){
+}).add('patternRect',function(){
+	return this._character.patternRect();
+},undefined,true,true).add('updateCharacterFrame',function f(){
 	this.updateHalfBodySprites();
 	const pw = this.patternWidth () ;
 	const ph = this.patternHeight() ;
@@ -10964,8 +10961,18 @@ r=p[k]; (p[k]=function(){
 	} else {
 		this.setFrame(x, y, w, h);
 	}
-}).ori=r;
-}
+},undefined,true,true).add('updateTileFrame',function(){
+	const pw = this.patternWidth();
+	const ph = this.patternHeight();
+	const sx = (((this._tileId>>4)&8) + (this._tileId&7)) * pw;
+	const sy = (((this._tileId>>3)&15)) * ph;
+	const rect = this.patternRect();
+	const x = sx+~~(pw*rect[0]);
+	const y = sy+~~(ph*rect[1]);
+	const w = ~~((rect[2]-rect[0])*pw);
+	const h = ~~((rect[3]-rect[1])*ph);
+	this.setFrame(x, y, w, h);
+},undefined,true,true);
 
 })();
 
@@ -20257,10 +20264,10 @@ new cfc(p).add('initMembers',function f(){
 	if(!f.tbl[0]){
 		const dummy={y:0,height:0,terminateMessage:none,};
 		f.tbl[0]={
-			_goldWindow:new Window_Gold(0,0),
-			_choiceWindow:new Window_ChoiceList(dummy),
-			_numberWindow:new Window_NumberInput(dummy),
-			_itemWindow:new Window_EventItem(dummy),
+			_goldWindow:{open:none,},
+			_choiceWindow:none,//new Window_ChoiceList(dummy),
+			_numberWindow:none,//new Window_NumberInput(dummy),
+			_itemWindow:none,//new Window_EventItem(dummy),
 		};
 	}
 	for(let x=0,arr=f.tbl[1],xs=arr.length;x!==xs;++x) this[arr[x]]=f.tbl[0][arr[x]];
@@ -20364,7 +20371,15 @@ undefined,
 	}
 	if(delta) SoundManager.playCursor();
 	this.setScrollTxtY(this._scrollTxtY+delta);
-},[16,]);
+},[16,]).add('processEscapeCharacter',function f(){
+	let tmp;
+	try{
+		return f.ori.apply(this,tmp=arguments);
+	}catch(e){
+		console.warn(tmp);
+		return f.tbl[0];
+	}
+},['',]);
 t=()=>{};
 for(let x=0,arr=['_updateCursor','_updatePauseSign',];x!==arr.length;++x) cf(p,arr[x],t,undefined,true,true);
 t=undefined;
