@@ -23334,9 +23334,21 @@ Input.keyMapper[keyCode], // buttonName
 new Set([Scene_Battle,]),
 ];
 
+// design: if there's 1 of disables matched, the functionality will be disabled.
+new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f(){
+	return this._disableFrameFastForwardAll;
+}).add('disableFrameFastForwardAll_set',function f(val){
+	return this._disableFrameFastForwardAll=val;
+}).add('disableFrameFastForwardBattle_get',function f(){
+	return this._disableFrameFastForwardBattle;
+}).add('disableFrameFastForwardBattle_set',function f(val){
+	return this._disableFrameFastForwardBattle=val;
+});
+
 SceneManager._speedUpdateUpCnt=0|0;
 new cfc(SceneManager).add('updateMain',function f(){
-	if(!f.tbl[4].has(this._scene&&this._scene.constructor) && Input.isPressed(f.tbl[0])){
+	//if(!f.tbl[4].has(this._scene&&this._scene.constructor) && Input.isPressed(f.tbl[0])){
+	if(!this.isFrameFastForwardDisabled() && Input.isPressed(f.tbl[0])){
 		const isLongPressed=0&&Input.isLongPressed(f.tbl[0]);
 		const newTime=this._getTimeInMsWithoutMobileSafari();
 		const fTime=Math.min((newTime-this._currentTime)/1000.0,f.tbl[3]);
@@ -23359,7 +23371,16 @@ new cfc(SceneManager).add('updateMain',function f(){
 		this._speedUpdateUpCnt=0|0;
 		return f.ori.apply(this,arguments);
 	}
-},t);
+},t).add('isFrameFastForwardDisabled',function f(){
+	if(!$gameSystem) return;
+	const func=f.tbl[0].get(this._scene&&this._scene.constructor);
+	return func && func() || f.tbl[1]();
+},[
+new Map([
+[Scene_Battle,()=>$gameSystem.disableFrameFastForwardBattle_get()],
+]),
+()=>$gameSystem.disableFrameFastForwardAll_get(),
+]);
 
 })();
 
@@ -24007,7 +24028,7 @@ new cfc(Scene_Gameover.prototype).add('initialize',function f(){
 	this.addChild(this._currSp=newSp);
 	newSp._dur=newSp._info[0];
 }).add('update_nextSp',function f(){
-	if(this._currSp&&(--this._currSp._dur>0)) return;
+	if(!this._currSp||(--this._currSp._dur>0)) return;
 	const newIdx=(this._currIdx+1)%this._spritePools.length;
 	this.update_currSp(newIdx);
 }).add('update',function f(){
