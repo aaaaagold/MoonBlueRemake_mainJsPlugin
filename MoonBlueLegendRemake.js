@@ -24805,6 +24805,37 @@ new cfc(Window_Base.prototype).add('processEscapeCharacter',function f(code,text
 
 ﻿"use strict";
 /*:
+ * @plugindesc 暫時停止中斷戰鬥的逃跑音效1次。連續使用還是只有將來1次。重新進入戰鬥時清除上次設定。
+ * @author agold404
+ * @help BattleManager.disableAbortEscapeSoundOnce();
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(BattleManager).add('disableAbortEscapeSoundOnce',function f(){
+	this._disableAbortEscapeSoundOnce=true;
+}).add('checkAbort',function f(){
+	if($gameParty.isEmpty()||this.isAborting()){
+		this.playAbortEscapeSound();
+		this._escaped=true;
+		this.processAbort();
+	}
+	return false;
+},undefined,true,true).add('startBattle',function f(){
+	this._disableAbortEscapeSoundOnce=false;
+	return f.ori.apply(this,arguments);
+}).add('playAbortEscapeSound',function f(){
+	if(this._disableAbortEscapeSoundOnce) return this._disableAbortEscapeSoundOnce=false;
+	SoundManager.playEscape();
+},undefined,true,true);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
