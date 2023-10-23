@@ -24041,8 +24041,8 @@ new cfc(Scene_Gameover.prototype).add('initialize',function f(){
 	this.addChild(this._currSp=newSp);
 	newSp._dur=newSp._info[0];
 }).add('update_nextSp',function f(){
-	if(!this._currSp||(--this._currSp._dur>0)) return;
-	const newIdx=(this._currIdx+1)%this._spritePools.length;
+	if(!this._group||this._currSp&&(--this._currSp._dur>0)) return;
+	const newIdx=this._spritePools?(this._currIdx+1)%this._spritePools.length:0;
 	this.update_currSp(newIdx);
 }).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
