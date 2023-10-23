@@ -23345,7 +23345,7 @@ new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f()
 	return this._disableFrameFastForwardBattle=val;
 });
 
-const tc=['canFrameFastForward',];
+const tc=['canFrameFastForward','disableFrameFastForward'];
 SceneManager._speedUpdateUpCnt=0|0;
 new cfc(SceneManager).add('updateMain',function f(){
 	if(!this.isFrameFastForwardDisabled() && Input.isPressed(f.tbl[0])){
@@ -23372,7 +23372,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return f.ori.apply(this,arguments);
 	}
 },t).add('isFrameFastForwardDisabled',function f(){
-	if(!ConfigManager[f.tbl[2]]) return true;
+	if(!ConfigManager[f.tbl[2]]||$dataMap&&$dataMap.meta[f.tbl[3]]) return true;
 	if(!$gameSystem) return;
 	const func=f.tbl[0].get(this._scene&&this._scene.constructor);
 	return func && func() || f.tbl[1]();
@@ -23382,6 +23382,7 @@ new Map([
 ]),
 ()=>$gameSystem.disableFrameFastForwardAll_get(),
 tc[0],
+tc[1],
 ]);
 
 t=tc;
