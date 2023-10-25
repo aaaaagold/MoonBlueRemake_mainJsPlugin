@@ -386,6 +386,42 @@ cf(cf(cf(cf(Input,'isTexting_set',function f(){
 	if(this.isTexting()) return false;
 	return f.ori.apply(this,arguments);
 });
+t=[
+none,
+];
+new cfc(TouchInput).add('_onWheel',function f(evt){
+	if(this.bypassPreventDefault_wheel_get(evt)) evt.preventDefault=f.tbl[0];
+	return f.ori.apply(this,arguments);
+},t).add('bypassPreventDefault_wheel_get',function f(){
+	return this._bypassPreventDefault_wheel||this._bypassPreventDefault_wheel_stackSize;
+}).add('bypassPreventDefault_wheel_set',function f(rhs){
+	return this._bypassPreventDefault_wheel=rhs;
+}).add('bypassPreventDefault_wheel_stackPushTrue',function f(){
+	this._bypassPreventDefault_wheel_stackSize|=0;
+	return ++this._bypassPreventDefault_wheel_stackSize;
+}).add('bypassPreventDefault_wheel_stackPop',function f(){
+	this._bypassPreventDefault_wheel_stackSize|=0;
+	return --this._bypassPreventDefault_wheel_stackSize;
+}).add('_onTouchStart',function f(evt){
+	if(this.bypassPreventDefault_touch_get(evt)) evt.preventDefault=f.tbl[0];
+	return f.ori.apply(this,arguments);
+},t).add('_onTouchMove',function f(evt){
+	if(this.bypassPreventDefault_touch_get(evt)) evt.preventDefault=f.tbl[0];
+	return f.ori.apply(this,arguments);
+},t).add('_onTouchEnd',function f(evt){
+	if(this.bypassPreventDefault_touch_get(evt)) evt.preventDefault=f.tbl[0];
+	return f.ori.apply(this,arguments);
+},t).add('bypassPreventDefault_touch_get',function f(){
+	return this._bypassPreventDefault_touch||this._bypassPreventDefault_touch_stackSize;
+}).add('bypassPreventDefault_touch_set',function f(rhs){
+	return this._bypassPreventDefault_touch=rhs;
+}).add('bypassPreventDefault_touch_stackPushTrue',function f(){
+	this._bypassPreventDefault_touch_stackSize|=0;
+	return ++this._bypassPreventDefault_touch_stackSize;
+}).add('bypassPreventDefault_touch_stackPop',function f(){
+	this._bypassPreventDefault_touch|=0;
+	return --this._bypassPreventDefault_touch_stackSize;
+});
 //
 SceneManager._updateSceneCnt=0|0;
 new cfc(SceneManager).add('isMapOrIsBattle',function f(){
@@ -16103,11 +16139,15 @@ k='start';
 cf(p,k,f=function f(){
 	f.tbl[1][f.tbl[0]].apply(this,arguments);
 	this._fc_endEdit=Graphics.frameCount;
+	TouchInput.bypassPreventDefault_wheel_stackPushTrue();
+	TouchInput.bypassPreventDefault_touch_stackPushTrue();
 },[k,a.ori.prototype]);
 
 k='terminate';
 cf(p,k,f=function f(){
-	this.node_root.style.display="none";
+	TouchInput.bypassPreventDefault_touch_stackPop();
+	TouchInput.bypassPreventDefault_wheel_stackPop();
+	if(this.node_root) this.node_root.style.display="none";
 	return f.tbl[1][f.tbl[0]].apply(this,arguments);
 },[k,a.ori.prototype]);
 
@@ -16202,7 +16242,11 @@ t=['position:absolute; margin:0px; border-width:0px; padding:0px; overflow:hidde
 k='createDivRoot';
 cf(p,k,function f(){
 	const d=document,id=this.constructor.name+'-root';
-	if(!(this.node_root=d.ge(id))) d.body.ac(this.node_root=d.ce('div').sa('id',id));
+	if(!(this.node_root=d.ge(id))){
+		d.body.ac(this.node_root=d.ce('div').sa('id',id));
+		this.node_root._onCenterElement=this._updatePos_divRoot;
+		Graphics.addAsGameCanvas(this.node_root);
+	}
 	const st=this.node_root.sa('style',f.tbl[0]).style;
 	st.zIndex=1023;
 	st.display="";
@@ -16277,18 +16321,24 @@ onfocus:function(e){
 },
 ]);
 
-k='updatePos_divRoot';
+k='_updatePos_divRoot';
 cf(p,k,function f(){
 	const g=Graphics;
 	const r=g.getScale(),c=g._canvas;
 	const wd=c.width,hd=c.height,wr=c.offsetWidth,hr=c.offsetHeight;
 	
-	const st=this.node_root.style;
+	const st=this.style;
+	st.transform="translate("+(-wd>>1)  +"px"+','+(-hd>>1)+"px"+") scale("+r+")";
+	st.inset='';
 	st.width  =wd           +"px";
 	st.height =hd           +"px";
 	st.left   =c.offsetLeft +( wr>>1)+"px";
 	st.top    =c.offsetTop  +( hr>>1)+"px";
-	st.transform="translate("+(-wd>>1)  +"px"+','+(-hd>>1)+"px"+") scale("+r+")";
+});
+
+k='updatePos_divRoot';
+cf(p,k,function f(){
+	this.node_root._onCenterElement();
 });
 
 k='updatePos_txtArea';
