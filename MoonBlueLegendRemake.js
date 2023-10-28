@@ -8768,7 +8768,7 @@ r=p[k]; (p[k]=function(){
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if(typeof Battle_Hud!=='undefined')(()=>{ let k,r,t;
 
 { const p=Battle_Hud.prototype;
 
@@ -11861,7 +11861,7 @@ p[k].forEach=function(id,i,arr){ if(Math.random()<arr._map.get(id)) this.addStat
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if(typeof Battle_Hud!=='undefined')(()=>{ let k,r,t;
 
 { const p=Battle_Hud.prototype;
 k='create_states';
@@ -24978,6 +24978,84 @@ new cfc(BattleManager).add('disableAbortEscapeSoundOnce',function f(){
 	if(this._disableAbortEscapeSoundOnce || ($gameSystem&&$gameSystem.disableAbortEscapeSound_get())) return this._disableAbortEscapeSoundOnce=false;
 	SoundManager.playEscape();
 },undefined,true,true);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 修正 MOG_BattleHud update_(h|m)p 在 mhp,mmp 變多時，底層那條不會更新ㄉ問題
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+160,
+30,
+];
+
+new cfc(Battle_Hud.prototype).add('_update__p',function f(btlr,typeId,spriteFront,spriteBack,flow,oldAni,updateMeterStep,numSprite,updateNumberStep,maxNumSprite,imgData,maxImgData){
+	//curr,max,old,oldNum,oldMaxNum = (f.tbl[typeId][:])
+	const keys=f.tbl[typeId]; if(!keys) return;
+	const currVal=btlr[keys.curr];
+	let maxVal;
+	if(spriteFront){
+		if(flow[0]){
+			if(maxVal===undefined) maxVal=btlr[keys.max];
+			this.refresh_meter_flow(spriteFront,currVal,maxVal,0,flow[1]);
+			const dif_meter=this.update_dif(oldAni[0],currVal,updateMeterStep);
+			if(oldAni[0]!==dif_meter){
+				oldAni[0]=dif_meter;
+				this.refresh_meter_flow(spriteBack,oldAni[0],maxVal,1,flow[1]);
+			}
+			flow[1]+=1.5;
+			if(!(flow[1]<=flow[3])) flow[1]=0;
+		}else{
+			let refreshed=false;
+			if(this.need_refresh_parameter(typeId)){
+				refreshed=true;
+				if(maxVal===undefined) maxVal=btlr[keys.max];
+				this.refresh_meter(spriteFront,currVal,maxVal,0);
+				const arr=this[keys.old];
+				if(arr){ arr[0]=currVal; arr[1]=maxVal; }
+				else this[keys.old]=[currVal,maxVal];
+			}
+			const dif_meter=this.update_dif(oldAni[0],currVal,updateMeterStep);
+			if(refreshed||oldAni[0]!==dif_meter){
+				oldAni[0]=dif_meter;
+				if(maxVal===undefined) maxVal=btlr[keys.max];
+				this.refresh_meter(spriteBack,oldAni[0],maxVal,1);
+			}
+		}
+	}
+	if(numSprite){
+		let oldNum=this[keys.oldNum];
+		const dif_number=this.update_dif(oldNum,currVal,updateNumberStep);
+		if (oldNum!==dif_number){
+			oldNum=this[keys.oldNum]=dif_number;
+			this.refresh_number(numSprite,oldNum,imgData,imgData[4],imgData[5],typeId);
+		}
+	}
+	if(maxNumSprite){
+		let oldMaxNum=this[keys.oldMaxNum];
+		if(maxVal===undefined) maxVal=btlr[keys.max];
+		if(oldMaxNum!==maxVal){
+			oldMaxNum=this[keys.oldMaxNum]=maxVal;
+			this.refresh_number(maxNumSprite,oldMaxNum,maxImgData,maxImgData[4],maxImgData[5],typeId);
+		}
+	}
+},[
+{curr:'hp',max:'mhp',old:'_hp_old',oldNum:'_hp_number_old',oldMaxNum:'_maxhp_number_old',}, // hp
+{curr:'mp',max:'mmp',old:'_mp_old',oldNum:'_mp_number_old',oldMaxNum:'_maxmp_number_old',}, // mp
+],true,true).add('update_hp',function f(){
+	return this._update__p(this._battler,0,this._hp_meter_blue,this._hp_meter_red,this._hp_flow,this._hp_old_ani,f.tbl[0],this._hp_number,f.tbl[1],this._maxhp_number,this._hp_img_data,this._maxhp_img_data);
+},t,true,true).add('update_mp',function f(){
+	return this._update__p(this._battler,1,this._mp_meter_blue,this._mp_meter_red,this._mp_flow,this._mp_old_ani,f.tbl[0],this._mp_number,f.tbl[1],this._maxmp_number,this._mp_img_data,this._maxhp_img_data);
+},t,true,true);
 
 })();
 
