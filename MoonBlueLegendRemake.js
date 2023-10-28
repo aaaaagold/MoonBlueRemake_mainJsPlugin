@@ -208,6 +208,9 @@ for(let x=0,arr=[0,404,];x!==arr.length;++x){
 	const key='command'+arr[x];
 	p[key]=p[key]||undefined;
 }
+new cfc(p).add('command111',function f(){
+	return (this._params&&this._params[0]===11&&TouchInput.isPressed()) || f.ori.apply(this,arguments);
+});
 }
 cf(Game_System.prototype,'initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -389,7 +392,30 @@ cf(cf(cf(cf(Input,'isTexting_set',function f(){
 t=[
 none,
 ];
-new cfc(TouchInput).add('_onWheel',function f(evt){
+new cfc(TouchInput).add('_onTouchStart',function f(){
+	let preventDefaulted=false;
+	for(let i=0;i<event.changedTouches.length;++i){
+		const touch=event.changedTouches[i];
+		const x=Graphics.pageToCanvasX(touch.pageX);
+		const y=Graphics.pageToCanvasY(touch.pageY);
+		if (event.touches.length >= 2) {
+			this._screenPressed = true;
+			this._pressedTime = 0;
+			this._onCancel(x, y, event);
+			if(!preventDefaulted){ preventDefaulted=true; event.preventDefault(); }
+		} else {
+			if (Graphics.isInsideCanvas(x, y)) {
+				this._screenPressed = true;
+				this._pressedTime = 0;
+				this._onTrigger(x, y, event);
+				if(!preventDefaulted){ preventDefaulted=true; event.preventDefault(); }
+			}
+		}
+	}
+	if (window.cordova || window.navigator.standalone) {
+		if(!preventDefaulted){ preventDefaulted=true; event.preventDefault(); }
+	}
+}).add('_onWheel',function f(evt){
 	if(this.bypassPreventDefault_wheel_get(evt)) evt.preventDefault=f.tbl[0];
 	return f.ori.apply(this,arguments);
 },t).add('bypassPreventDefault_wheel_get',function f(){
@@ -422,6 +448,12 @@ new cfc(TouchInput).add('_onWheel',function f(evt){
 	this._bypassPreventDefault_touch|=0;
 	return --this._bypassPreventDefault_touch_stackSize;
 });
+//
+new cfc(AudioManager).add('audioFileExt',function f(){
+	return f.tbl[0];
+},[
+'.ogg',
+],true,true);
 //
 SceneManager._updateSceneCnt=0|0;
 new cfc(SceneManager).add('isMapOrIsBattle',function f(){
@@ -16343,7 +16375,7 @@ cf(p,k,function f(){
 },[
 t,
 'resize:none; white-space:pre; word-break:keep-all; text-justify:none; overflow:scroll; text-overflow:clip; background-color:rgba(0,0,0,0); color:#FFFFFF; ',
-'MBR刪節號,consolas,細明體',
+'MBR刪節號,consolas,細明體,monospace',
 ]);
 
 k='updatePos_cmdDom';
@@ -23367,8 +23399,26 @@ Input.keyMapper[keyCode], // buttonName
 16|0,
 2|0,
 0.25,
-new Set([Scene_Battle,]),
+keyCode,
+function f(ab){
+	if(ab){
+		if(!ab._isPitchChanged){
+			ab._isPitchChanged=true;
+			ab.pitch*=f.tbl[1];
+		}
+	}
+},
+function f(ab){
+	if(ab){
+		if(ab._isPitchChanged){
+			ab._isPitchChanged=false;
+			ab.pitch/=f.tbl[1];
+		}
+	}
+},
 ];
+t[5].tbl=t;
+t[6].tbl=t;
 
 // design: if there's 1 of disables matched, the functionality will be disabled.
 new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f(){
@@ -23380,6 +23430,34 @@ new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f()
 }).add('disableFrameFastForwardBattle_set',function f(val){
 	return this._disableFrameFastForwardBattle=val;
 });
+
+new cfc(Input).add('_onKeyUp',function f(evt){
+	if(evt.keyCode===f.tbl[4]){
+		f.tbl[6](AudioManager._bgmBuffer);
+		f.tbl[6](AudioManager._bgsBuffer);
+		f.tbl[6](AudioManager._meBuffer);
+		if(Graphics._video){
+			if(Graphics._video._isSpeedup){
+				Graphics._video._isSpeedup=false;
+				Graphics._video.playbackRate/=f.tbl[1];
+			}
+		}
+	}
+	return f.ori.apply(this,arguments);
+},t).add('_onKeyDown',function f(evt){
+	if(!SceneManager.isFrameFastForwardDisabled() && evt.keyCode===f.tbl[4]){
+		f.tbl[5](AudioManager._bgmBuffer);
+		f.tbl[5](AudioManager._bgsBuffer);
+		f.tbl[5](AudioManager._meBuffer);
+		if(Graphics._video){
+			if(!Graphics._video._isSpeedup){
+				Graphics._video._isSpeedup=true;
+				Graphics._video.playbackRate*=f.tbl[1];
+			}
+		}
+	}
+	return f.ori.apply(this,arguments);
+},t);
 
 const tc=['canFrameFastForward','disableFrameFastForward'];
 SceneManager._speedUpdateUpCnt=0|0;
@@ -25240,6 +25318,7 @@ p[k]=function(){
 	if(obj){
 		const gc=ge('GameCanvas');
 		if(gc){
+			TouchInput.bypassPreventDefault_touch_stackPushTrue();
 			const self=this;
 			const stl=ga(gc,'style');
 			let div,css;
@@ -25259,6 +25338,7 @@ p[k]=function(){
 				++editing;
 				btn.onclick=null;
 				css.display="none";
+				TouchInput.bypassPreventDefault_touch_stackPop();
 				self.activateListWindow();
 			};
 			let infostring;
