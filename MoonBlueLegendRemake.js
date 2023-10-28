@@ -21704,7 +21704,7 @@ new cfc(BattleManager).add('initMembers',function f(){
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if(0)(()=>{ let k,r,t;
 
 t=[
 'BLR_custom/OptionMenu/loc.txt',
@@ -21791,7 +21791,7 @@ new Map([
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if(0)(()=>{ let k,r,t;
 
 t=[
 'BLR_custom/OptionMenu/backgrounds.txt',
