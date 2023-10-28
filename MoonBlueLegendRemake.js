@@ -23401,17 +23401,29 @@ Input.keyMapper[keyCode], // buttonName
 0.25,
 keyCode,
 function f(ab){
-	if(ab){
-		if(!ab._isPitchChanged){
-			ab._isPitchChanged=true;
+	if(ab && !ab._isSpeedup){
+		ab._isSpeedup=true;
+		const sn=ab._sourceNode;
+		if(ab.isReady() && ab.isPlaying() && sn){
+			const offset=(sn.context.currentTime-ab._startTime)*ab.pitch;
+			ab._pitch*=f.tbl[1];
+			ab._startPlaying(sn.loop,offset);
+			
+		}else{
 			ab.pitch*=f.tbl[1];
 		}
 	}
 },
 function f(ab){
-	if(ab){
-		if(ab._isPitchChanged){
-			ab._isPitchChanged=false;
+	if(ab && ab._isSpeedup){
+		ab._isSpeedup=false;
+		const sn=ab._sourceNode;
+		if(ab.isReady() && ab.isPlaying() && sn){
+			const offset=(sn.context.currentTime-ab._startTime)*ab.pitch;
+			ab._pitch/=f.tbl[1];
+			ab._startPlaying(sn.loop,offset);
+			
+		}else{
 			ab.pitch/=f.tbl[1];
 		}
 	}
@@ -23431,29 +23443,44 @@ new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f()
 	return this._disableFrameFastForwardBattle=val;
 });
 
+AudioManager._frameFastForwarded=false;
+AudioManager._globalPitch=AudioManager._globalPitch||1;
+new cfc(AudioManager).add('updateBufferParameters',function f(buffer,configVolume,audio){
+	const rtv=f.ori.apply(this,arguments);
+	if(buffer&&audio){
+		buffer.pitch*=AudioManager._globalPitch;
+		buffer._gp=AudioManager._globalPitch;
+		buffer._isSpeedup=Input._isSpeedup;
+	}
+	return rtv;
+});
+
+Input._isSpeedup=false;
 new cfc(Input).add('_onKeyUp',function f(evt){
-	if(evt.keyCode===f.tbl[4]){
+	if(this._isSpeedup && evt.keyCode===f.tbl[4]){
+		this._isSpeedup=false;
 		f.tbl[6](AudioManager._bgmBuffer);
 		f.tbl[6](AudioManager._bgsBuffer);
 		f.tbl[6](AudioManager._meBuffer);
+		AudioManager._seBuffers && AudioManager._seBuffers.forEach && AudioManager._seBuffers.forEach(f.tbl[6]);
+		AudioManager._globalPitch/=f.tbl[1];
 		if(Graphics._video){
-			if(Graphics._video._isSpeedup){
-				Graphics._video._isSpeedup=false;
-				Graphics._video.playbackRate/=f.tbl[1];
-			}
+			Graphics._video.playbackRate/=f.tbl[1];
+			Graphics._video.defaultPlaybackRate/=f.tbl[1];
 		}
 	}
 	return f.ori.apply(this,arguments);
 },t).add('_onKeyDown',function f(evt){
-	if(!SceneManager.isFrameFastForwardDisabled() && evt.keyCode===f.tbl[4]){
+	if(!SceneManager.isFrameFastForwardDisabled() && !this._isSpeedup && evt.keyCode===f.tbl[4]){
+		this._isSpeedup=true;
 		f.tbl[5](AudioManager._bgmBuffer);
 		f.tbl[5](AudioManager._bgsBuffer);
 		f.tbl[5](AudioManager._meBuffer);
+		AudioManager._seBuffers && AudioManager._seBuffers.forEach && AudioManager._seBuffers.forEach(f.tbl[5]);
+		AudioManager._globalPitch*=f.tbl[1];
 		if(Graphics._video){
-			if(!Graphics._video._isSpeedup){
-				Graphics._video._isSpeedup=true;
-				Graphics._video.playbackRate*=f.tbl[1];
-			}
+			Graphics._video.playbackRate*=f.tbl[1];
+			Graphics._video.defaultPlaybackRate*=f.tbl[1];
 		}
 	}
 	return f.ori.apply(this,arguments);
