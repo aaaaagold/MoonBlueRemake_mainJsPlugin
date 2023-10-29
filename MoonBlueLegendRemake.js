@@ -604,7 +604,73 @@ new cfc(DataManager).add('isSkill',function f(item){
 	return item && $dataWeapons.uniqueHas(item);
 }).add('isArmor',function f(item){
 	return item && $dataArmors.uniqueHas(item);
-});
+}).add('loadDataFile',function(name,src,directSrc,mimeType,method,data){
+	method=method||'GET';
+	mimeType=mimeType||'application/json';
+	const xhr=new XMLHttpRequest();
+	src=directSrc?src:('data/'+src);
+	xhr.open(method,src);
+	xhr.overrideMimeType(mimeType);
+	xhr.onload = function() {
+		if (xhr.status < 400) {
+			window[name] = JSON.parse(xhr.responseText);
+			DataManager.onLoad(window[name],name,src);
+		}
+	};
+	xhr.onerror = this._mapLoader || function() {
+		DataManager._errorUrl = DataManager._errorUrl || src;
+	};
+	window[name] = null;
+	xhr.send(data);
+	return xhr;
+},undefined,true,true).add('onLoad',function f(obj,name,src){
+	this.onLoad_before.apply(this,arguments);
+	const rtv=f.ori.apply(this,arguments);
+	this.onLoad_after.apply(this,arguments);
+	return rtv;
+},undefined,true).add('onLoad_before',function f(obj,name,src){
+	const func=f.tbl.get(name);
+	return func && func.apply(this,arguments);
+},undefined,true).add('onLoad_after',function f(obj,name,src){
+	const func=f.tbl.get(name);
+	return func && func.apply(this,arguments);
+},undefined,true).add('_onLoad_before_map',function f(obj,name,src){
+	return this.onLoad_before_map.apply(this,arguments);
+},undefined,true,true).add('_onLoad_after_map',function f(obj,name,src){
+	return this.onLoad_after_map.apply(this,arguments);
+},undefined,true,true).add('onLoad_before_map',function f(obj){
+	// dummy
+},undefined,true,true).add('onLoad_after_map',function f(obj){
+	// dummy
+},undefined,true,true).add('_onLoad_before_skill',function f(obj,name,src){
+	return this.onLoad_before_skill.apply(this,arguments);
+},undefined,true,true).add('_onLoad_after_skill',function f(obj){
+	return this.onLoad_after_skill.apply(this,arguments);
+},undefined,true,true).add('onLoad_before_skill',function f(obj,name,src){
+	// dummy
+},undefined,true,true).add('onLoad_after_skill',function f(obj){
+	// dummy
+},undefined,true,true).add('_onLoad_before_tileset',function f(obj,name,src){
+	return this.onLoad_before_tileset.apply(this,arguments);
+},undefined,true,true).add('_onLoad_after_tileset',function f(obj,name,src){
+	return this.onLoad_after_tileset.apply(this,arguments);
+},undefined,true,true).add('onLoad_before_tileset',function f(obj){
+	// dummy
+},undefined,true,true).add('onLoad_after_tileset',function f(obj){
+	// dummy
+},undefined,true,true);
+{ const p=DataManager;
+p.onLoad_before.tbl=new Map([
+	['$dataMap',	p._onLoad_before_map],
+	['$dataSkills',	p._onLoad_before_skill],
+	['$dataTilesets',	p._onLoad_before_tileset],
+]);
+p.onLoad_after.tbl=new Map([
+	['$dataMap',	p._onLoad_after_map],
+	['$dataSkills',	p._onLoad_after_skill],
+	['$dataTilesets',	p._onLoad_after_tileset],
+]);
+}
 //
 new cfc(Game_Party.prototype).add('partyAbility_sumAll',function f(dataId){
 	return this.members().reduce(f.tbl[0].bind(dataId),0);
@@ -7086,16 +7152,12 @@ const mappings_regExp=[
 
 
 
-const p=DataManager,k='onLoad',r=p[k];
-(p[k]=function f(obj){
-	const rtv=f.ori.apply(this,arguments);
-	this.onLoad_skill(obj);
+new cfc(DataManager).add('onLoad_before_skill',function f(obj){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	obj.forEach(f.tbl[0]);
 	return rtv;
-}).ori=r;
-window.$dataSkills=null;
-(p.onLoad_skill=function f(obj){ if(!obj || obj!==$dataSkills) return;
-	obj.forEach(f.forEach);
-}).forEach=skill=>{ if(!skill) return;
+},[
+skill=>{ if(!skill) return;
 	for(let x=0;x!==mappings.length;++x) skill.note=skill.note.split(mappings[x][0]).join(mappings[x][1]);
 	for(let x=0;x!==mappings_regExp.length;++x){
 		try{
@@ -7109,7 +7171,8 @@ window.$dataSkills=null;
 			}
 		}
 	}
-};
+},
+]);
 
 })();
 
@@ -8672,57 +8735,10 @@ new cfc(Input).add('_onKeyDown',function f(evt){
 
 (()=>{ let k,r,t;
 
-{ const p=DataManager;
-k='loadDataFile';
-r=p[k]; (p[k]=function(name,src){
-	const xhr = new XMLHttpRequest();
-	src = 'data/' + src;
-	xhr.open('GET', src);
-	xhr.overrideMimeType('application/json');
-	xhr.onload = function() {
-		if (xhr.status < 400) {
-			window[name] = JSON.parse(xhr.responseText);
-			DataManager.onLoad(window[name],name);
-		}
-	};
-	xhr.onerror = this._mapLoader || function() {
-		DataManager._errorUrl = DataManager._errorUrl || src;
-	};
-	window[name] = null;
-	xhr.send();
-	return xhr;
-}).ori=r;
-
-k='onLoad';
-r=p[k]; (p[k]=function f(obj,name){
-	const rtv=f.ori.apply(this,arguments);
-	this.onload_map(obj);
-	return rtv;
-}).ori=r;
-window.$dataMap=null;
-p.onLoad_map=obj=>{ if(!obj || obj!==$dataMap) return;
-	if(obj.meta.onload) eval(LZString.decompressFromBase64(obj.meta.onload));
+new cfc(DataManager).add('onLoad_after_map',function f(obj){
+	if(obj.meta.onload) eval(obj.meta.onload);
 	if(obj.meta.onloadB64C) eval(LZString.decompressFromBase64(obj.meta.onloadB64C));
-};
-}
-
-{ const p=DataManager;
-t=p.onLoad;
-while(t.ori) t=t.ori;
-p._onload_base=t;
-
-k='onLoad';
-r=p[k]; (p[k]=function f(obj,name){
-	const rtv=this._onload_base(obj);
-	const func=f.tbl.get(name);
-	if(func) func.call(this,obj);
-	return rtv;
-}).ori=r;
-p[k].tbl=new Map([
-	['$dataMap',	p.onLoad_map],
-	['$dataSkills',	p.onLoad_skill],
-]);
-}
+});
 
 })();
 
@@ -9133,17 +9149,18 @@ for(let x=0;x!==tblv.length;++x){
 
 (()=>{ let k,r,t;
 
-{ const p=DataManager;
-(p.onLoad_tilesets=function f(arr){ if(!arr||arr!==$dataTilesets) return;
-	arr.forEach(f.forEach);
-}).forEach=function f(obj){ if(!obj) return;
+new cfc(DataManager).add('onLoad_after_tileset',function f(obj){
+	const rtv=f.ori.apply(this,arguments);
+	obj.forEach(f.tbl[0]);
+	return rtv;
+},[
+function f(obj){ if(!obj) return;
 	const flags = obj.meta.flags && JSON.parse(obj.meta.flags);
 	if(flags && flags!==true){ for(let i in flags){
 		obj.flags[i]=flags[i];
 	} }
-};
-p.onLoad.tbl.set('$dataTilesets',p.onLoad_tilesets);
-}
+},
+]);
 
 })();
 
@@ -9807,39 +9824,7 @@ gbb.
 	addEnum('__END__');
 
 let emptySkillIdx;
-
-
-{ const p=DataManager;
-k='loadDataFile';
-r=p[k]; (p[k]=function(name,src){
-	const xhr = new XMLHttpRequest();
-	src = 'data/' + src;
-	xhr.open('GET', src);
-	xhr.overrideMimeType('application/json');
-	xhr.onload = function() {
-		if (xhr.status < 400) {
-			window[name] = JSON.parse(xhr.responseText);
-			DataManager.onLoad(window[name],name);
-		}
-	};
-	xhr.onerror = this._mapLoader || function() {
-		DataManager._errorUrl = DataManager._errorUrl || src;
-	};
-	window[name] = null;
-	xhr.send();
-	return xhr;
-}).ori=r;
-k='onLoad';
-r=p[k]; while(r.ori && !r.tbl && !r.ori.ori) r=r.ori;
-(p[k]=function f(obj,name){
-	const func=f.tbl.get(name);
-	if(func) func.call(this,obj);
-	return f.ori.apply(this,arguments);
-}).ori=r;
-if(!p[k].tbl) p[k].tbl=new Map();
-k='onLoad_skill';
-r=p[k]; (p[k]=function f(obj){ if(!obj || obj!==$dataSkills) return;
-	
+new cfc(DataManager).add('onLoad_before_skill',function f(obj){
 	const emptySkill={
 		id:(emptySkillIdx=$dataSkills.length),animationId:0,
 		damage:{critical:false,elementId:0,formula:"0",type:0,variance:20},
@@ -9852,10 +9837,9 @@ r=p[k]; (p[k]=function f(obj){ if(!obj || obj!==$dataSkills) return;
 	};
 	obj.push(emptySkill);
 	
-	if(f.ori) return f.ori.apply(this,arguments);
-}).ori=r;
-p.onLoad.tbl.set('$dataSkills',p.onLoad_skill);
-}
+	return f.ori&&f.ori.apply(this,arguments);
+});
+
 
 { const p=Scene_Boot.prototype;
 k='start';
@@ -11244,55 +11228,6 @@ r=p[k]; (p[k]=function f(){
 	}
 	return rtv;
 }).ori=r;
-}
-
-})();
-
-
-﻿"use strict";
-/*:
- * @plugindesc troop @NOTE that makes the page be like "Note" in other data in the database
- * @author agold404
- * @help .
- * 
- * This plugin can be renamed as you want.
- */
-
-(()=>{ let k,r,t;
-
-{ const p=Scene_Boot.prototype;
-k='start';
-r=p[k]; (p[k]=function f(){
-	$dataTroops.forEach(f.forEach);
-	return f.ori.apply(this,arguments);
-}).ori=r;
-p[k].forEach=(dataobj)=>{ if(!dataobj) return;
-	dataobj.note=undefined;
-	let s="";
-	for(let pgs=dataobj.pages,p=0;p!==pgs.length;++p){
-		let note=false,c=0,cmds=pgs[p].list;
-		for(;c!==cmds.length;++c){
-			if(cmds[c].code===108 && cmds[c].parameters[0]==="@NOTE"){
-				note=true;
-				++c;
-				break;
-			}
-		}
-		if(note){
-			for(;c!==cmds.length;++c){ const code=cmds[c].code;
-				if(code===108 || code===408){
-					if(s) s+='\n';
-					s+=cmds[c].parameters[0];
-				}
-			}
-		}
-	}
-	if(dataobj.note){
-		dataobj.note+='\n';
-		dataobj.note+=s;
-	}else dataobj.note=s;
-	if(dataobj.note) DataManager.extractMetadata(dataobj);
-};
 }
 
 })();
@@ -15032,37 +14967,9 @@ r=p[k]; (p[k]=function f(val_curr,val_max){
 
 (()=>{ let k,r,t;
 
-{ const p=DataManager;
-k='loadDataFile';
-r=p[k]; (p[k]=function(name,src){
-	const xhr = new XMLHttpRequest();
-	src = 'data/' + src;
-	xhr.open('GET', src);
-	xhr.overrideMimeType('application/json');
-	xhr.onload = function() {
-		if (xhr.status < 400) {
-			window[name] = JSON.parse(xhr.responseText);
-			DataManager.onLoad(window[name],name,src);
-		}
-	};
-	xhr.onerror = this._mapLoader || function() {
-		DataManager._errorUrl = DataManager._errorUrl || src;
-	};
-	window[name] = null;
-	xhr.send();
-	return xhr;
-}).ori=r;
-
 window.$dataMap=null;
-k='onLoad_map_preload';
-r=p[k]; (p[k]=function f(){
-	const collect={ani:new Set(),se:new Set(),};
-	$dataMap.events.forEach(f.tbl[2],collect);
-	collect.ani.forEach(f.tbl[3]);
-	collect.se.forEach(f.tbl[5]);
-	f.tbl[6]($dataMap.note);
-}).ori=r;
-t=p[k].tbl=[
+
+t=[
 function f(cmd){ if(cmd && cmd.code===212){ const ani=$dataAnimations[cmd.parameters[1]]; if(ani){
 	for(let x=1;x!==3;++x){ const p="animation"+x,n=p+"Name"; if(ani[n]){
 		// ImageManager.loadAnimation(ani[n],ani[p+"Hue"]);
@@ -15079,42 +14986,19 @@ seName=>jurl(
 	"GET",0,0,'arraybuffer',
 ),
 note=>DataManager.sendLoadReq_byNote(note),
-]; t.forEach(f=>f.tbl=f.ori=t); t=undefined;
+]; t.forEach(f=>f.tbl=f.ori=t);
 
-k='onLoad_after_map';
-r=p[k]; (p[k]=function f(obj){
+new cfc(DataManager).add('onLoad_after_map',function f(obj){
 	const rtv=f.ori && f.ori.apply(this,arguments),sm=SceneManager,sc=sm._scene;
-	if(sm.isScene_map() && sc._transfer) this.onLoad_map_preload();
+	if(sm.isScene_map() && sc._transfer) this.onLoad_map_preload(obj);
 	return rtv;
-}).ori=r;
-
-k='onLoad_before';
-r=p[k]; if(!r) (p[k]=function f(obj,name){
-	return f.ori && f.ori.apply(this,arguments);
-}).ori=r;
-
-k='onLoad_after';
-r=p[k]; (p[k]=function f(obj,name){
-	const rtv=f.ori && f.ori.apply(this,arguments);
-	const func=f.tbl.get(name);
-	if(func) func.call(this,obj);
-	return rtv;
-}).ori=r;
-p[k].tbl=new Map([
-	['$dataMap',	p.onLoad_after_map],
-	['$dataSkills',	p.onLoad_after_skill],
-]);
-
-k='onLoad';
-r=p[k]; while(r.ori && !r.tbl && !r.ori.ori) r=r.ori;
-(p[k]=function f(obj,name){
-	this.onLoad_before(obj,name);
-	const rtv=f.ori.apply(this,arguments);
-	this.onLoad_after(obj,name);
-	return rtv;
-}).ori=r;
-p[k].tbl=r.tbl;
-}
+}).add('onLoad_map_preload',function f(obj){
+	const collect={ani:new Set(),se:new Set(),};
+	obj.events.forEach(f.tbl[2],collect);
+	collect.ani.forEach(f.tbl[3]);
+	collect.se.forEach(f.tbl[5]);
+	f.tbl[6](obj.note);
+},t);
 
 })();
 
@@ -18040,7 +17924,7 @@ t=undefined;
 /*:
  * @plugindesc 讀取後先執行一些javascript。
  * @author agold404
- * @help $gameSystem._onLoadGameJs=[];
+ * @help $gameSystem._onLoadGameJs=[]; // onLoadgameJs
  * 
  * This plugin can be renamed as you want.
  */
@@ -25062,6 +24946,39 @@ new cfc(Battle_Hud.prototype).add('_update__p',function f(btlr,typeId,spriteFron
 
 ﻿"use strict";
 /*:
+ * @plugindesc set event data page's 'trigger' to null
+ * @author agold404
+ * @help use @NULLTRIGGER
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(DataManager).add('onLoad_after_map',function f(obj){
+	const rtv=f.ori.apply(this,arguments);
+	this.onLoad_after_map_setNullTriggers(obj);
+	return rtv;
+}).add('onLoad_after_map_setNullTriggers',function f(obj){
+	obj.events.forEach(f.tbl[0]);
+},t=[
+evtd=>{ if(!evtd) return;
+	for(let p=0,pgv=evtd.pages,pe=pgv.length;p!==pe;++p){
+		for(let c=0,cmdv=pgv[p].list,ce=cmdv.length;c!==ce;++c){
+			if(cmdv[c].code===108 && cmdv[c].parameters[0]==="@NULLTRIGGER"){
+				pgv[p].trigger=null;
+				break;
+			}
+		}
+	}
+},
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -25439,13 +25356,16 @@ p[k]=function(){
 			}
 			}
 			const input=sa(ce('input'),'style',"position:relative;display:block;left:0px;right:0px;font-size:32px;");
-			const btn=sa(atxt(ce('button'),'confirm'),'style','font-size:32px;'),backToLastWindow=_=>{
+			const btnStyle='font-size:32px;';
+			const btn_cancel=sa(atxt(ce('button'),'cancel'),'style',btnStyle);
+			const btn=sa(atxt(ce('button'),'confirm'),'style',btnStyle),backToLastWindow=_=>{
 				++editing;
-				btn.onclick=null;
+				btn_cancel.onclick=btn.onclick=null;
 				css.display="none";
 				TouchInput.bypassPreventDefault_touch_stackPop();
 				self.activateListWindow();
 			};
+			btn_cancel.onclick=backToLastWindow;
 			let infostring;
 			switch(sctype){
 			default: infostring='ERROR. please click "confirm"';
@@ -25473,11 +25393,11 @@ p[k]=function(){
 			}
 			ac(
 				div,ac(
-					ac(
+					ac(ac(
 						ac(
 							ce('div'),atxt(ce('div'),infostring)
 						),input
-					),btn
+					),btn),btn_cancel
 				)
 			);
 			const clear=e=>{ e.preventDefault(); clearInputs(); };
