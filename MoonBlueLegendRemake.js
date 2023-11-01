@@ -10279,6 +10279,8 @@ p.afterimage_newSprite=function(){
 	this._afterimage_root.addChild(new Sprite_Battler_Afterimage(this)); // img already loaded
 };
 k='update';
+for(let x=0,arr=[Sprite_Actor,Sprite_Enemy],xs=arr.length;x!==xs;++x){ const p=arr[x].prototype;
+// scale is reset by one of yep plugins
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	if(this._afterimage_root) this.afterimage_remove();
@@ -10289,6 +10291,7 @@ r=p[k]; (p[k]=function f(){
 	}
 	return rtv;
 }).ori=r;
+} // for
 }
 
 })();
@@ -23291,8 +23294,10 @@ function f(ab){
 		if(ab.isReady() && ab.isPlaying() && sn){
 			const offset=(sn.context.currentTime-ab._startTime)*ab.pitch;
 			ab._pitch*=f.tbl[1];
+			const gn=ab._gainNode;
+			const volume=gn&&gn.gain&&gn.gain.value;
 			ab._startPlaying(sn.loop,offset);
-			
+			if(volume!==undefined) gn.value=volume;
 		}else{
 			ab.pitch*=f.tbl[1];
 		}
@@ -23305,8 +23310,10 @@ function f(ab){
 		if(ab.isReady() && ab.isPlaying() && sn){
 			const offset=(sn.context.currentTime-ab._startTime)*ab.pitch;
 			ab._pitch/=f.tbl[1];
+			const gn=ab._gainNode;
+			const volume=gn&&gn.gain&&gn.gain.value;
 			ab._startPlaying(sn.loop,offset);
-			
+			if(volume!==undefined) gn.value=volume;
 		}else{
 			ab.pitch/=f.tbl[1];
 		}
@@ -25468,12 +25475,14 @@ r=p[k]; (p[k]=function f(){
 	if(arguments[0] && arguments[0].constructor===String) arguments[0]=arguments[0]
 		.replace(/(?<![0-9])(89\.)3(4%)/g,'$16$2')
 		.replace(/(?<=被)激活/g,'啟動')
+		.replace(/組合拳(?=套用)/g,'連續技')
 		.replace(/組合拳(?!套)/g,'連續技')
 		.replace(/(?<![刺偏])激活/g,'啟用')
 		.replace(/(?<=遺漏的)信息(?=，)/g,'訊息')
 		.replace(/(?<=根本不是同一個)水平(?=的)/g,'等級')
 		.replace(/(?<=極低)水平(?=．．．)|(?<=你的雷魂跟土魂一直處在低)水平(?=，)/g,'準位')
 		.replace(/(?<=文化)水平(?=相差太多了)|(?<=不太像(平常)?該有的)水平(?=呢。)/g,'水準')
+		.replace(/人工智能/g,'人工智慧')
 		// .replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
 		;
 	return f.ori.apply(this,arguments);
