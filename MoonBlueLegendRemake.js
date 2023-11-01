@@ -23294,10 +23294,11 @@ function f(ab){
 		if(ab.isReady() && ab.isPlaying() && sn){
 			const offset=(sn.context.currentTime-ab._startTime)*ab.pitch;
 			ab._pitch*=f.tbl[1];
-			const gn=ab._gainNode;
+			let gn=ab._gainNode;
 			const volume=gn&&gn.gain&&gn.gain.value;
 			ab._startPlaying(sn.loop,offset);
-			if(volume!==undefined) gn.value=volume;
+			gn=ab._gainNode;
+			if(gn&&gn.gain&&volume!==undefined) gn.gain.value=volume;
 		}else{
 			ab.pitch*=f.tbl[1];
 		}
@@ -23310,10 +23311,11 @@ function f(ab){
 		if(ab.isReady() && ab.isPlaying() && sn){
 			const offset=(sn.context.currentTime-ab._startTime)*ab.pitch;
 			ab._pitch/=f.tbl[1];
-			const gn=ab._gainNode;
+			let gn=ab._gainNode;
 			const volume=gn&&gn.gain&&gn.gain.value;
 			ab._startPlaying(sn.loop,offset);
-			if(volume!==undefined) gn.value=volume;
+			gn=ab._gainNode;
+			if(gn&&gn.gain&&volume!==undefined) gn.gain.value=volume;
 		}else{
 			ab.pitch/=f.tbl[1];
 		}
