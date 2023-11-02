@@ -23281,12 +23281,33 @@ new cfc(Game_Actor.prototype).add('setup',function f(){
 
 const keyCode=192; // event.keyCode('`') === 192
 if(!Input.keyMapper[keyCode]) Input.keyMapper[keyCode]='`';
+
+new cfc(WebAudio.prototype).add('fadeIn',function f(dur){
+	const rtv=f.ori.apply(this,arguments);
+	if(this.isReady()){ const t0=WebAudio._context.currentTime; this._fadeInfo={
+		t0:t0,
+		v0:0,
+		t1:t0+dur,
+		v1:this._volume,
+	}; }
+	return rtv;
+}).add('fadeOut',function f(dur){
+	const rtv=f.ori.apply(this,arguments);
+	if(this.isReady()){ const t0=WebAudio._context.currentTime; this._fadeInfo={
+		t0:t0,
+		v0:this._volume,
+		t1:t0+dur,
+		v1:0,
+	}; }
+	return rtv;
+});
+
 t=[
 Input.keyMapper[keyCode], // buttonName
 16|0,
-2|0,
-0.25,
-keyCode,
+2|0, // 2: max _speedUpdateUpCnt
+0.25, // 3: min fTime
+keyCode, // 4
 function f(ab){
 	if(ab && !ab._isSpeedup){
 		ab._isSpeedup=true;
@@ -23297,8 +23318,7 @@ function f(ab){
 			let gn=ab._gainNode;
 			const volume=gn&&gn.gain&&gn.gain.value;
 			ab._startPlaying(sn.loop,offset);
-			gn=ab._gainNode;
-			if(gn&&gn.gain&&volume!==undefined) gn.gain.value=volume;
+			f.tbl[8](ab,volume,1.0/f.tbl[1]);
 		}else{
 			ab.pitch*=f.tbl[1];
 		}
@@ -23314,16 +23334,26 @@ function f(ab){
 			let gn=ab._gainNode;
 			const volume=gn&&gn.gain&&gn.gain.value;
 			ab._startPlaying(sn.loop,offset);
-			gn=ab._gainNode;
-			if(gn&&gn.gain&&volume!==undefined) gn.gain.value=volume;
+			f.tbl[8](ab,volume,f.tbl[1]);
 		}else{
 			ab.pitch/=f.tbl[1];
 		}
 	}
 },
+undefined, // 7: 1/f.tbl[1]
+(ab,volume,invR)=>{
+	const gn=ab._gainNode;
+	if(gn&&gn.gain&&volume!==undefined){
+		gn.gain.value=volume;
+		if(ab._fadeInfo){ const t=WebAudio._context.currentTime; const dt=ab._fadeInfo.t1-t; if(0<dt){
+			gn.gain.linearRampToValueAtTime(ab._fadeInfo.v1, ab._fadeInfo.t1=t+dt*invR);
+		}else ab._fadeInfo=undefined; }
+	}
+}, // 8: sub-func
 ];
 t[5].tbl=t;
 t[6].tbl=t;
+t[7]=1.0/t[1];
 
 // design: if there's 1 of disables matched, the functionality will be disabled.
 new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f(){
