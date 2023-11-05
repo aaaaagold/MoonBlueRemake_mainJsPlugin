@@ -712,7 +712,6 @@ console.group("%c"+(++id)+". 此插件的作者表示: 這遊戲好難喔，不�
 	console.log("%c所以給你一些好康的",normal);
 	console.log("$gameParty._actors.forEach(i=>{ let a=$gameActors.actor(i); a.gainExp(1e11); a._tp=a._mp=a._hp=1e4; });");
 	console.log("[215,304].forEach(i=>$gameParty.gainItem($dataItems[i],1e3));");
-	console.log("[15,16,21,39,44,47,50,128,170,174,187,207,210,].forEach(i=>$gameParty.gainItem($dataWeapons[i],1e3));");
 	console.log("[$dataItems,$dataWeapons,$dataArmors,].forEach(arr=>arr&&arr.forEach(dataobj=>dataobj&&dataobj.name&&$gameParty.gainItem(dataobj,1e3)));");
 	console.log("for(let t=0,dst=$gameTemp.goods=[],conts=[$dataItems,$dataWeapons,$dataArmors,],ts=conts.length;t!==ts;++t) for(let x=0,arr=conts[t],xs=arr.length;x!==xs;++x) dst.push([t,x,0,NaN]);","SceneManager.push(Scene_Shop);","SceneManager.prepareNextScene($gameTemp.goods, false);");
 	console.log("ConfigManager.canFrameFastForward=true; ConfigManager.save();");
@@ -2648,7 +2647,7 @@ r=p[k]; (p[k]=function f(){
 	this._dmgRate=1;
 }).ori=r;
 
-k='makeDamageValue';
+k='evalDamageFormula';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	return Math.round(rtv*this._dmgRate);
@@ -20994,7 +20993,7 @@ FUNC_PARSEINFO_AUDIO:(state,txt,strt,arr)=>{
 		state.txt+='[';
 		state.txt+=arr.length-1;
 		state.txt+=']';
-	}
+	}else state.txt+=';'; // not using
 	return last;
 },
 FUNC_PARSEINFO_EVALJSCODE:function(state,txt,strt,isScMsgWnd){
@@ -21015,7 +21014,7 @@ FUNC_PARSEINFO_EVALJSCODE:function(state,txt,strt,isScMsgWnd){
 		state.txt+='[';
 		state.txt+=arr.length-1;
 		state.txt+=']';
-	}
+	}else state.txt+=';'; // not using
 	return last;
 },
 FUNC_PARSEINFO_SHAKESCREEN:function(state,txt,strt,isScMsgWnd){
@@ -21036,7 +21035,7 @@ FUNC_PARSEINFO_SHAKESCREEN:function(state,txt,strt,isScMsgWnd){
 		state.txt+='[';
 		state.txt+=arr.length-1;
 		state.txt+=']';
-	}
+	}else state.txt+=';'; // not using
 	return last;
 },
 FUNCS_SLASH1:{
@@ -25018,6 +25017,58 @@ evtd=>{ if(!evtd) return;
 
 ﻿"use strict";
 /*:
+ * @plugindesc 謝謝MOG對我造成的傷害
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+if((typeof Imported!=='undefined')&&Imported.MOG_Picture_Command){
+Window_TitleCommand.prototype.updatePlacement=function(){
+	this.x=-Graphics.boxWidth;
+	this.y=-Graphics.boxHeight;
+	this.visible=false;
+};
+new cfc(Scene_Title.prototype).add('updateComInput',function f(){
+	this._csel=false;
+	return f.ori.apply(this,arguments);
+});
+}
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 存檔隊員全部都畫啊，不然要幹嘛
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(DataManager).add('makeSavefileInfo',function f(){
+	$gameParty._maxBattleMembers_useAll=true;
+	const rtv=f.ori.apply(this,arguments);
+	$gameParty._maxBattleMembers_useAll=undefined;
+	return rtv;
+});
+
+new cfc(Game_Party.prototype).add('maxBattleMembers',function f(){
+	if(this._maxBattleMembers_useAll) return Infinity;
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -25515,6 +25566,7 @@ r=p[k]; (p[k]=function f(){
 		.replace(/(?<=極低)水平(?=．．．)|(?<=你的雷魂跟土魂一直處在低)水平(?=，)/g,'準位')
 		.replace(/(?<=文化)水平(?=相差太多了)|(?<=不太像(平常)?該有的)水平(?=呢。)/g,'水準')
 		.replace(/人工智能/g,'人工智慧')
+		.replace(/诶/g,'誒')
 		// .replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
 		;
 	return f.ori.apply(this,arguments);
