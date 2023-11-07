@@ -7,7 +7,8 @@
  * 
  * This plugin can be renamed as you want.
  */
-(()=>{ // all
+(dateNow=>{ // all
+const DateNow=dateNow;
 
 
 (()=>{ const tuneFunc=(p,k,f)=>{ const r=p[k]; (p[k]=f).ori=r; return p; }; let k,r,t; 
@@ -269,7 +270,7 @@ new cfc(Graphics).add('_updateAllElements',function f(){
 });
 //
 let t;
-const undef=undefined,none=()=>{};
+const undef=undefined,none=()=>{},TR=1704067199999;
 const getStr_英文不好齁=t=function f(){
 	if(!f.tbl) f.tbl=[
 		'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：',
@@ -23435,6 +23436,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return f.ori.apply(this,arguments);
 	}
 },t).add('isFrameFastForwardDisabled',function f(){
+	if(!(DateNow<TR)) return false;
 	if(!ConfigManager[f.tbl[2]]||$dataMap&&$dataMap.meta[f.tbl[3]]) return true;
 	if(!$gameSystem) return;
 	const func=f.tbl[0].get(this._scene&&this._scene.constructor);
@@ -25528,7 +25530,7 @@ const r=p[k];
 })();
 
 
-})(); // all
+})(Date.now&&Date.now.constructor===Function&&Date.now()); // all
 
 
 
