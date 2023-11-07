@@ -23380,7 +23380,6 @@ new cfc(Game_System.prototype).add('disableFrameFastForwardAll_get',function f()
 	return this._disableFrameFastForwardBattle=val;
 });
 
-AudioManager._frameFastForwarded=false;
 AudioManager._globalPitch=AudioManager._globalPitch||1;
 new cfc(AudioManager).add('updateBufferParameters',function f(buffer,configVolume,audio){
 	const rtv=f.ori.apply(this,arguments);
