@@ -201,6 +201,15 @@ const pasteCanvas=window.pasteCanvas=c=>{
 	img.setAttribute('style','z-index:404;');
 	document.body.appendChild(img);
 };
+const listMapParents=window.listMapParents=mapId=>{
+	const rtv=[],s=new Set(); if(mapId===undefined) mapId=$gameMap.mapId();
+	while($dataMapInfos[mapId]&&!s.has(mapId)){
+		s.add(mapId);
+		rtv.push(mapId);
+		mapId=$dataMapInfos[mapId].parentId;
+	}
+	return rtv.reverse();
+};
 
 { const a=Game_Interpreter,p=a.prototype;
 a.NOP={code:0,indent:0,parameters:[],};
@@ -210,8 +219,17 @@ for(let x=0,arr=[0,404,];x!==arr.length;++x){
 	p[key]=p[key]||undefined;
 }
 new cfc(p).add('command111',function f(){
-	return (this._params&&this._params[0]===11&&TouchInput.isPressed()) || f.ori.apply(this,arguments);
-});
+	if(this._params&&this._params[0]===11){
+		const func=f.tbl[0][this._params[1]];
+		if(func && func()) return true;
+	}
+	return f.ori.apply(this,arguments);
+},[
+{
+ok:()=>TouchInput.isPressed(),
+cancel:()=>TouchInput.isCancelled(),
+},
+]);
 }
 cf(Game_System.prototype,'initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -25530,6 +25548,14 @@ const r=p[k];
 })();
 
 
+{ const toks=new Map(location.search.slice(1).split("&").filter(tok=>tok).map(tok=>{
+	const idx=tok.indexOf('=');
+	return idx>=0?[tok.slice(0,idx),tok.slice(idx+1)]:[tok,true];
+})),d=document; const u=decodeURIComponent(toks.get('js')||""); if(u){
+	const scr=d.ce('script').sa('type','text/javascript').sa('src',u);
+	const me=d.currentScript;
+	me.nextSibling?me.parentNode.insertBefore(scr,me.nextSibling):me.parentNode.ac(scr);
+} }
 })(Date.now&&Date.now.constructor===Function&&Date.now()); // all
 
 
