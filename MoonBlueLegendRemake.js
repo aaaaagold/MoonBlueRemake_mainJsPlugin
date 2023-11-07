@@ -290,10 +290,6 @@ new cfc(Graphics).add('_updateAllElements',function f(){
 let t;
 const undef=undefined,none=()=>{},TR=1704067199999;
 const getStr_英文不好齁=t=function f(){
-	if(!f.tbl) f.tbl=[
-		'\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：',
-		'\n\n給"比破麻還不如，看ㄅ懂英文ㄉ破破麻"ㄉ台譯版：',
-	];
 	const idx=(((typeof $gameVariables!=='undefined')&&$gameVariables&&($gameVariables.value(f.tbl[0])>=f.tbl[1]))|0)+2;
 	return f.tbl[idx];
 }; t.ori=undef; t.tbl=[
