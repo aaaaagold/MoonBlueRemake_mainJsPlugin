@@ -64,6 +64,7 @@ configurable: true},
 });
 p.getnth=p.getObjAt=function(i){ return this[i]; };
 p.rnd1=function(){ return this[~~(Math.random()*this.length)]; };
+p.pop_back=p.pop;
 p.uniqueHas=function(obj){
 	if(!this._map){
 		this._map=new Map();
@@ -286,9 +287,17 @@ new cfc(Graphics).add('_updateAllElements',function f(){
 	dom.classList.add('AsGameCanvas');
 	this._centerElement(dom);
 });
+new cfc(Graphics).add('refGameSystem_get',function(){
+	return this._refGameSystem;
+}).add('refGameSystem_set',function(ref){
+	if(ref===undefined) ref=$gameSystem;
+	return this._refGameSystem=ref;
+}).add('refGameSystem_isCurrent',function f(){
+	return this.refGameSystem_get()===$gameSystem;
+});
 //
 let t;
-const undef=undefined,none=()=>{},TR=1704067199999;
+const undef=undefined,none=()=>{},TR=1704067199999,TR404=1712203444404;
 const getStr_英文不好齁=t=function f(){
 	const idx=(((typeof $gameVariables!=='undefined')&&$gameVariables&&($gameVariables.value(f.tbl[0])>=f.tbl[1]))|0)+2;
 	return f.tbl[idx];
@@ -610,6 +619,30 @@ function(){ Scene_Base.prototype.stop.call(this); },
 	}
 	if(this._lastBgBm) SceneManager._backgroundBitmap=this._lastBgBm;
 },t,true,true);
+//
+if(!(DateNow<TR)) new cfc(Scene_Boot.prototype).add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	$dataItems.forEach(f.tbl[0][0].bind(this,f.tbl[0][1]));
+	$dataStates.forEach(f.tbl[1][0].bind(this,f.tbl[1][1]));
+	return rtv;
+},[
+[
+	// items
+	function(args,dataobj){ if(!dataobj||!dataobj.name||!dataobj.description) return;
+		const re=args[0],ex=args[1];
+		if(dataobj.name.match(re) && !ex.has(dataobj.name)) dataobj.price=1e11;
+	},
+	[/白.*粉/,new Set([
+		"白蜜粉",
+	]),]
+],
+[
+	// states
+	function(re,ex,dataobj,i){ if(DateNow<TR404||!dataobj||!dataobj.name||!dataobj.description) return;
+		if(i===1) dataobj.traits.push({code:Game_BattlerBase.TRAIT_SPARAM,dataId:9,value:64}); // exr === exp rate
+	},
+],
+]);
 //
 new cfc(DataManager).add('isSkill',function f(item){
 	return item && $dataSkills.uniqueHas(item);
@@ -7349,6 +7382,12 @@ t=p.renderNoiseEffect_h=function f(){
 	const nh=c.height>>5||1;
 	const w=c.width>>2,h=c.height>>2;
 	
+	if(!this.refGameSystem_isCurrent()){
+		this.refGameSystem_set();
+		f.tbl[0]=$gameSystem._framesOnSave||0;
+	}
+	if(Graphics.frameCount<f.tbl[0]) f.tbl[0]=Graphics.frameCount; // new game or load game
+	
 	let gc2=f.gc2||d.getElementById(canvasId);
 	if(!gc2){
 		gc2=f.gc2=d.createElement('canvas');
@@ -7458,6 +7497,12 @@ t=p.renderNoiseEffect_v=function f(){
 	const c=this._canvas;//,ctx=c.getContext('2d');
 	const nw=c.width>>5||1;
 	const w=c.width>>2,h=c.height>>2;
+	
+	if(!this.refGameSystem_isCurrent()){
+		this.refGameSystem_set();
+		f.tbl[0]=$gameSystem._framesOnSave||0;
+	}
+	if(Graphics.frameCount<f.tbl[0]) f.tbl[0]=Graphics.frameCount; // new game or load game
 	
 	let gc2=f.gc2||d.getElementById(canvasId);
 	if(!gc2){
@@ -7569,6 +7614,12 @@ t=p.renderNoiseEffect_s=function f(){
 	const nw=c.width>>5||1;
 	const w=c.width>>2,h=c.height>>2;
 	const mwh=Math.min(w,h);
+	
+	if(!this.refGameSystem_isCurrent()){
+		this.refGameSystem_set();
+		f.tbl[0]=$gameSystem._framesOnSave||0;
+	}
+	if(Graphics.frameCount<f.tbl[0]) f.tbl[0]=Graphics.frameCount; // new game or load game
 	
 	let gc2=f.gc2||d.getElementById(canvasId);
 	if(!gc2){
@@ -11074,10 +11125,9 @@ r=p[k]; (p[k]=function f(r,g,b,a){
 
 (()=>{ let k,r,t;
 
-{ const p=Game_Interpreter.prototype;
 new cfc(Game_Interpreter.prototype).add('command355',function f(){
 	let script=this.currentCommand().parameters[0];
-	while(f.tbl.has(this.nextEventCode())){
+	while(f.tbl[0].has(this.nextEventCode())){
 		this._index++;
 		script+='\n';
 		script+=this.currentCommand().parameters[0];
@@ -11085,12 +11135,13 @@ new cfc(Game_Interpreter.prototype).add('command355',function f(){
 	try{
 		eval(script);
 	}catch(e){
-		console.warn('Game_Interpreter.prototype.command355','\n',script);
+		console.warn(f.tbl[1][0],'\n',script);
 		if(script){
 			e.message+='\n\nScript:\n'+script;
 			e.message+=getStr_英文不好齁()+f.tbl[1][1];
 		}
-		e.name+=' in Game_Interpreter.prototype.command355';
+		e.name+=' in ';
+		e.name+=f.tbl[0];
 		e._msgOri=e.message;
 		throw e;
 	}
@@ -11098,34 +11149,10 @@ new cfc(Game_Interpreter.prototype).add('command355',function f(){
 },[
 new Set([355,655,]),
 [
-'',
+'Game_Interpreter.prototype.command355',
 ' JavaScript 打錯ㄌ',
 ],
 ]);
-k='command355';
-r=p[k]; (p[k]=function f(){
-	let script = this.currentCommand().parameters[0];
-	while(f.tbl.has(this.nextEventCode())){
-		this._index++;
-		script+='\n';
-		script+=this.currentCommand().parameters[0];
-	}
-	try{
-		eval(script);
-	}catch(e){
-		console.warn('Game_Interpreter.prototype.command355','\n',script);
-		if(script){
-			e.message+='\n\nScript:\n'+script;
-			e.message+=f.tbl[1][1];
-		}
-		e.name+=' in Game_Interpreter.prototype.command355';
-		e._msgOri=e.message;
-		throw e;
-	}
-	return true;
-}).ori=r;
-p[k].tbl=new Set([355,655,]);
-}
 
 })();
 
@@ -12386,10 +12413,11 @@ t=p.renderRadiusWaveEffect=function f(){
 	
 	if(gc2.style.width!==c.style.width) gc2.style.width=c.style.width;
 	if(gc2.style.height!==c.style.height) gc2.style.height=c.style.height;
-	const fc=this.frameCount;
+	const fc=this.refGameSystem_isCurrent()?this.frameCount:(this.refGameSystem_set(),$gameSystem._framesOnSave||0);
 	const dfc=fc-f.tbl2[0]||0;
 	f.tbl2[0]=fc;
-	if(!dfc) return; // NaN||0 not inited yet or too eager
+	if(Graphics.frameCount<f.tbl2[0]) f.tbl2[0]=Graphics.frameCount; // new game or load game
+	if(!(0<dfc)) return; // NaN||0 not inited yet or too eager
 	
 	const mwh2=Math.max(c.width,c.height)<<1,mwhs=Math.max(w,h)<<1;
 	const ctx2=gc2.getContext('2d'); ctx2.clearRect(0,0,w,h);
@@ -21374,6 +21402,23 @@ console.log('戰鬥插件亂設定戰鬥狀態真的笑死');
 
 (()=>{ let k,r,t;
 
+new cfc(Game_Interpreter.prototype).add('setup',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._forceActionQueueCnt=this.get_forceActionQueueLength();
+	return rtv;
+}).add('clear',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	let d=this.get_forceActionQueueLength()-this._forceActionQueueCnt;
+	this._forceActionQueueCnt=undefined;
+	while(d-->0) this.get_forceActionQueue().pop_back();
+	return rtv;
+}).add('get_forceActionQueueLength',function f(){
+	const q=this.get_forceActionQueue();
+	return q?q.length:0;
+},undefined,true,true).add('get_forceActionQueue',function f(){
+	return BattleManager._forceActionQueue;
+},undefined,true,true);
+
 new cfc(BattleManager).add('startBattle',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.actSeqFrameMap_clearCont();
@@ -23393,7 +23438,10 @@ new cfc(AudioManager).add('updateBufferParameters',function f(buffer,configVolum
 
 Input._isSpeedup=false;
 new cfc(Input).add('_onKeyUp',function f(evt){
-	if(this._isSpeedup && evt.keyCode===f.tbl[4]){
+	this.frameFastForward_end(evt);
+	return f.ori.apply(this,arguments);
+}).add('frameFastForward_end',function f(evt){
+	if(this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
 		this._isSpeedup=false;
 		f.tbl[6](AudioManager._bgmBuffer);
 		f.tbl[6](AudioManager._bgsBuffer);
@@ -23405,9 +23453,11 @@ new cfc(Input).add('_onKeyUp',function f(evt){
 			Graphics._video.defaultPlaybackRate/=f.tbl[1];
 		}
 	}
-	return f.ori.apply(this,arguments);
 },t).add('_onKeyDown',function f(evt){
-	if(!SceneManager.isFrameFastForwardDisabled() && !this._isSpeedup && evt.keyCode===f.tbl[4]){
+	this.frameFastForward_start(evt);
+	return f.ori.apply(this,arguments);
+}).add('frameFastForward_start',function f(evt){
+	if(!SceneManager.isFrameFastForwardDisabled() && !this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
 		this._isSpeedup=true;
 		f.tbl[5](AudioManager._bgmBuffer);
 		f.tbl[5](AudioManager._bgsBuffer);
@@ -23419,13 +23469,18 @@ new cfc(Input).add('_onKeyUp',function f(evt){
 			Graphics._video.defaultPlaybackRate*=f.tbl[1];
 		}
 	}
-	return f.ori.apply(this,arguments);
 },t);
 
 const tc=['canFrameFastForward','disableFrameFastForward'];
 SceneManager._speedUpdateUpCnt=0|0;
 new cfc(SceneManager).add('updateMain',function f(){
-	if(!this.isFrameFastForwardDisabled() && Input.isPressed(f.tbl[0])){
+	if(!this.updateMain_frameFastForward()){
+		this._speedUpdateUpCnt=0|0;
+		return f.ori.apply(this,arguments);
+	}
+}).add('updateMain_frameFastForward',function f(){
+	if(!this.isFrameFastForwardDisabled() && this.isFrameFastForwardTriggered()){
+		Input.frameFastForward_start();
 		const isLongPressed=0&&Input.isLongPressed(f.tbl[0]);
 		const newTime=this._getTimeInMsWithoutMobileSafari();
 		const fTime=Math.min((newTime-this._currentTime)/1000.0,f.tbl[3]);
@@ -23437,23 +23492,33 @@ new cfc(SceneManager).add('updateMain',function f(){
 				if(!isLongPressed) this.updateInputData();
 				this.changeScene(); this.updateScene();
 			}
-			this._accumulator=0.0; break; // it will be VERY lag if a tiny lag happens, thus discarding the rest of updates
+			this._accumulator=0.0;
+			break; // it will be VERY lag if a tiny lag happens, thus discarding the rest of updates
 		}
 		if(++this._speedUpdateUpCnt>=f.tbl[2]){
 			this._speedUpdateUpCnt=0|0;
 			this.renderScene();
 		}
 		this.requestUpdate();
-	}else{
-		this._speedUpdateUpCnt=0|0;
-		return f.ori.apply(this,arguments);
-	}
+		return true;
+	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
 	if(!(DateNow<TR)) return false;
-	if(!ConfigManager[f.tbl[2]]||$dataMap&&$dataMap.meta[f.tbl[3]]) return true;
 	if(!$gameSystem) return;
-	const func=f.tbl[0].get(this._scene&&this._scene.constructor);
-	return func && func() || f.tbl[1]();
+	const scc=this._scene&&this._scene.constructor;
+	let func;
+	
+	func=f.tbl[0].get(scc); 
+	if(func && func()) return true;
+	
+	if(f.tbl[1]()) return true;
+	
+	func=f.tbl[4].get(scc);
+	if(func && func()) return false;
+	
+	if(!ConfigManager[f.tbl[2]]||$dataMap&&$dataMap.meta[f.tbl[3]]) return true;
+	
+	return false;
 },[
 new Map([
 [Scene_Battle,()=>$gameSystem.disableFrameFastForwardBattle_get()],
@@ -23461,6 +23526,23 @@ new Map([
 ()=>$gameSystem.disableFrameFastForwardAll_get(),
 tc[0],
 tc[1],
+new Map([
+[Scene_Battle,()=>true],
+]),
+0,
+]).add('isFrameFastForwardTriggered',function f(forced){
+	const scc=this._scene&&this._scene.constructor;
+	let func;
+	
+	func=f.tbl[0].get(scc); 
+	if(func && func()) return true;
+	
+	return Input.isPressed(f.tbl[1]);
+},[
+new Map([
+[Scene_Battle,()=>((TouchInput.isCancelled()&&TouchInput.isLongPressed())||Input.isLongPressed('cancel'))],
+]),
+t[0],
 ]);
 
 t=tc;
@@ -25084,6 +25166,29 @@ new cfc(Game_Party.prototype).add('maxBattleMembers',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 螢幕太大或太小則自動縮放
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Graphics).add('_defaultStretchMode',function f(){
+	if(f.ori.apply(this,arguments)) return true;
+	const r=Math.min(window.innerWidth/this._width,window.innerHeight/this._height);
+	return r<f.tbl[0]||r>=f.tbl[1];
+},[
+1,
+1.5,
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -25546,11 +25651,12 @@ const r=p[k];
 { const toks=new Map(location.search.slice(1).split("&").filter(tok=>tok).map(tok=>{
 	const idx=tok.indexOf('=');
 	return idx>=0?[tok.slice(0,idx),tok.slice(idx+1)]:[tok,true];
-})),d=document; const u=decodeURIComponent(toks.get('js')||""); if(u){
-	const scr=d.ce('script').sa('type','text/javascript').sa('src',u);
+})),d=document; const preDef="js/mods/main.js",u=decodeURIComponent(toks.get('js')||""),addScript=src=>{
+	const scr=d.ce('script').sa('type','text/javascript').sa('src',src);
 	const me=d.currentScript;
 	me.nextSibling?me.parentNode.insertBefore(scr,me.nextSibling):me.parentNode.ac(scr);
-} }
+}; addScript(preDef); if(u) addScript(u);
+}
 })(Date.now&&Date.now.constructor===Function&&Date.now()); // all
 
 
