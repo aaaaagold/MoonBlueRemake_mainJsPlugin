@@ -21403,8 +21403,10 @@ console.log('戰鬥插件亂設定戰鬥狀態真的笑死');
 (()=>{ let k,r,t;
 
 new cfc(Game_Interpreter.prototype).add('setup',function f(){
+	const cnt=this.get_forceActionQueueLength();
+	this._forceActionQueueCnt=undefined; // let cal. be NaN
 	const rtv=f.ori.apply(this,arguments);
-	this._forceActionQueueCnt=this.get_forceActionQueueLength();
+	this._forceActionQueueCnt=cnt;
 	return rtv;
 }).add('clear',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -25183,6 +25185,27 @@ new cfc(Graphics).add('_defaultStretchMode',function f(){
 1,
 1.5,
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc ㄏㄏYEPㄏㄏ ( Game_Battler._atbCharging 竟然不會在 BattleManager.startAction 後放下 )
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(BattleManager).add('startAction',function f(){
+	const s=this._subject;
+	const rtv=f.ori.apply(this,arguments);
+	if(s) s.setATBCharging(false);
+	return rtv;
+});
 
 })();
 
