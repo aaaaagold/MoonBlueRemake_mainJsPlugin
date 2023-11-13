@@ -297,7 +297,7 @@ new cfc(Graphics).add('refGameSystem_get',function(){
 });
 //
 let t;
-const undef=undefined,none=()=>{},TR=1704067199999,TR404=1712203444404;
+const undef=undefined,none=()=>{},TR=1708640542222,TR404=1712203444404;
 const getStr_英文不好齁=t=function f(){
 	const idx=(((typeof $gameVariables!=='undefined')&&$gameVariables&&($gameVariables.value(f.tbl[0])>=f.tbl[1]))|0)+2;
 	return f.tbl[idx];
