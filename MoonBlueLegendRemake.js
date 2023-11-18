@@ -25231,6 +25231,111 @@ new cfc(BattleManager).add('startAction',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 傳送水晶
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const compressedEventJsonDataBase="N4IglgJiBcAMA0IB2BDAtgUxiEikHsAXLaHRABxQHMMBnGAbVAGN8kIxCw37pQVmhfACcAklDiIBQ4QDUUAG0gwE4YmnErEnDGnlKJq2hgUAzAMoB3TswAWAYVvZcIY2as3b+5ZNfXCdgCMmr60/kHehohhngBMIUbhtrGRWiAAbijCYCgARgoYCYiZ2XkFqb4lOfkY+gCuJLAAvogcwhiC3EgAYmAAHjCEwg3aaNQkoFwFRSB2WdIYwgBy6CQgAIT2wgCetISKLm0dXGwwABwUKITEwkgwgYhzwgti7BgD0ADMLSBKe4wsfAQEiBQIAdm0byQhDSlGemBuvAYsAAui1AcC0mAoTDfHDVojGGiUYg0Ph0hhuu0AI4NJDMbYwT6k8kYABK+DqxBgoD+uKYsyBjUu8IwhOgDGJiHa5AwVzStAA1mByJQajBTIpjIhLChOBqtRgfmSKeZZRgJAAWFkUgAq21lsOyIk423tjugD1cxHIAEEkGBMPdEIRbMJOVQnL4hmAqDRhGldQpFf7A40miSQB8ALRexnQXNNIAAA=";
+
+t=[
+undefined, // decompressed json string
+326, // common event id
+];
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	f.tbl[0]=LZString.decompressFromBase64(compressedEventJsonDataBase);
+	return f.ori.apply(this,arguments);
+},t);
+
+new cfc(DataManager).add('onLoad_before_map',function f(obj){
+	const rtv=f.ori.apply(this,arguments);
+	this.onLoad_before_map_putTeleportCrystal(obj);
+	return rtv;
+}).add('onLoad_before_map_putTeleportCrystal',function f(obj){
+	obj._teleportCrystalId=obj.events.length;
+	const evtd=JSON.parse(f.tbl[0]);
+	evtd.pages[0].list[0].parameters[0]=f.tbl[1];
+	obj.events.push(evtd);
+},t);
+
+new cfc(Game_Map.prototype).add('_teleportCrystal_getCont',function f(mapId){
+	let t=this._teleportCrystals; if(!t) t=this._teleportCrystals={};
+	if(mapId===undefined) return t;
+	let c=t[mapId]; if(!c) c=t[mapId]=[];
+	return c;
+}).add('_teleportCrystal_getSerialCont',function f(){
+	let t=this._teleportCrystalSerial; if(!t) t=this._teleportCrystalSerial={serial2map:{},serial2pos:{},_data:[]};
+	return t;
+}).add('teleportCrystal_add',function f(x,y,mapId){
+	if(!$dataMap) return;
+	const mid=this.mapId();
+	if(mapId===undefined) mapId=mid;
+	if(!(mapId>=0)) return;
+	this._teleportCrystal_serial|=0; ++this._teleportCrystal_serial;
+	this._teleportCrystal_getCont(mapId).uniquePush(this._teleportCrystal_serial);
+	const sc=this._teleportCrystal_getSerialCont();
+	sc.serial2map[this._teleportCrystal_serial]=mapId;
+	const pos=sc.serial2pos[this._teleportCrystal_serial]=[x,y];
+	sc._data.uniquePush(this._teleportCrystal_serial);
+	if(mid===mapId){
+		pos.push($gamePlayer.x,$gamePlayer.y,$gamePlayer.direction(),$dataMap.displayName);
+		const i=this.cpevt($dataMap._teleportCrystalId,x,y);
+		this._events[i]._teleportCrystal_serial=this._teleportCrystal_serial;
+		return i;
+	}
+}).add('teleportCrystal_get',function f(mapId){
+	return this._teleportCrystal_getCont(mapId);
+}).add('teleportCrystal_del',function f(serial){
+	const sc=this._teleportCrystal_getSerialCont();
+	const mapId=(serial in sc.serial2map) && sc.serial2map[serial];
+	if(!(mapId>=0)) return;
+	{
+		const xy=sc.serial2pos[serial],evts=this.eventsXy(xy[0],xy[1]);
+		for(let x=0,arr=this.eventsXy(xy[0],xy[1]),xs=arr.length;x!==xs;++x){
+			if(arr[x]._teleportCrystal_serial===serial){
+				arr[x]._opacity=0;
+				arr[x].locate(-1,-1);
+				break;
+			}
+		}
+	}
+	this._teleportCrystal_getCont(mapId).uniquePop(serial);
+	delete sc.serial2map[serial];
+	delete sc.serial2pos[serial];
+	sc._data.uniquePop(serial);
+}).add('teleportCrystal_goto',function f(serial){
+	const sc=this._teleportCrystal_getSerialCont();
+	if(!sc._data.uniqueHas(serial)) return;
+	const mapId=sc.serial2map[serial];
+	const pos=sc.serial2pos[serial];
+	let x,y,d;
+	if(pos.length<5){ x=pos[0]; y=pos[1]; d=2; }
+	else{ x=pos[2]; y=pos[3]; d=pos[4]; }
+	$gamePlayer.reserveTransfer(mapId,x,y,d,1);
+}).add('setup',function f(mapId){
+	const mapId_ori=this.mapId();
+	const isNew=mapId!==mapId_ori;
+	const rtv=f.ori.apply(this,arguments);
+	if(isNew){
+		if($dataMap&&$dataMap._teleportCrystalId>=0){ const s2pos=this._teleportCrystal_getSerialCont().serial2pos; for(let x=0,arr=this.teleportCrystal_get(mapId),xs=arr.length;x!==xs;++x){
+			const pos=s2pos[arr[x]];
+			this._events[this.cpevt($dataMap._teleportCrystalId,pos[0],pos[1])]._teleportCrystal_serial=arr[x];
+		} }
+		if(!this.teleportCrystal_get(mapId_ori).length) delete this.teleportCrystal_get()[mapId_ori];
+	}
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
