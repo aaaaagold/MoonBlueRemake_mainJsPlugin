@@ -25240,7 +25240,7 @@ new cfc(BattleManager).add('startAction',function f(){
 
 (()=>{ let k,r,t;
 
-const compressedEventJsonDataBase="N4IglgJiBcAMA0IB2BDAtgUxiEikHsAXLaHRABxQHMMBnGAbVAGN8kIxCw37pQVmhfACcAklDiIBQ4QDUUAG0gwE4YmnErEnDGnlKJq2hgUAzAMoB3TswAWAYVvZcIY2as3b+5ZNfXCdgCMmr60/kHehohhngBMIUbhtrGRWiAAbijCYCgARgoYCYiZ2XkFqb4lOfkY+gCuJLAAvogcwhiC3EgAYmAAHjCEwg3aaNQkoFwFRSB2WdIYwgBy6CQgAIT2wgCetISKLm0dXGwwABwUKITEwkgwgYhzwgti7BgD0ADMLSBKe4wsfAQEiBQIAdm0byQhDSlGemBuvAYsAAui1AcC0mAoTDfHDVojGGiUYg0Ph0hhuu0AI4NJDMbYwT6k8kYABK+DqxBgoD+uKYsyBjUu8IwhOgDGJiHa5AwVzStAA1mByJQajBTIpjIhLChOBqtRgfmSKeZZRgJAAWFkUgAq21lsOyIk423tjugD1cxHIAEEkGBMPdEIRbMJOVQnL4hmAqDRhGldQpFf7A40miSQB8ALRexnQXNNIAAA=";
+const compressedEventJsonDataBase="N4IglgJiBcAMA0IB2BDAtgUxiEikHsAXLaHRABxQHMMBnGAbVAGN8kIxCw37pQVmhfACcAklDiIBQ4QDUUAG0gwE4YmnErEnDGnlKJq2hgUAzAMoB3TswAWAYVvZcIY2as3b+5ZNfXCdgCMmr60/kHehohhngBMIUbhtrGRWiAAbijCYCgARgoYCYiZ2XkFqb4lOfkY+gCuJLAAvogcwhiC3EgAYmAAHjCEwg3aaNQkoFwFRSB2WdIYwgBy6CQgAIT2wgCetISKLm0dXGwwABwUKITEwkgwgYhzwgti7BgD0ADMLSBKe4wsfAQEiBQIAdm0byQhDSlGemBuvAYsAAui1AcC0mAoTDfHDVojGGiUYg0Ph0hhuu0AI4NJDMbYwT6k8kYABK+DqxBgoD+uKYsyBjUu8IwhOgDGJiHa5AwVzStAA1mByJQajBTIpjIhLChOBqtRgfmSKeZZRgJAAWFkUgAq21lsOyIk423tjugD1cxHIAEEkGBMPdEIRbMJOVQnL4hmAqDRhGldQpFf7A40miSQB9VIy4E0gAA==";
 
 t=[
 undefined, // decompressed json string
@@ -25257,11 +25257,19 @@ new cfc(DataManager).add('onLoad_before_map',function f(obj){
 	this.onLoad_before_map_putTeleportCrystal(obj);
 	return rtv;
 }).add('onLoad_before_map_putTeleportCrystal',function f(obj){
-	obj._teleportCrystalId=obj.events.length;
+	const evtId=obj._teleportCrystalId=obj.events.length;
 	const evtd=JSON.parse(f.tbl[0]);
+	evtd.id=evtId;
+	($dataMap._eventTemplateSet||($dataMap._eventTemplateSet=new Set())).add(evtId);
 	evtd.pages[0].list[0].parameters[0]=f.tbl[1];
 	obj.events.push(evtd);
 },t);
+
+new cfc(Game_Event.prototype).add('setupPage',function f(){
+	const s=$dataMap&&$dataMap._eventTemplateSet;
+	if(s&&s.has(this._eventId)) return this.clearPageSettings();
+	return f.ori.apply(this,arguments);
+});
 
 new cfc(Game_Map.prototype).add('_teleportCrystal_getCont',function f(mapId){
 	let t=this._teleportCrystals; if(!t) t=this._teleportCrystals={};
