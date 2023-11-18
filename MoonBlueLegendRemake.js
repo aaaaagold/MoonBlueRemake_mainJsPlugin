@@ -9,6 +9,7 @@
  */
 (dateNow=>{ // all
 const DateNow=dateNow;
+const ZeroWidthChar=String.fromCharCode(0x200B);
 
 
 (()=>{ const tuneFunc=(p,k,f)=>{ const r=p[k]; (p[k]=f).ori=r; return p; }; let k,r,t; 
@@ -297,7 +298,7 @@ new cfc(Graphics).add('refGameSystem_get',function(){
 });
 //
 let t;
-const undef=undefined,none=()=>{},TR=1708640542222,TR404=1712203444404;
+const undef=undefined,none=()=>{},TR=1708640542222,TR202=1706839322020,TR303=1709434983030,TR404=1712203444404;
 const getStr_英文不好齁=t=function f(){
 	const idx=(((typeof $gameVariables!=='undefined')&&$gameVariables&&($gameVariables.value(f.tbl[0])>=f.tbl[1]))|0)+2;
 	return f.tbl[idx];
@@ -620,7 +621,7 @@ function(){ Scene_Base.prototype.stop.call(this); },
 	if(this._lastBgBm) SceneManager._backgroundBitmap=this._lastBgBm;
 },t,true,true);
 //
-if(!(DateNow<TR)) new cfc(Scene_Boot.prototype).add('start',function f(){
+if(!(DateNow<TR202)) new cfc(Scene_Boot.prototype).add('start',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	$dataItems.forEach(f.tbl[0][0].bind(this,f.tbl[0][1]));
 	$dataStates.forEach(f.tbl[1][0].bind(this,f.tbl[1][1]));
@@ -8730,14 +8731,21 @@ const always=()=>true,gainLvUpExp=f=>{
 // gain
 
 new金手指(canGain,gainItems,[76,70,50,190,78,69,84,],undefined,{
-cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("白粉")>=0,
+cmp:dataobj=>{
+	const rtv=dataobj&&dataobj.description&&dataobj.name.indexOf("白粉")>=0;
+	if(rtv){
+		dataobj.maxStack=9999;
+		dataobj.price=1e11;
+	}
+	return rtv;
+},
 se:{name: "Ice4", volume: 75, pitch: 100},
-gainAmount:1,
+gainAmount:DateNow<TR303?1:9999,
 });
 new金手指(canGain,gainItems,[65,71,79,76,68,52,48,52,],undefined,{
-cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0,
+cmp:DateNow<TR404?(dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0):(dataobj=>dataobj&&dataobj.description&&dataobj.name&&(dataobj.name==="開鎖勾"||dataobj.occasion^3)),
 se:{name: "Magic1", volume: 75, pitch: 100},
-gainAmount:1,
+gainAmount:DateNow<TR404?1:9999,
 });
 if(0)new金手指(canGain,gainItems,[53,53,53,53,53,53,53,53,53,53,],undefined,{
 cmp:dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("箭矢")>=0,
@@ -20278,6 +20286,7 @@ undefined,
 ]).add('_redrawtxt',function f(arr,isCalcH){
 	const bak_faceName=$gameMessage._faceName;
 	if(!isCalcH) this.contents.clear();
+	const fh1=this.fittingHeight(1),lh=this.lineHeight();
 	const ch=this.contentsHeight(),yInit=isCalcH?0:-this._scrollTxtY;
 	const textState={x:undefined,left:undefined,y:yInit,height:0,};
 	let clean=true,dy=0;
@@ -20294,7 +20303,17 @@ undefined,
 			clean=false;
 			const face=arr[x].face;
 			$gameMessage._faceName=face.name;
-			const y=isCalcH?0:textState.y;
+			const y=(isCalcH?0:textState.y)+(isNone(arr[x].nameField)?0:lh);
+			if(!isNone(arr[x].nameField)){
+				let ga,ctx;
+				if(ctx=this.contents.context){
+					ga=ctx.globalAlpha;
+					ctx.globalAlpha=ga*f.tbl[0].nfIconMulAlpha;
+					this.drawIcon(f.tbl[0].nfIcon,f.tbl[0].x+f.tbl[0].nfIconDx,y-lh);
+					ctx.globalAlpha=ga;
+				}
+				this.drawText(arr[x].nameField,f.tbl[0].x+f.tbl[0].nfDx,y-lh);
+			}
 			if(!isCalcH && face.name) this.drawFace(face.name, face.idx, f.tbl[0].x, y);
 			;
 			this.drawTextEx(arr[x].txt,
@@ -20311,7 +20330,7 @@ undefined,
 	$gameMessage._faceName=bak_faceName;
 	return dy;
 },[
-{x:0,},
+{x:0,nfDx:16,nfIcon:83,nfIconMulAlpha:0.75,nfIconDx:-16},
 ]).add('redrawtxt',function f(forced){
 	if(( !this._shouldRedraw ||
 		this._lastRedrawFrame===Graphics.frameCount ||
@@ -20382,11 +20401,11 @@ for(let x=0,arr=['_updateCursor','_updatePauseSign',];x!==arr.length;++x) cf(p,a
 t=undefined;
 }
 
-new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx){
+new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx,nameField){
 	if($gameSystem && $gameSystem._flashbackText_disabled) return;
 	if(!f.tbl[0].re) f.tbl[0].re=/(?<!(\\))((\\\\)*)(\\([VPNvpn])\[(\d+)\])/g;
 	if(!f.tbl[0].re_discards) f.tbl[0].re_discards=/\f/g;
-	this._flashbackText_getCont().push({txt:txt.replace(f.tbl[0].re_discards,'').replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},y:undefined,height:undefined,_debug:{_mapId:$gameMap&&$gameMap._mapId,},});
+	this._flashbackText_getCont().push({txt:txt.replace(f.tbl[0].re_discards,'').replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},nameField:nameField,y:undefined,height:undefined,_debug:{_mapId:$gameMap&&$gameMap._mapId,},});
 },[
 function f(){
 	if(!f.tbl){
@@ -20425,7 +20444,7 @@ function f(){
 });
 
 new cfc(Window_Message.prototype).add('startMessage',function f(){
-	if($gameTemp && $gameMessage) $gameTemp.flashbackText_add($gameMessage.allText(),$gameMessage.faceName(),$gameMessage.faceIndex());
+	if($gameTemp && $gameMessage) $gameTemp.flashbackText_add($gameMessage.allText(),$gameMessage.faceName(),$gameMessage.faceIndex(),$gameMessage._nameField);
 	return f.ori.apply(this,arguments);
 },t);
 
@@ -23505,7 +23524,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return true;
 	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
-	if(!(DateNow<TR)) return false;
+	if(!(DateNow<TR202)) return false;
 	if(!$gameSystem) return;
 	const scc=this._scene&&this._scene.constructor;
 	let func;
