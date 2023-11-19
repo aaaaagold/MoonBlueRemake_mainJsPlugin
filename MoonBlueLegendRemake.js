@@ -3213,37 +3213,77 @@ r=p[k]; (p[k]=function f(a){
  * @author agold404
  *
  * @help 寫狀態note區
- * <notClearedWhenDead>
+ * <notClearedWhenDead> // 無狀態本身不會因死亡而清除
+ * <keepStatesWhenDead> // 身上的狀態不會因死亡而清除
  *
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r; 
-{ const p=Game_BattlerBase.prototype;
-k='die';
-r=p[k]; (p[k]=function f(){
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+
+const kw='keepStatesWhenDead';
+const kwt='TRAIT_'+kw;
+const kwget='get_'+kw;
+const kwis='is_'+kw;
+gbb.addEnum(kwt);
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits,c,t; if(!ts) ts=dataobj.traits=[];
+	if(meta[kw]) ts.push({code:gbb[kwt],dataId:1,value:1,});
+},
+]);
+
+t=[
+i=>$dataStates[i].meta.alwaysNotCleared||$dataStates[i].meta.notClearedWhenDead,
+i=>$dataStates[i].meta.alwaysNotCleared,
+kwis,
+gbb[kwt],
+];
+
+new cfc(Game_BattlerBase.prototype).add(kwis,function f(){
+	return !!this.traits(f.tbl[3]).length;
+},t).add('die',function f(){
 	this._execDie=true;
-	f.ori.apply(this,arguments);
+	const rtv=f.ori.apply(this,arguments);
 	this._execDie=undefined;
-}).ori=r;
-k='clearStates';
-r=p[k]; (p[k]=function f(){
+	return rtv;
+}).add('clearStates',function f(){
+	let rtv;
 	if(!this._execDie) this._execDie=undefined;
+	if(this._execDie&&this[f.tbl[2]]()) return; // keep all states when dead
 	if(this._states){
 		const notCleared=this._states.filter(f.tbl[0|!this._execDie]);
 		const turns={};
 		for(let x=0;x!==notCleared.length;++x) turns[x]=this._stateTurns[notCleared[x]];
-		f.ori.apply(this,arguments);
+		rtv=f.ori.apply(this,arguments);
 		for(let x=0;x!==notCleared.length;++x) this._stateTurns[notCleared[x]]=turns[x];
 		this._states=notCleared;
-	}else f.ori.apply(this,arguments);
-}).ori=r;
-p[k].tbl=[
-	i=>$dataStates[i].meta.alwaysNotCleared||$dataStates[i].meta.notClearedWhenDead,
-	i=>$dataStates[i].meta.alwaysNotCleared,
-];
-p[k].forEach=i=>$dataStates[i].meta.notClearedWhenDead;
-}
+	}else rtv=f.ori.apply(this,arguments);
+	return rtv;
+},t);
+
 })();
 
 
