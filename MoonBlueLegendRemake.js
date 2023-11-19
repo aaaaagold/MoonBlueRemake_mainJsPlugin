@@ -1846,13 +1846,13 @@ r=p[k]; (p[k]=function f(ori,mapped){
 	const info=m.get(ori);
 	if(mapped){
 		// set mapping
-		arr.push([ori,mapped]);
 		if(info){
 			const msg="[WARNING]\n img:\n"+ori+"\n is already mapping to:\n"+(info&&info[1]);
 			console.warn(msg);
 			alert(msg);
 		}
 		m.set(ori,[arr.length,mapped,]);
+		arr.push([ori,mapped]);
 	}else if(info){
 		// remove
 		if(info[0]!==arr.length){
