@@ -1478,7 +1478,7 @@ new cfc(SceneManager).add('push',function f(sceneClass,shouldRecordCurrentScene)
 	this._stack.push(this._scene.constructor);
 	this.goto(sceneClass,shouldRecordCurrentScene);
 	if(shouldRecordCurrentScene && this._nextScene) this._nextScene._prevScene=this._scene;
-},undefined,true,true).add('changeScene',function(){
+},undefined,true,true).add('changeScene',function f(){
 	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
 		let recordedPrevScene;
 		if(this._scene){
@@ -21062,7 +21062,8 @@ new cfc(Game_BattlerBase.prototype).add('eraseState',function f(stateId){
  * @author agold404
  * @help \AUDIO_SE"path|vol|pitch|pan|pos"
  * \AUDIO_SE \AUDIO_ME \AUDIO_BGS \AUDIO_BGM
- * \EVALJSCODE
+ * \CHANGEFACE"id|faceName|faceIndex|z"
+ * \EVALJSCODE""
  * \SHAKESCREEN"power|speed|duration"
  * 
  * This plugin can be renamed as you want.
@@ -21091,6 +21092,28 @@ FUNC_PARSEINFO_AUDIO:(state,txt,strt,arr)=>{
 		const info=txt.slice(strt,last).split("|");
 		arr.push({name:info[0],volume:isNaN(info[1])?90:info[1]-0,pitch:isNaN(info[2])?100:info[2]-0,pan:info[3]-0||0,pos:info[4]-0||0,});
 		state.txt+="AUDIO";
+		state.txt+=arr._key;
+		state.txt+='[';
+		state.txt+=arr.length-1;
+		state.txt+=']';
+	}else state.txt+=';'; // not using
+	return last;
+},
+FUNC_PARSEINFO_CHANGEFACE:function(state,txt,strt,isScMsgWnd){
+	if(txt[strt]!=='"') return strt-1;
+	let arr;
+	if(isScMsgWnd && !(arr=this._changefaceInfo)) (arr=this._changefaceInfo=[])._key="";
+	const last=txt.indexOf('"',++strt); if(last<0) throw new Error('\\CHANGEFACE format error');
+	state.x=last;
+	if(strt===last){
+		state.txt+=';';
+		return last; // empty info
+	}
+	if(arr){
+		const info=txt.slice(strt,last).split("|"); // "id|faceName|faceIndex|z"
+		if(!isNaN(info[0])) info[0]-=0;
+		arr.push(info);
+		state.txt+="CHANGEFACE";
 		state.txt+=arr._key;
 		state.txt+='[';
 		state.txt+=arr.length-1;
@@ -21174,6 +21197,7 @@ SE:function(state,text,x,isScMsgWnd,func_parseInfo){
 },
 },
 STR_AUDIOPREFIX:"AUDIO_",
+STR_CHANGEFACE:"CHANGEFACE",
 STR_EVALJSCODE:"EVALJSCODE",
 STR_SHAKESCREEN:"SHAKESCREEN",
 };
@@ -21195,6 +21219,10 @@ t[k.STATE_SLASH1]=function f(state,text){
 		if(f.tbl.STR_AUDIOPREFIX===text.slice(state.x,x)){
 			const func=f.tbl.FUNCS_SLASH1[text.slice(x,x+2)];
 			if(func && x<func.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this),f.tbl.FUNC_PARSEINFO_AUDIO)) return ++state.x; // matched
+		}
+		x=f.tbl.STR_CHANGEFACE.length+state.x;
+		if(f.tbl.STR_CHANGEFACE===text.slice(state.x,x)){
+			if(x<f.tbl.FUNC_PARSEINFO_CHANGEFACE.call(this,state,text,x,f.tbl.FUNC_ISSCENEMSGWND(this))) return ++state.x; // matched
 		}
 		x=f.tbl.STR_EVALJSCODE.length+state.x;
 		if(f.tbl.STR_EVALJSCODE===text.slice(state.x,x)){
@@ -21237,6 +21265,10 @@ AUDIOSE:function(textState){
 	const info=this.processEscapeCharacter_getAudioInfo(this._audioInfo_se,textState);
 	if(info) AudioManager.playSe(info);
 },
+CHANGEFACE:function(textState){
+	const info=this.processEscapeCharacter_getChangefaceInfo(this._changefaceInfo,textState);
+	if(info) this.seperatedFaces_redrawFace&&this.seperatedFaces_redrawFace.apply(this,info);
+},
 EVALJSCODE:function(textState){
 	const info=this.processEscapeCharacter_getEvaljscodeInfo(this._evaljscodeInfo,textState);
 	if(info) evaljs(info,this);
@@ -21246,6 +21278,8 @@ SHAKESCREEN:function(textState){
 	if(info) Game_Screen.prototype.startShake.apply($gameScreen,info);
 },
 }).add('processEscapeCharacter_getAudioInfo',function f(arr,textState){
+	return arr&&arr[this.obtainEscapeParam(textState)];
+}).add('processEscapeCharacter_getChangefaceInfo',function f(arr,textState){
 	return arr&&arr[this.obtainEscapeParam(textState)];
 }).add('processEscapeCharacter_getEvaljscodeInfo',function f(arr,textState){
 	return arr&&arr[this.obtainEscapeParam(textState)];
@@ -25376,6 +25410,129 @@ new cfc(Game_Map.prototype).add('_teleportCrystal_getCont',function f(mapId){
 		} }
 		if(!this.teleportCrystal_get(mapId_ori).length) delete this.teleportCrystal_get()[mapId_ori];
 	}
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 戰鬥中離API
+ * @author agold404
+ * @help SceneManager.resumeBattle(); 
+ * SceneManager.pauseBattleAndGotoMap();
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+if(typeof Moghunter!=='undefined'){
+new cfc(Scene_Base.prototype).add('trfilter',function f(){
+	const spt=this._spriteTrasition;
+	return spt && spt[0] && spt[0].filters && spt[0].filters[0] || f.tbl[0];
+},[
+{},
+],true,true);
+//Scene_Base.prototype.updateTRNoise
+new cfc(Spriteset_Battle.prototype).add('hideCharacters',function f(){
+	return f.ori && f.ori.apply(this,arguments);
+});
+}
+
+t=[
+[Scene_Map, Scene_Battle],
+];
+
+new cfc(SceneManager).add('resumeBattle',function f(){
+	const sc=this._scene;
+	const prev=sc&&sc._prevScene;
+	if(!SceneManager.isScene_map() || !prev || prev.constructor!==f.tbl[0][1]) return;
+	$gameParty._inBattle=true;
+	prev._fadeSprite.opacity=0;
+	SceneManager._stack=f.tbl[0].slice();
+	SceneManager.pop();
+},t).add('pauseBattleAndGotoMap',function f(){
+	if(!SceneManager.isScene_battle()) return;
+	SceneManager.push(Scene_Map,true);
+	$gameParty._inBattle=false;
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 換臉圖API
+ * @author agold404
+ * @help Window_Message.seperatedFaces_setUsing(); // 開啟功能
+ * 內建的會放到 id=0 的 sprite 上，設定 _faceZ=0
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Base.prototype).add('createMessageWindow_merged',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._messageWindow.seperatedFaces_setUsing();
+	return rtv;
+});
+
+new cfc(Window_Message.prototype).add('drawMessageFace',function f(){
+	if(this.seperatedFaces_isUsing()){
+		this.seperatedFaces_redrawFace(0,$gameMessage.faceName(),$gameMessage.faceIndex(),0);
+		ImageManager.releaseReservation(this._imageReservationId);
+	}else return f.ori.apply(this,arguments);
+}).add('seperatedFaces_isUsing',function f(){
+	return this._seperatedFaces_spritesMap;
+}).add('seperatedFaces_setUsing',function f(){
+	let cont=this._seperatedFaces_spritesMap; if(!cont) cont=this._seperatedFaces_spritesMap=new Map();
+	return cont;
+}).add('seperatedFaces_redrawFace',function f(id,faceName,faceIndex,z){
+	const m=this.seperatedFaces_setUsing();
+	if(!faceName) return m.delete(id);
+	const width  =Window_Base._faceWidth;
+	const height =Window_Base._faceHeight;
+	const bitmap = ImageManager.loadFace(faceName);
+	const pw = Window_Base._faceWidth;
+	const ph = Window_Base._faceHeight;
+	const sw = Math.min(width, pw);
+	const sh = Math.min(height, ph);
+	const dx = Math.floor(Math.max(width - pw, 0) / 2);
+	const dy = Math.floor(Math.max(height - ph, 0) / 2);
+	const sx = faceIndex % 4 * pw + (pw - sw) / 2;
+	const sy = Math.floor(faceIndex / 4) * ph + (ph - sh) / 2;
+	const argv=[bitmap, sx, sy, sw, sh, dx, dy, ];
+	z=z-0||0;
+	let sp=m.get(id); if(!sp){ (sp=new Sprite(new Bitmap(pw,ph)))._facesZ=z; m.set(id,sp); }
+	sp.bitmap.clear();
+	// sp.bitmap.blt.apply(sp.bitmap,argv); // image not ready
+	sp._isBitmapDrawn=false;
+	sp._lastDrawFaceArgv=argv;
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.seperatedFaces_updateChildren();
+	return rtv;
+}).add('seperatedFaces_updateChildren',function f(){
+	const m=this._seperatedFaces_spritesMap; if(!m) return;
+	let root=this._seperatedFaces_spritesRoot; 
+	const targetIdx=this.getChildIndex(this._windowContentsSprite); if(!root&&!(targetIdx>=0)) return;
+	if(!root) this.addChildAt(root=this._seperatedFaces_spritesRoot=new Sprite(),targetIdx,);
+	{ const c=root.children; while(c.length) root.removeChildAt(c.length-1); }
+	{ const ref=this._windowContentsSprite; root.x=ref.x; root.y=ref.y; }
+	const arr=[];
+	m.forEach(f.tbl[0].bind(arr));
+	arr.sort(f.tbl[1]).forEach(f.tbl[2],root);
+},[
+function f(v,k){ this.push(v); },
+(spA,spB)=>spA._facesZ-spB._facesZ,
+function f(sp){ this.addChild(sp); if(!sp._isBitmapDrawn && sp._lastDrawFaceArgv && sp._lastDrawFaceArgv[0] && sp._lastDrawFaceArgv[0].isReady()){ sp._isBitmapDrawn=true; sp.bitmap.blt.apply(sp.bitmap,sp._lastDrawFaceArgv); } },
+]).add('terminateMessage',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	const m=this.seperatedFaces_setUsing();
+	if(m) m.clear();
 	return rtv;
 });
 
