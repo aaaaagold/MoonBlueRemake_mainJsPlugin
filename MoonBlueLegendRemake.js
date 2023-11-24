@@ -25448,16 +25448,25 @@ t=[
 new cfc(SceneManager).add('resumeBattle',function f(){
 	const sc=this._scene;
 	const prev=sc&&sc._prevScene;
-	if(!SceneManager.isScene_map() || !prev || prev.constructor!==f.tbl[0][1]) return;
-	$gameParty._inBattle=true;
+	if(!this.isScene_map() || !prev || prev.constructor!==f.tbl[0][1]) return;
 	prev._fadeSprite.opacity=0;
-	SceneManager._stack=f.tbl[0].slice();
-	SceneManager.pop();
+	this._stack=f.tbl[0].slice();
+	this.pop();
+	this._resumeBattle_should_setInBattle=true;
 },t).add('pauseBattleAndGotoMap',function f(){
-	if(!SceneManager.isScene_battle()) return;
-	SceneManager.push(Scene_Map,true);
+	if(!this.isScene_battle()) return;
+	this.push(Scene_Map,true);
 	$gameParty._inBattle=false;
-},t);
+},t).add('onSceneChange',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.resumeBattle_setInBattle();
+	return rtv
+}).add('resumeBattle_setInBattle',function f(){
+	if(this._resumeBattle_should_setInBattle && this.isScene_battle()){
+		this._resumeBattle_should_setInBattle=false;
+		$gameParty._inBattle=true;
+	}
+});
 
 })();
 
