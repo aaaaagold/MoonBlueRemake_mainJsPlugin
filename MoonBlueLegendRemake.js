@@ -2069,6 +2069,27 @@ new cfc(Game_Battler.prototype).add('accumulateGains_init',function f(){
 },arr);
 }
 
+// 你要在奇怪的時間點 call refresh 你就要判裡面東西好了沒啊
+if(typeof PartyWindowData==='function'){
+new cfc(PartyWindowData.prototype).add('refreshPar',function f(){
+	if(!this._par||!this._par.bitmap) return;
+	return f.ori.apply(this,arguments);
+}).add('refreshPMeter',function f(img,meter){
+	if(!img||!meter||!this._actor) return;
+	const cw = img.width;
+	const ch = img.height;
+	const wid = cw * this._actor.mp / this._actor.mmp;
+	return meter.setFrame(0,0,wid,cw);
+}).add('refreshHPMeter',function f(){
+	return this.refreshPMeter(this._hpMeterImg,this._hpMeter);
+}).add('refreshMPMeter',function f(){
+	return this.refreshPMeter(this._mpMeterImg,this._mpMeter);
+}).add('refresh_states',function f(){
+	if(!this._states_data||!this._state_icon) return;
+	return f.ori.apply(this,arguments);
+});
+}
+
 })();
 
 
@@ -17935,6 +17956,7 @@ BattleManager,'updateATBTicks',function f(){
 	}
 },t),'pushActionSkill',function f(itrp,btlr,dataobj){
 	const bm=this,skill=dataobj;
+	if(bm.isAborting() || bm.isBattleEnd()) return;
 	const info=skill[f.tbl[5]]; if(!info) return;
 	
 	const para=info._list[0].parameters;
