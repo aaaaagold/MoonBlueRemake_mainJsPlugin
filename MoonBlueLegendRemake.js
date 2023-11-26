@@ -1380,6 +1380,21 @@ new cfc(SceneManager).add('catchException',function f(e){
 
 { // 多1場景(至少多1幀)來讀其他東西
 
+new cfc(Scene_Boot.prototype).add('create',function f(){
+	const q=ImageManager._parseQs(location.href);
+	const troopId=q.troop-0;
+	let isBTest;
+	if(!isNaN(troopId)){
+		DataManager._webTestTroopId=troopId;
+		isBTest=DataManager.isBattleTest;
+		DataManager.isBattleTest=f.tbl[0];
+	}
+	const rtv=f.ori.apply(this,arguments);
+	if(isBTest) DataManager.isBattleTest=isBTest;
+	return rtv;
+},[
+none,
+]);
 { const p=DataManager;
 const tune=[
 function(scC){ const sm=SceneManager,k='goto';
@@ -1399,6 +1414,7 @@ k='setupBattleTest';
 r=p[t=k+'_ori']; (p[k+'_ori']=p[k]).ori=r;
 r=p[k]; (p[k]=function f(){
 	// to see the original function content, see 'setupBattleTest_ori';
+	if(!isNaN(DataManager._webTestTroopId)) $dataSystem.testTroopId=DataManager._webTestTroopId;
 	f.tbl[0](Scene_Boot_LoadCustom_Battle);
 }).ori=r;
 p[k].tbl=tune;
@@ -1437,6 +1453,9 @@ const a=window[n]=function(){ this.initialize.apply(this, arguments); }
 const p=a.prototype = Object.create(Scene_Base.prototype);
 p.constructor = a;
 r=p.start=function f(){
+	const q=ImageManager._parseQs(location.href);
+	const troopId=q.troop-0;
+	if(!isNaN(troopId)) $dataSystem.testTroopId=troopId;
 	DataManager[f.tbl.get('setupBattleTest')]();
 	SceneManager.goto(Scene_Battle);
 };
@@ -25614,6 +25633,59 @@ new cfc(Sprite_Damage.prototype).add('setup',function f(btlr){
 	for(let x=0;x!==len;++x) fc[x]=fc[x]*(1-rate)+color[x]*rate;
 	return true;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc commonevents as battle before ; as battle end
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	this.start_asBattleBeforeAndEnd();
+	return f.ori.apply(this,arguments);
+}).add('start_asBattleBeforeAndEnd',function f(){
+	const arr=$dataCommonEvents;
+	let bv=arr._asBattleBefore; if(!bv) bv=arr._asBattleBefore=[];
+	let ev=arr._asBattleEnd;    if(!ev) ev=arr._asBattleEnd=[];
+	arr.forEach(f.tbl[0]);
+},[
+(dataobj,i,arr)=>{ if(!dataobj) return;
+	const bv=arr._asBattleBefore;
+	const ev=arr._asBattleEnd;
+	for(let ci=0,cmds=dataobj.list,csz=cmds.length;ci!==csz;++ci){
+		const cmd=cmds[ci];
+		if(cmd.code===108 && cmd.parameters){
+			if(cmd.parameters[0]==="@AS_BATTLE_BEFORE") bv.uniquePush(dataobj);
+			if(cmd.parameters[0]==="@AS_BATTLE_END") ev.uniquePush(dataobj);
+		}
+	}
+},
+]);
+
+t=[
+function(dataobj){
+	this.setup(dataobj.list);
+	while(this.isRunning()) this.update();
+},
+];
+
+new cfc(BattleManager).add('setup',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	$dataCommonEvents._asBattleBefore.forEach(f.tbl[0],$gameTroop._interpreter);
+	return rtv;
+},t).add('updateBattleEnd',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	$dataCommonEvents._asBattleEnd.forEach(f.tbl[0],$gameTroop._interpreter);
+	return rtv;
+},t);
 
 })();
 
