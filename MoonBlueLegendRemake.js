@@ -7044,7 +7044,7 @@ r=p[k]; (p[k]=function f(){
 /*:
  * @plugindesc 滑鼠沒動的話ㄅ要調回去啦
  * @author agold404
- * @help 所以就有了這一part
+ * @help 所以就有了這一part。YEPㄋ看看ㄋ。
  * 
  * This plugin can be renamed as you want.
  */
@@ -7109,57 +7109,33 @@ r=p[k]; (p[k]=function f(){
 };
 }
 
-{ const p=Game_Action.prototype;
-const f=function f(target, critical) {
+new cfc(Game_Action.prototype).add('makeDamageValue',function f(target,critical){
 	const item=this.item(),tbl=this.getItemHitTypeTbl(item);
-	const baseValue=this.evalDamageFormula(target)
-	let value=baseValue*this.calcElementRate(target);
-	value*=(tbl[0]+tbl[1]*target.pdr+tbl[2]*target.mdr)/(tbl[0]+tbl[1]+tbl[2]||1);
+	const baseValue=this.evalDamageFormula(target);
+	const eleRate=this.calcElementRate(target);
+	const hitTypeRate=(tbl[0]+tbl[1]*target.pdr+tbl[2]*target.mdr)/(tbl[0]+tbl[1]+tbl[2]||1);
+	const rate=eleRate*hitTypeRate;
+	let value=baseValue*rate;
 	if(baseValue<0) value*=target.rec;
 	if(critical) value=this.applyCritical(value);
 	value=this.applyVariance(value, item.damage.variance, target);
 	value=this.applyGuard(value, target);
 	value=Math.round(value);
+	this._weaknessRate=rate;
 	return value;
-};
-f.tbl=function(x){ ++this[x]; };
-
-k='makeDamageValue';
-r=p[k];
-if(r.ori){
-	do{ t=r; r=r.ori; }while(r.ori);
-	t.ori=f;
-}else p[k]=f;
-
-k='isCertainHit';
-r=p[k];
-(p[k]=function f(){
+},undefined,true,true).add('isCertainHit',function f(){
 	return this.getItemHitTypeTbl(this.item())[Game_Action.HITTYPE_CERTAIN]; // ||f.ori.apply(this,arguments);
-}).ori=r;
-
-k='isPhysical';
-r=p[k];
-(p[k]=function f(){
+},undefined,true,true).add('isPhysical',function f(){
 	return this.getItemHitTypeTbl(this.item())[Game_Action.HITTYPE_PHYSICAL]; // ||f.ori.apply(this,arguments);
-}).ori=r;
-
-k='isMagical';
-r=p[k];
-(p[k]=function f(){
+},undefined,true,true).add('isMagical',function f(){
 	return this.getItemHitTypeTbl(this.item())[Game_Action.HITTYPE_MAGICAL]; // ||f.ori.apply(this,arguments);
-}).ori=r;
-
-k='itemHit';
-r=p[k];
-(p[k]=function(target){
+},undefined,true,true).add('itemHit',function(target){
 	const item=this.item(),tbl=this.getItemHitTypeTbl(item);
 	if(tbl[0]) return this.item().successRate*0.01;
 	return (this.item().successRate*this.subject().hit*0.01) - (tbl[1]*target.eva+tbl[2]*target.mev)/(tbl[1]+tbl[2]||1);
-}).ori=r;
-
-p.getItemHitTypeTbl=item=>item.addHitTypeTbl;
-}
-
+},undefined,true,true).add('getItemHitTypeTbl',function f(item){
+	return item.addHitTypeTbl;
+},undefined,true,true);
 
 })();
 
@@ -23673,6 +23649,20 @@ new cfc(ConfigManager).add('applyData',function f(config){
 	return rtv;
 },t);
 
+new cfc(DataManager).add('extractSaveContents',function f(contents){
+	if(contents.system){
+		if(contents.system[f.tbl[0]]){
+			if(!ConfigManager[f.tbl[0]]){
+				ConfigManager[f.tbl[0]]=true;
+				ConfigManager.save();
+			}
+		}else{
+			if(ConfigManager[f.tbl[0]]) contents.system[f.tbl[0]]=1;
+		}
+	}
+	return f.ori.apply(this,arguments);
+},t);
+
 })();
 
 
@@ -25565,6 +25555,64 @@ function f(sp){ this.addChild(sp); if(!sp._isBitmapDrawn && sp._lastDrawFaceArgv
 	const m=this.seperatedFaces_setUsing();
 	if(m) m.clear();
 	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 非常不明顯的弱點或抗性提示
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_ActionResult.prototype).add('clear',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.weaknessRate=1;
+	return rtv;
+});
+
+new cfc(Game_Action.prototype).add('executeDamage',function f(trgt,val){
+	trgt.result().weaknessRate=this._weaknessRate;
+	return f.ori.apply(this,arguments);
+});
+
+new cfc(Sprite_Damage.prototype).add('setup',function f(btlr){
+	const rtv=f.ori.apply(this,arguments);
+	this.setupWeaknessRateEffect();
+	return rtv;
+}).add('setupWeaknessRateEffect',function f(){
+	const r=this._result;
+	if((!r.hpAffected||!(0<r.hpDamage))&&!(0<r.mpDamage)) return;
+	const fc=this._flashColor;
+	let wr=r&&r.weaknessRate;
+	if(!fc||!(wr-=0)) return;
+	let isSet=false;
+	if(wr<1) isSet=this._setupWeaknessRateEffect_mixFlashColor(f.tbl[0][0],f.tbl[0][1]);
+	if(1<wr) isSet=this._setupWeaknessRateEffect_mixFlashColor(f.tbl[1][0],f.tbl[1][1]);
+	if(isSet && !this._flashDuration) this._flashDuration=f.tbl[2];
+},[
+[ /* weighted */ [141, 87, 58,168],0.75], // [ /* add */ [  0,255,  0,168],], 
+[ /* weighted */ [168,223,255,168],0.5 ], // [ /* add */ [  0,  0,255,168],], 
+64,
+]).add('_setupWeaknessRateEffect_mixFlashColor',function f(color,rate){
+	return this._setupWeaknessRateEffect_mixFlashColor_weighted(color,rate);
+},undefined,true,true).add('_setupWeaknessRateEffect_mixFlashColor_add',function f(color){
+	const fc=this._flashColor;
+	const len=Math.min(fc.length,color.length);
+	for(let x=0;x!==len;++x) fc[x]+=color[x];
+	return true;
+}).add('_setupWeaknessRateEffect_mixFlashColor_weighted',function f(color,rate){
+	if(rate===undefined) rate=0.5;
+	const fc=this._flashColor;
+	const len=Math.min(fc.length,color.length);
+	for(let x=0;x!==len;++x) fc[x]=fc[x]*(1-rate)+color[x]*rate;
+	return true;
 });
 
 })();
