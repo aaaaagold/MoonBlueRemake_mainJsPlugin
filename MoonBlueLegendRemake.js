@@ -23981,7 +23981,7 @@ new cfc(Scene_Battle.prototype).add('start',function f(){
 
 ﻿"use strict";
 /*:
- * @plugindesc ensure Game_Battler.prototype._damagePopup instanceof Array
+ * @plugindesc ensure Game_Battler.prototype._damagePopup instanceof Queue
  * @author agold404
  * @help .
  * 
@@ -23992,11 +23992,14 @@ new cfc(Scene_Battle.prototype).add('start',function f(){
 
 if((typeof Imported!=='undefined') && Imported.YEP_BattleEngineCore) Object.defineProperty(Game_Battler.prototype,'_damagePopup',{
 	set:function f(rhs){
-		return this.__damagePopup=rhs;
-	},get:function f(){
-		let rtv=this.__damagePopup;
-		if(!rtv||!(rtv instanceof Array)) rtv=this.__damagePopup=[];
-		return rtv;
+		if(!rhs) return this.__damagePopup=rhs;
+		this.__damagePopup=rhs;
+		return this._damagePopup;
+	},get:function(){
+		if(!this.__damagePopup) this.__damagePopup=new Queue();
+		if(this.__damagePopup.constructor===Array||this.__damagePopup.constructor===Number) this.__damagePopup=new Queue(this.__damagePopup);
+		if(this.__damagePopup.constructor!==Queue) this.__damagePopup=Object.assign(new Queue(),this.__damagePopup);
+		return this.__damagePopup;
 	},configurable:true
 });
 
@@ -25686,6 +25689,41 @@ new cfc(BattleManager).add('setup',function f(){
 	$dataCommonEvents._asBattleEnd.forEach(f.tbl[0],$gameTroop._interpreter);
 	return rtv;
 },t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 慢慢改變不透明度
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_CharacterBase.prototype).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.updateOpacity();
+	return rtv;
+}).add('setOpacity',function f(opacity,dur,from){
+	const opacity_ori=this._opacity;
+	const rtv=f.ori.apply(this,arguments);
+	if((dur|=0) && 0<dur){
+		this._opacitySrc=from===undefined?opacity_ori:from;
+		this._opacityDst=opacity;
+		this._opacityDur=0;
+		this._opacityDurDst=dur;
+	}
+	this.updateOpacity();
+	return rtv;
+}).add('updateOpacity',function f(){
+	if(this._opacityDur<this._opacityDurDst){
+		this._opacity=++this._opacityDur/this._opacityDurDst*(this._opacityDst-this._opacitySrc)+this._opacitySrc;
+	}else this._opacityDst=this._opacitySrc=this._opacityDur=this._opacityDurDst=undefined;
+},undefined,true,true);
 
 })();
 
