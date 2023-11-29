@@ -26198,6 +26198,43 @@ const r=p[k];
 	me.nextSibling?me.parentNode.insertBefore(scr,me.nextSibling):me.parentNode.ac(scr);
 }; addScript(preDef); if(u) addScript(u);
 }
+
+try{
+	if(!localStorage.getItem('doc')){
+		jurl("BLR_custom/DocumentName.txt","GET",0,0,0,(resp)=>{
+			const base=resp.split('\n').filter(String).replace(/[\t\r]/g,'');
+			const url=base;
+			jurl(url,"HEAD",0,0,0,(resp)=>{
+				document.ce('a').sa('href',url).sa('target','_blank').click();
+				try{
+					localStorage.setItem('doc','1');
+				}catch(e){
+				}
+			},xhr=>{ if(!(xhr.readyState>=4)) return;
+				const stat=xhr.status.toString();
+				if(stat==='0' || (stat.length===3 && stat[0]==='4')) ; // s.delete(path); // nw.js: 0 ; web: 404
+				const url="../"+base;
+				document.ce('a').sa('href',url).sa('target','_blank').click(); // just request it // for easy debug
+				try{
+					localStorage.setItem('doc','1');
+				}catch(e){
+				}
+				if(0)jurl(url,"HEAD",0,0,0,(resp)=>{
+					document.ce('a').sa('href',url).sa('target','_blank').click();
+					localStorage.setItem('doc','1');
+				},xhr=>{ if(!(xhr.readyState>=4)) return;
+					const stat=xhr.status.toString();
+					if(stat==='0' || (stat.length===3 && stat[0]==='4')) ; // s.delete(path); // nw.js: 0 ; web: 404
+				});
+			});
+		},xhr=>{ if(!(xhr.readyState>=4)) return;
+			const stat=xhr.status.toString();
+			if(stat==='0' || (stat.length===3 && stat[0]==='4')) ; // s.delete(path); // nw.js: 0 ; web: 404
+		});
+	}
+}catch(e){
+}
+
 })(Date.now&&Date.now.constructor===Function&&Date.now()); // all
 
 
