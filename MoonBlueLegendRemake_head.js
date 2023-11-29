@@ -104,10 +104,10 @@ p.traitsMap_sum=function f(code){
 };
 p.param=function(paramId){
 	return Math.round(
-		(this.paramBase(paramId)+this.paramPlus(paramId)).clamp(
+		(this.paramBase(paramId).clamp(
 			this.paramMin(paramId),
 			this.paramMax(paramId)
-		)*this.paramRate(paramId)*this.paramBuffRate(paramId)
+		)+this.paramPlus(paramId))*this.paramRate(paramId)*this.paramBuffRate(paramId)
 	)
 };
 }
