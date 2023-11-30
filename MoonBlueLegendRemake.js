@@ -25733,6 +25733,86 @@ new cfc(Game_CharacterBase.prototype).add('update',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 標題水波+星星
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+[undefined,undefined,8,4,32,16], // touch x, touch y, thickness, speed, dur, fadeDur
+2, // 1: gen interval
+star=>{
+	star.x+=star._v[0];
+	star.y+=star._v[1];
+	star._v[0]+=star._a[0];
+	star._v[1]+=star._a[1];
+	star.rotation+=star._rot;
+	star.alpha=star._dur/star._durMax;
+	return !(0<--star._dur);
+},
+function(star){
+	this.removeChild(star);
+	this._stars.uniquePop(star);
+},
+[0,0,255], // 4: color tone
+];
+
+new cfc(Scene_Title.prototype).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._choices[this._choiceIdx].apply(this);
+	//this.update_water();
+	this.update_star(true);
+	return rtv;
+}).add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	f.tbl[0][1]=f.tbl[0][0]=undefined;
+	this._nextGenTime=0;
+	this._stars=[];
+	this._choiceIdx=0;
+	this._choices=[this.update_water,this.update_star];
+	return rtv;
+},t).add('update_water',function f(){
+	if(!$gameScreen) return;
+	const lastX=f.tbl[0][0],lastY=f.tbl[0][1];
+	f.tbl[0][0]=TouchInput.x;
+	f.tbl[0][1]=TouchInput.y;
+	if((f.tbl[0][0]===lastX&&f.tbl[0][1]===lastY)||this._nextGenTime>=Graphics.frameCount) return;
+	$gameScreen.radiusWaveEffect_gen.apply($gameScreen,f.tbl[0]);
+	this._nextGenTime=Graphics.frameCount+f.tbl[1];
+	++this._choiceIdx; this._choiceIdx%=this._choices.length;
+},t).add('update_star',function f(dontGen){
+	const lastX=f.tbl[0][0],lastY=f.tbl[0][1];
+	f.tbl[0][0]=TouchInput.x;
+	f.tbl[0][1]=TouchInput.y;
+	const arr=this._stars.filter(f.tbl[2]).reverse();
+	arr.forEach(f.tbl[3],this);
+	if(dontGen) return;
+	if((f.tbl[0][0]===lastX&&f.tbl[0][1]===lastY)||this._nextGenTime>=Graphics.frameCount) return;
+	this._nextGenTime=Graphics.frameCount+f.tbl[1];
+	const sp=new Sprite(ImageManager.loadNormalBitmap('img/system/IconSet.png'));
+	sp.x=TouchInput.x;
+	sp.y=TouchInput.y;
+	sp._v=[Math.random()*2-1,-Math.random()-1];
+	sp._a=[0,0.125];
+	sp._rot=(Math.random()*2-1)*Math.PI/64;
+	sp._dur=sp._durMax=~~(Math.random()*64)+16;
+	sp._iconIndex=92;
+	Sprite_StateIcon.prototype.updateFrame.apply(sp);
+	SceneManager._scene.addChild(sp);
+	this._stars.push(sp);
+	++this._choiceIdx; this._choiceIdx%=this._choices.length;
+	sp.setColorTone(f.tbl[4]);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
