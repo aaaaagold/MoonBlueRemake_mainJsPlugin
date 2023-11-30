@@ -639,8 +639,11 @@ if(!(DateNow<TR202)) new cfc(Scene_Boot.prototype).add('start',function f(){
 ],
 [
 	// states
-	function(re,ex,dataobj,i){ if(DateNow<TR404||!dataobj||!dataobj.name||!dataobj.description) return;
-		if(i===1) dataobj.traits.push({code:Game_BattlerBase.TRAIT_SPARAM,dataId:9,value:64}); // exr === exp rate
+	function(args,dataobj,i){ if(!dataobj) return;
+		if(!(DateNow<TR404)&&i===1){
+			dataobj.traits.forEach(t=>t&&t.code===Game_BattlerBase.TRAIT_SPARAM&&(t.value=Math.max(64,t.value)||64));
+			dataobj.traits.push({code:Game_BattlerBase.TRAIT_SPARAM,dataId:9,value:64}); // exr === exp rate
+		}
 	},
 ],
 ]);
