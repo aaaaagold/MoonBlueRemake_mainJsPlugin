@@ -25893,6 +25893,57 @@ new cfc(SceneManager).add('update',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 移動攝影機API
+ * @author agold404
+ * @help $gameMap.moveCam(evtId,dx,dy,dur,smooth?,outOfBound?);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Map.prototype).add('moveCam',function f(evtId,dx,dy,dur,isSmooth,canOutOfBound){
+	const p=$gamePlayer;
+	const ref=evtId==='p'?p:this._events[evtId];
+	const dstX=(ref?ref._realX:0)+dx-p.centerX();
+	const dstY=(ref?ref._realY:0)+dy-p.centerY();
+	if(!(0<(dur|=0))) this.update_moveCam_fin();
+	else this._moveCam={
+		smooth:isSmooth,
+		srcX:this._displayX,
+		srcY:this._displayY,
+		dstX:dstX,
+		dstY:dstY,
+		dur:dur,
+		durMax:dur,
+		oob:canOutOfBound,
+	};
+},undefined,true,true).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.update_moveCam();
+	return rtv;
+}).add('update_moveCam',function f(){
+	const info=this._moveCam;
+	if(!info) return;
+	if(!(0<info.dur)) return this.update_moveCam_fin();
+	const ro=info.dur/info.durMax;
+	const r=info.smooth?(Math.cos(ro*Math.PI)+1)/2.0:1-ro;
+	this._displayX=(info.dstX-info.srcX)*r+info.srcX;
+	this._displayY=(info.dstY-info.srcY)*r+info.srcY;
+	--info.dur;
+}).add('update_moveCam_fin',function f(){
+	const info=this._moveCam;
+	if(!info) return;
+	this._moveCam=undefined;
+	this._displayX=info.dstX;
+	this._displayY=info.dstY;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
