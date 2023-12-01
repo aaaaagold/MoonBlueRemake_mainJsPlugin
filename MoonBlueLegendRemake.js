@@ -20373,6 +20373,7 @@ undefined,
 					this.drawIcon(f.tbl[0].nfIcon,f.tbl[0].x+f.tbl[0].nfIconDx,y-lh);
 					ctx.globalAlpha=ga;
 				}
+				this.resetFontSettings();
 				this.drawText(arr[x].nameField,f.tbl[0].x+f.tbl[0].nfDx,y-lh);
 			}
 			if(!isCalcH && face.name) this.drawFace(face.name, face.idx, f.tbl[0].x, y);
