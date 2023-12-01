@@ -20357,15 +20357,18 @@ undefined,
 			dy+=this.padding;
 		}
 		if(!isCalcH && textState.y>=ch) break;
+		const hasNameField=!isNone(arr[x].nameField);
+		const nameFieldHeight=hasNameField?lh:0;
 		if(textState.y+arr[x].height<0||(isCalcH&&arr[x].height!==undefined)){
 			// skip
-			textState.y+=arr[x].height;
+			textState.y+=arr[x].height+nameFieldHeight;
 		}else{
 			clean=false;
 			const face=arr[x].face;
 			$gameMessage._faceName=face.name;
-			const y=(isCalcH?0:textState.y)+(isNone(arr[x].nameField)?0:lh);
-			if(!isNone(arr[x].nameField)){
+			this.resetFontSettings();
+			const y=(isCalcH?0:textState.y)+nameFieldHeight;
+			if(!isCalcH && hasNameField){
 				let ga,ctx;
 				if(ctx=this.contents.context){
 					ga=ctx.globalAlpha;
@@ -20373,7 +20376,6 @@ undefined,
 					this.drawIcon(f.tbl[0].nfIcon,f.tbl[0].x+f.tbl[0].nfIconDx,y-lh);
 					ctx.globalAlpha=ga;
 				}
-				this.resetFontSettings();
 				this.drawText(arr[x].nameField,f.tbl[0].x+f.tbl[0].nfDx,y-lh);
 			}
 			if(!isCalcH && face.name) this.drawFace(face.name, face.idx, f.tbl[0].x, y);
@@ -20386,7 +20388,7 @@ undefined,
 			arr[x].height=(textState.y+=textState.height)-y;
 			if(face.name) textState.y=(arr[x].height=Math.max(arr[x].height,Window_Base._faceHeight))+y;
 		}
-		dy+=arr[x].height;
+		dy+=arr[x].height+nameFieldHeight;
 	}
 	if(isCalcH && !clean && this.contents) this.contents.clear();
 	$gameMessage._faceName=bak_faceName;
@@ -21289,7 +21291,7 @@ AUDIOSE:function(textState){
 },
 CHANGEFACE:function(textState){
 	const info=this.processEscapeCharacter_getChangefaceInfo(this._changefaceInfo,textState);
-	if(info) this.seperatedFaces_redrawFace&&this.seperatedFaces_redrawFace.apply(this,info);
+	if(info) this.separatedFaces_redrawFace&&this.separatedFaces_redrawFace.apply(this,info);
 },
 EVALJSCODE:function(textState){
 	const info=this.processEscapeCharacter_getEvaljscodeInfo(this._evaljscodeInfo,textState);
@@ -25515,7 +25517,7 @@ new cfc(SceneManager).add('resumeBattle',function f(){
 /*:
  * @plugindesc 換臉圖API
  * @author agold404
- * @help Window_Message.seperatedFaces_setUsing(); // 開啟功能
+ * @help Window_Message.separatedFaces_setUsing(); // 開啟功能
  * 內建的會放到 id=0 的 sprite 上，設定 _faceZ=0
  * 
  * This plugin can be renamed as you want.
@@ -25525,22 +25527,22 @@ new cfc(SceneManager).add('resumeBattle',function f(){
 
 new cfc(Scene_Base.prototype).add('createMessageWindow_merged',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	this._messageWindow.seperatedFaces_setUsing();
+	this._messageWindow.separatedFaces_setUsing();
 	return rtv;
 });
 
 new cfc(Window_Message.prototype).add('drawMessageFace',function f(){
-	if(this.seperatedFaces_isUsing()){
-		this.seperatedFaces_redrawFace(0,$gameMessage.faceName(),$gameMessage.faceIndex(),0);
+	if(this.separatedFaces_isUsing()){
+		this.separatedFaces_redrawFace(0,$gameMessage.faceName(),$gameMessage.faceIndex(),0);
 		ImageManager.releaseReservation(this._imageReservationId);
 	}else return f.ori.apply(this,arguments);
-}).add('seperatedFaces_isUsing',function f(){
-	return this._seperatedFaces_spritesMap;
-}).add('seperatedFaces_setUsing',function f(){
-	let cont=this._seperatedFaces_spritesMap; if(!cont) cont=this._seperatedFaces_spritesMap=new Map();
+}).add('separatedFaces_isUsing',function f(){
+	return this._separatedFaces_spritesMap;
+}).add('separatedFaces_setUsing',function f(){
+	let cont=this._separatedFaces_spritesMap; if(!cont) cont=this._separatedFaces_spritesMap=new Map();
 	return cont;
-}).add('seperatedFaces_redrawFace',function f(id,faceName,faceIndex,z){
-	const m=this.seperatedFaces_setUsing();
+}).add('separatedFaces_redrawFace',function f(id,faceName,faceIndex,z){
+	const m=this.separatedFaces_setUsing();
 	if(!faceName) return m.delete(id);
 	const width  =Window_Base._faceWidth;
 	const height =Window_Base._faceHeight;
@@ -25562,13 +25564,13 @@ new cfc(Window_Message.prototype).add('drawMessageFace',function f(){
 	sp._lastDrawFaceArgv=argv;
 }).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	this.seperatedFaces_updateChildren();
+	this.separatedFaces_updateChildren();
 	return rtv;
-}).add('seperatedFaces_updateChildren',function f(){
-	const m=this._seperatedFaces_spritesMap; if(!m) return;
-	let root=this._seperatedFaces_spritesRoot; 
+}).add('separatedFaces_updateChildren',function f(){
+	const m=this._separatedFaces_spritesMap; if(!m) return;
+	let root=this._separatedFaces_spritesRoot; 
 	const targetIdx=this.getChildIndex(this._windowContentsSprite); if(!root&&!(targetIdx>=0)) return;
-	if(!root) this.addChildAt(root=this._seperatedFaces_spritesRoot=new Sprite(),targetIdx,);
+	if(!root) this.addChildAt(root=this._separatedFaces_spritesRoot=new Sprite(),targetIdx,);
 	{ const c=root.children; while(c.length) root.removeChildAt(c.length-1); }
 	{ const ref=this._windowContentsSprite; root.x=ref.x; root.y=ref.y; }
 	const arr=[];
@@ -25580,7 +25582,7 @@ function f(v,k){ this.push(v); },
 function f(sp){ this.addChild(sp); if(!sp._isBitmapDrawn && sp._lastDrawFaceArgv && sp._lastDrawFaceArgv[0] && sp._lastDrawFaceArgv[0].isReady()){ sp._isBitmapDrawn=true; sp.bitmap.blt.apply(sp.bitmap,sp._lastDrawFaceArgv); } },
 ]).add('terminateMessage',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	const m=this.seperatedFaces_setUsing();
+	const m=this.separatedFaces_isUsing();
 	if(m) m.clear();
 	return rtv;
 });
@@ -25841,7 +25843,7 @@ kw,
 
 ﻿"use strict";
 /*:
- * @plugindesc bypass isMaxBuffAffected
+ * @plugindesc 愚人節
  * @author agold404
  * @help .
  * 
@@ -25866,7 +25868,7 @@ t=[
 // 3: item
 {"id":0,"animationId":0,"consumable":false,"damage":{"critical":false,"elementId":0,"formula":"0","type":0,"variance":20},"description":"全新的遊戲體驗","effects":[{"code":44,"dataId":"匿名說話模式commonEvtId","value1":0,"value2":0}],"hitType":0,"iconIndex":189,"itypeId":2,"name":"匿名說話模式","note":"","occasion":2,"price":0,"repeats":1,"scope":0,"speed":0,"successRate":100,"tpGain":0,"meta":{},"maxStack":1},
 ];
-
+
 new cfc(Scene_Boot.prototype).add('start',function f(){
 	this.start_putCustom_aprilFools();
 	return f.ori.apply(this,arguments);
