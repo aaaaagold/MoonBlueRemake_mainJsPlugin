@@ -1500,6 +1500,7 @@ new cfc(SceneManager).add('push',function f(sceneClass,shouldRecordCurrentScene)
 	this._stack.push(this._scene.constructor);
 	this.goto(sceneClass,shouldRecordCurrentScene);
 	if(shouldRecordCurrentScene && this._nextScene) this._nextScene._prevScene=this._scene;
+	return this._nextScene && this._nextScene._prevScene;
 },undefined,true,true).add('changeScene',function f(){
 	if(this.isSceneChanging() && !this.isCurrentSceneBusy() && ImageManager.isReady()){
 		let recordedPrevScene;
@@ -8188,7 +8189,7 @@ r=p[k]; (p[k]=function f(){
 	'finishActions',
 ];
 ((p[k].forEach.forEach=function f(k){
-	this._menuTimes+=this[k].filter(f.tbl).length;
+	if(this[k]) this._menuTimes+=this[k].filter(f.tbl).length;
 }).tbl=function f(cmd){
 	return cmd[0] && cmd[0].match(f.tbl);
 }).tbl=/^ACTION[ ]EFFECT$/i;
@@ -25483,24 +25484,25 @@ t=[
 ];
 
 new cfc(SceneManager).add('resumeBattle',function f(){
-	const sc=this._scene;
-	const prev=sc&&sc._prevScene;
-	if(!this.isScene_map() || !prev || prev.constructor!==f.tbl[0][1]) return;
+	if(!this.isScene_map()) return;
+	const prev=this._scene._prevScene=$gameTemp._prevBattleSc;
+	if(!prev || prev.constructor!==f.tbl[0][1]) return;
 	prev._fadeSprite.opacity=0;
 	this._stack=f.tbl[0].slice();
 	this.pop();
-	this._resumeBattle_should_setInBattle=true;
+	this._resumeBattle_shouldSet_inBattle=true;
 },t).add('pauseBattleAndGotoMap',function f(){
 	if(!this.isScene_battle()) return;
-	this.push(Scene_Map,true);
+	const prev=this.push(Scene_Map,true);
 	$gameParty._inBattle=false;
+	$gameTemp._prevBattleSc=prev;
 },t).add('onSceneChange',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	this.resumeBattle_setInBattle();
-	return rtv
-}).add('resumeBattle_setInBattle',function f(){
-	if(this._resumeBattle_should_setInBattle && this.isScene_battle()){
-		this._resumeBattle_should_setInBattle=false;
+	this.resumeBattle_set_inBattle();
+	return rtv;
+}).add('resumeBattle_set_inBattle',function f(){
+	if(this._resumeBattle_shouldSet_inBattle && this.isScene_battle()){
+		this._resumeBattle_shouldSet_inBattle=false;
 		$gameParty._inBattle=true;
 	}
 });
@@ -25806,6 +25808,81 @@ new cfc(Scene_Title.prototype).add('update',function f(){
 	this._stars.push(sp);
 	++this._choiceIdx; this._choiceIdx%=this._choices.length;
 	sp.setColorTone(f.tbl[4]);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc bypass isMaxBuffAffected
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const kw="unlimitedBuffAffected";
+
+new cfc(Game_BattlerBase.prototype).add('isMaxBuffAffected',function f(){
+	const data=this.getData && this.getData();
+	const meta=data&&data.meta;
+	if(meta && meta[f.tbl[0]]) return false;
+	return f.ori.apply(this,arguments);
+},[
+kw,
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc bypass isMaxBuffAffected
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const dt=new Date();
+const m=dt.getMonth(); // 0-base
+const d=dt.getDate(); // 1-base
+const cond=(m===2&&d===31)||(m===3&&d<9);
+if(!cond) return;
+
+t=[
+// 0: common event id
+40401,
+// 1: common event
+{"id":0,"list":[{"code":355,"indent":0,"parameters":["{ const p=Game_Message.prototype;"]},{"code":655,"indent":0,"parameters":["const r=p.allText._anonymousModeBak||p.allText;"]},{"code":655,"indent":0,"parameters":["(p.allText=function f(){"]},{"code":655,"indent":0,"parameters":[" let rtv=f._anonymousModeBak.apply(this,arguments);"]},{"code":655,"indent":0,"parameters":[" if($gameSystem && $gameSystem._anonymousMode) rtv=rtv.replace(/^\\\\N\\[[0-9]+\\](?=($|\\n))/,\"\\\\CHANGEFACE\\\"0|BLR_01_1|8964\\\"\");"]},{"code":655,"indent":0,"parameters":[" return rtv;"]},{"code":655,"indent":0,"parameters":["})._anonymousModeBak=r;"]},{"code":655,"indent":0,"parameters":["}"]},{"code":101,"indent":0,"parameters":["",0,0,2]},{"code":401,"indent":0,"parameters":["\\TXTCENTER:\"是否開啟匿名說話模式？\"\n\n開啟後，當對話視窗第一排字為資料庫角色名稱(\\\\N[*])時，\n會將第一排字消除，並將臉圖清空。"]},{"code":102,"indent":0,"parameters":[["不變更設定","開啟","關閉"],0,0,2,0]},{"code":402,"indent":0,"parameters":[0,"不變更設定"]},{"code":0,"indent":1,"parameters":[]},{"code":402,"indent":0,"parameters":[1,"開啟"]},{"code":355,"indent":1,"parameters":["$gameSystem._anonymousMode=1;"]},{"code":0,"indent":1,"parameters":[]},{"code":402,"indent":0,"parameters":[2,"關閉"]},{"code":355,"indent":1,"parameters":["$gameSystem._anonymousMode=0;"]},{"code":0,"indent":1,"parameters":[]},{"code":404,"indent":0,"parameters":[]},{"code":0,"indent":0,"parameters":[]}],"name":"","switchId":1,"trigger":0},
+// 2: item id
+40401,
+// 3: item
+{"id":0,"animationId":0,"consumable":false,"damage":{"critical":false,"elementId":0,"formula":"0","type":0,"variance":20},"description":"全新的遊戲體驗","effects":[{"code":44,"dataId":"匿名說話模式commonEvtId","value1":0,"value2":0}],"hitType":0,"iconIndex":189,"itypeId":2,"name":"匿名說話模式","note":"","occasion":2,"price":0,"repeats":1,"scope":0,"speed":0,"successRate":100,"tpGain":0,"meta":{},"maxStack":1},
+];
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	this.start_putCustom_aprilFools();
+	return f.ori.apply(this,arguments);
+}).add('start_putCustom_aprilFools',function f(){
+	$dataCommonEvents[f.tbl[0]]=f.tbl[1];
+	f.tbl[1].id=f.tbl[0];
+	$dataItems[f.tbl[2]]=f.tbl[3];
+	f.tbl[3].id=f.tbl[2];
+	$dataItems[f.tbl[2]].effects[0].dataId=[f.tbl[0]];
+},t);
+
+new cfc(SceneManager).add('update',function f(){
+	this.update_aprilFools();
+	return f.ori.apply(this,arguments);
+}).add('update_aprilFools',function f(){
+	if(!this.isScene_map()||!$gameParty||!$gameParty._items) return;
+	if(!$gameParty._items[f.tbl[2]]) $gameParty._items[f.tbl[2]]=1;
 },t);
 
 })();
