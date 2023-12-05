@@ -2042,8 +2042,12 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 }
 
+// 把 sprite 放 $gameSystem 也不會在對的時間清掉，到底是三小， state 爛掉就掰
 // 幫call destroy
-new cfc(Scene_Base.prototype).add('removeTRSprites',function f(){
+if(typeof Imported!=='undefined' && Imported.MOG_BattleTransitions) new cfc(Scene_Battle.prototype).add('terminate',function f(){
+	$gameSystem._treSpriteData=undefined;
+	return f.ori.apply(this,arguments);
+}).add('removeTRSprites',function f(){
 	const allSprites=new Set(this._spriteTrasition).union_inplaceThat(new Set($gameSystem._treSpriteData));
 	const rtv=f.ori.apply(this,arguments);
 	allSprites.forEach(f.tbl[0]);
@@ -25902,9 +25906,9 @@ new cfc(SceneManager).add('update',function f(){
 
 (()=>{ let k,r,t;
 
-new cfc(Game_Map.prototype).add('moveCam',function f(evtId,dx,dy,dur,isSmooth,canOutOfBound){
+new cfc(Game_Map.prototype).add('moveCam',function f(evtId_or_chr,dx,dy,dur,isSmooth,canOutOfBound){
 	const p=$gamePlayer;
-	const ref=evtId==='p'?p:this._events[evtId];
+	const ref=(evtId_or_chr instanceof Game_Character)?evtId_or_chr:(evtId_or_chr==='p'?p:this._events[evtId_or_chr]);
 	const dstX=(ref?ref._realX:0)+dx-p.centerX();
 	const dstY=(ref?ref._realY:0)+dy-p.centerY();
 	if(!(0<(dur|=0))) this.update_moveCam_fin();
