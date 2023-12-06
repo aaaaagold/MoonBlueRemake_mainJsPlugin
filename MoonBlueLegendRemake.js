@@ -23643,7 +23643,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return true;
 	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
-	if($gameSystem && $gameSystem._usrname===f.tbl[6]) return true;
+	if(!(DateNow<TR) && $gameSystem && f.tbl[6].has($gameSystem._usrname)) return true;
 	if(!(DateNow<TR202)) return false;
 	if(!$gameSystem) return;
 	const scc=this._scene&&this._scene.constructor;
@@ -23671,7 +23671,7 @@ new Map([
 [Scene_Battle,()=>true],
 ]),
 0,
-"/",
+new Set(), // 6
 ]).add('isFrameFastForwardTriggered',function f(forced){
 	const scc=this._scene&&this._scene.constructor;
 	let func;
