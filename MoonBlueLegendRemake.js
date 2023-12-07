@@ -6550,8 +6550,10 @@ p[k].weaponImg_1=function(dataobj){
 { const p=Game_Actor.prototype;
 k='performAttack';
 r=p[k]; (p[k]=function f(){
-	const weapons = (this.bareHandsWeapons && this.bareHandsWeapons()) || this.weapons();
-	const attackMotion = weapons[0] && (weapons[0].weaponImg || $dataSystem.attackMotions[weapons[0].wtypeId]) || $dataSystem.attackMotions[0];
+	const weapons = this.weapons();
+	const bareHandsWeapons = (this.bareHandsWeapons && this.bareHandsWeapons());
+	const weapon=(weapons&&weapons[0])||(bareHandsWeapons&&bareHandsWeapons[0]);
+	const attackMotion = weapon && (weapon.weaponImg || $dataSystem.attackMotions[weapon.wtypeId]) || $dataSystem.attackMotions[0];
 	if(attackMotion){
 		f.tbl[attackMotion.type] && this.forceMotion(f.tbl[attackMotion.type]);
 		this.startWeaponAnimation(attackMotion.weaponImageId);
