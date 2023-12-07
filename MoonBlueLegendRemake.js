@@ -2118,16 +2118,16 @@ if(typeof PartyWindowData==='function'){
 new cfc(PartyWindowData.prototype).add('refreshPar',function f(){
 	if(!this._par||!this._par.bitmap) return;
 	return f.ori.apply(this,arguments);
-}).add('refreshPMeter',function f(img,meter){
+}).add('refreshPMeter',function f(img,meter,keyCurr,keyMax){
 	if(!img||!meter||!this._actor) return;
 	const cw = img.width;
 	const ch = img.height;
-	const wid = cw * this._actor.mp / this._actor.mmp;
+	const wid = cw * this._actor[keyCurr] / this._actor[keyMax];
 	return meter.setFrame(0,0,wid,cw);
 }).add('refreshHPMeter',function f(){
-	return this.refreshPMeter(this._hpMeterImg,this._hpMeter);
+	return this.refreshPMeter(this._hpMeterImg,this._hpMeter,'hp','mhp');
 }).add('refreshMPMeter',function f(){
-	return this.refreshPMeter(this._mpMeterImg,this._mpMeter);
+	return this.refreshPMeter(this._mpMeterImg,this._mpMeter,'mp','mmp');
 }).add('refresh_states',function f(){
 	if(!this._states_data||!this._state_icon) return;
 	return f.ori.apply(this,arguments);
