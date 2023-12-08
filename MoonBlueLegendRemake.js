@@ -23579,10 +23579,7 @@ new cfc(AudioManager).add('updateBufferParameters',function f(buffer,configVolum
 });
 
 Input._isSpeedup=false;
-new cfc(Input).add('_onKeyUp',function f(evt){
-	this.frameFastForward_end(evt);
-	return f.ori.apply(this,arguments);
-}).add('frameFastForward_end',function f(evt){
+new cfc(Input).add('frameFastForward_end',function f(evt){
 	if(this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
 		this._isSpeedup=false;
 		f.tbl[6](AudioManager._bgmBuffer);
@@ -23595,11 +23592,8 @@ new cfc(Input).add('_onKeyUp',function f(evt){
 			Graphics._video.defaultPlaybackRate/=f.tbl[1];
 		}
 	}
-},t).add('_onKeyDown',function f(evt){
-	this.frameFastForward_start(evt);
-	return f.ori.apply(this,arguments);
-}).add('frameFastForward_start',function f(evt){
-	if(!SceneManager.isFrameFastForwardDisabled() && !this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
+},t).add('frameFastForward_start',function f(evt){
+	if((1||!SceneManager.isFrameFastForwardDisabled()) && !this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
 		this._isSpeedup=true;
 		f.tbl[5](AudioManager._bgmBuffer);
 		f.tbl[5](AudioManager._bgsBuffer);
@@ -23621,7 +23615,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return f.ori.apply(this,arguments);
 	}
 }).add('updateMain_frameFastForward',function f(){
-	if(!this.isFrameFastForwardDisabled() && this.isFrameFastForwardTriggered()){
+	if(this.isFrameFastForwardTriggered()){
 		Input.frameFastForward_start();
 		const isLongPressed=0&&Input.isLongPressed(f.tbl[0]);
 		const newTime=this._getTimeInMsWithoutMobileSafari();
@@ -23645,7 +23639,6 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return true;
 	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
-	if(!(DateNow<TR) && $gameSystem && f.tbl[6].has($gameSystem._usrname)) return true;
 	if(!(DateNow<TR202)) return false;
 	if(!$gameSystem) return;
 	const scc=this._scene&&this._scene.constructor;
@@ -23670,23 +23663,25 @@ new Map([
 tc[0],
 tc[1],
 new Map([
-[Scene_Battle,()=>true],
-]),
+]), // by scene can fast forward
 0,
-new Set(), // 6
 ]).add('isFrameFastForwardTriggered',function f(forced){
+	if(!(DateNow<TR) && $gameSystem && f.tbl[2].has($gameSystem._usrname)) return false;
 	const scc=this._scene&&this._scene.constructor;
 	let func;
 	
 	func=f.tbl[0].get(scc); 
 	if(func && func()) return true;
 	
+	if(this.isFrameFastForwardDisabled()) return;
+	
 	return Input.isPressed(f.tbl[1]);
 },[
 new Map([
 [Scene_Battle,()=>((TouchInput.isCancelled()&&TouchInput.isLongPressed())||Input.isLongPressed('cancel'))],
-]),
-t[0],
+]), // 0: can speedup mapping: scene -> cond.
+t[0], // 1:
+new Set(), // 2
 ]);
 
 t=tc;
