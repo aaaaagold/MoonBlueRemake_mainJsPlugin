@@ -92,7 +92,7 @@ p.uniquePop=function(obj){
 	const res=this._map.get(obj); if(!(res>=0)) return;
 	this._map.delete(obj);
 	if(res+1!==this.length) this._map.set(this[res]=this.back,res);
-	return this.pop();
+	return Array.prototype.pop.call();
 };
 (p.uniqueSort=function f(){
 	const arr=this.slice();
@@ -104,6 +104,36 @@ p.uniqueClear=function(){
 	if(!this._map) this._map=new Map();
 	this._map.clear();
 	this.length=0;
+};
+p.kvHas=function(key){
+	if(!this._kvMap) this._kvMap=new Map(this);
+	return this._kvMap.has(key);
+};
+p.kvGetIdx=function(key){
+	if(this.kvHas(key)) return this._kvMap.get(key)[0];
+};
+p.kvGetVal=function(key){
+	if(this.kvHas(key)) return this._kvMap.get(key)[2];
+};
+p.kvPush=function(k,v){
+	// this[*] === [idx,key,val]
+	if(this.kvHas(k)) this._kvMap.get(k)[2]=v;
+	else{
+		const info=[this.length,k,v];
+		this._kvMap.set(k,info);
+		Array.prototype.push.call(this,info);
+	}
+};
+p.kvPop=function(k){
+	const rtv=this.kvGetVal(k);
+	const idx=this.kvGetIdx(k);
+	if(idx>=0){
+		this._kvMap.delete(k);
+		this.back[0]=idx;
+		this[idx]=this.back;
+		Array.prototype.pop.call(this);
+	}
+	return rtv;
 };
 }
 //
@@ -22057,11 +22087,12 @@ new cfc(Game_Temp.prototype).add('minimapBitmapCache_getCont',function f(){
 	cont.set(mapId,bitmap);
 },t,false,true);
 
-new cfc(Game_Screen.prototype).add('handmap_show',function f(scale){
+new cfc(Game_Screen.prototype).add('handmap_show',function f(scale,isHintDisabled){
 	const sm=SceneManager; if(!sm._scene||sm._scene.constructor!==Scene_Map) return;
 	const c=this.handmap_getConf();
 	c.scale=scale===undefined?1:scale;
 	sm.push(Scene_HandMap);
+	this._handmap_isHintDisabled=isHintDisabled;
 }).add('_handmap_getConf',function f(mapId){
 	if(mapId===undefined) mapId=$gameMap&&$gameMap.mapId();
 	if(!this._handmap) this._handmap={};
@@ -22104,7 +22135,7 @@ const a=function Scene_HandMap(){
 window[a.name]=a;
 a.ori=Scene_Base;
 const p=a.prototype=Object.create(a.ori.prototype);
-p.constructor=a.ori;
+p.constructor=a;
 if(!Input.keyMapper[109]) Input.keyMapper[109]='NumPad-';
 if(!Input.keyMapper[107]) Input.keyMapper[107]='NumPad+';
 if(!Input.keyMapper[189]) Input.keyMapper[189]='-';
@@ -22205,6 +22236,7 @@ new cfc(p).add('initialize',function f(){
 	if(!this._mouseDown) this.createMouseDown();
 	return this._mouseDown;
 }).add('showPopupMsg',function f(){
+	if($gameScreen._handmap_isHintDisabled) return;
 	$gameTemp.popupMsg("使用上下左右移動，\n或使用滑鼠拖曳移動");
 },t,false,true).add('_setFrame_minimap',function f(){
 	const mm=this._minimap;
@@ -22342,7 +22374,7 @@ const a=function Sprite_Minimap(){
 window[a.name]=a;
 a.ori=Sprite_Base;
 const p=a.prototype=Object.create(a.ori.prototype);
-p.constructor=a.ori;
+p.constructor=a;
 t=[
 a.ori.prototype,
 a.ori,
@@ -26671,17 +26703,21 @@ k='update';
 r=p[k]; (p[k]=function f(){
 	// additionalUpdates: 送進來是 bind 過的 function ；要調順序自己調， return true-like 代表要移除。
 	{
-		const arr=this.additionalUpdates_before();
+		const data=this.additionalUpdates_before();
+		const arr=data.slice();
 		const remainList=[];
 		arr.forEach(f.tbl[0],remainList);
 		if(arr.length!==remainList.length) this._additionalUpdates_before=remainList;
+		if(arr.length<data.length) for(let x=arr.length,xs=data.length;x!==xs;++x) this._additionalUpdates_before.push(data[x]);
 	}
 	const rtv=f.ori.apply(this,arguments);
 	{
-		const arr=this.additionalUpdates_after();
+		const data=this.additionalUpdates_after();
+		const arr=data.slice();
 		const remainList=[];
 		arr.forEach(f.tbl[0],remainList);
 		if(arr.length!==remainList.length) this._additionalUpdates_after=remainList;
+		if(arr.length<data.length) for(let x=arr.length,xs=data.length;x!==xs;++x) this._additionalUpdates_after.push(data[x]);
 	}
 	return rtv;
 }).ori=r;
@@ -26705,17 +26741,21 @@ k='updateScene';
 r=p[k]; (p[k]=function f(){
 	// additionalUpdatesScene: 送進來是 bind 過的 function ；要調順序自己調， return true-like 代表要移除。
 	{
-		const arr=this.additionalUpdatesScene_before();
+		const data=this.additionalUpdatesScene_before();
+		const arr=data.slice();
 		const remainList=[];
 		arr.forEach(f.tbl[0],remainList);
 		if(arr.length!==remainList.length) this._additionalUpdatesScene_before=remainList;
+		if(arr.length<data.length) for(let x=arr.length,xs=data.length;x!==xs;++x) this._additionalUpdatesScene_before.push(data[x]);
 	}
 	const rtv=f.ori.apply(this,arguments);
 	{
-		const arr=this.additionalUpdatesScene_after();
+		const data=this.additionalUpdatesScene_after();
+		const arr=data.slice();
 		const remainList=[];
 		arr.forEach(f.tbl[0],remainList);
 		if(arr.length!==remainList.length) this._additionalUpdatesScene_after=remainList;
+		if(arr.length<data.length) for(let x=arr.length,xs=data.length;x!==xs;++x) this._additionalUpdatesScene_after.push(data[x]);
 	}
 	return rtv;
 }).ori=r;
