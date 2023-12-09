@@ -92,7 +92,7 @@ p.uniquePop=function(obj){
 	const res=this._map.get(obj); if(!(res>=0)) return;
 	this._map.delete(obj);
 	if(res+1!==this.length) this._map.set(this[res]=this.back,res);
-	return Array.prototype.pop.call();
+	return Array.prototype.pop.call(this);
 };
 (p.uniqueSort=function f(){
 	const arr=this.slice();
