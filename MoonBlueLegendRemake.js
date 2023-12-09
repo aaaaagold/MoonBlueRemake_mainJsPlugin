@@ -23641,30 +23641,34 @@ new cfc(AudioManager).add('updateBufferParameters',function f(buffer,configVolum
 });
 
 Input._isSpeedup=false;
-new cfc(Input).add('frameFastForward_end',function f(evt){
-	if(this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
+new cfc(Input).add('frameFastForward_end',function f(){
+	if(this._isSpeedup){
 		this._isSpeedup=false;
 		f.tbl[6](AudioManager._bgmBuffer);
 		f.tbl[6](AudioManager._bgsBuffer);
 		f.tbl[6](AudioManager._meBuffer);
 		AudioManager._seBuffers && AudioManager._seBuffers.forEach && AudioManager._seBuffers.forEach(f.tbl[6]);
 		AudioManager._globalPitch/=f.tbl[1];
-		if(Graphics._video){
-			Graphics._video.playbackRate/=f.tbl[1];
-			Graphics._video.defaultPlaybackRate/=f.tbl[1];
+		const vids=document.querySelectorAll('video');
+		for(let x=0,xs=vids.length;x!==xs;++x){
+			const vid=vids[x];
+			vid.playbackRate/=f.tbl[1];
+			vid.defaultPlaybackRate/=f.tbl[1];
 		}
 	}
-},t).add('frameFastForward_start',function f(evt){
-	if((1||!SceneManager.isFrameFastForwardDisabled()) && !this._isSpeedup && (!evt||evt.keyCode===f.tbl[4])){
+},t).add('frameFastForward_start',function f(){
+	if(!this._isSpeedup){
 		this._isSpeedup=true;
 		f.tbl[5](AudioManager._bgmBuffer);
 		f.tbl[5](AudioManager._bgsBuffer);
 		f.tbl[5](AudioManager._meBuffer);
 		AudioManager._seBuffers && AudioManager._seBuffers.forEach && AudioManager._seBuffers.forEach(f.tbl[5]);
 		AudioManager._globalPitch*=f.tbl[1];
-		if(Graphics._video){
-			Graphics._video.playbackRate*=f.tbl[1];
-			Graphics._video.defaultPlaybackRate*=f.tbl[1];
+		const vids=document.querySelectorAll('video');
+		for(let x=0,xs=vids.length;x!==xs;++x){
+			const vid=vids[x];
+			vid.playbackRate*=f.tbl[1];
+			vid.defaultPlaybackRate*=f.tbl[1];
 		}
 	}
 },t);
@@ -23701,7 +23705,7 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return true;
 	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
-	if(!(DateNow<TR202)) return false;
+	if(!(DateNow<TR)) return false;
 	if(!$gameSystem) return;
 	const scc=this._scene&&this._scene.constructor;
 	let func;
