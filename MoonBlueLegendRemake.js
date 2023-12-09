@@ -23559,6 +23559,10 @@ new cfc(WebAudio.prototype).add('fadeIn',function f(dur){
 		v1:0,
 	}; }
 	return rtv;
+}).add('_createNodes',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._gainNode.gain.value=this._volume;
+	return rtv;
 });
 
 t=[
@@ -23604,7 +23608,7 @@ undefined, // 7: 1/f.tbl[1]
 	const gn=ab._gainNode;
 	if(gn&&gn.gain&&volume!==undefined){
 		gn.gain.value=volume;
-		if(ab._fadeInfo){ const t=WebAudio._context.currentTime; const dt=ab._fadeInfo.t1-t; if(0<dt){
+		if(ab._fadeInfo){ const t=WebAudio._context.currentTime; const dt=ab._fadeInfo.t1-t; if(dt>=0){
 			gn.gain.linearRampToValueAtTime(ab._fadeInfo.v1, ab._fadeInfo.t1=t+dt*invR);
 		}else ab._fadeInfo=undefined; }
 	}
