@@ -187,6 +187,13 @@ const getCStyleStringStartAndEndFromString=window.getCStyleStringStartAndEndFrom
 	if(s[strt]!=='"'||s[ende-1]!=='"'||strt>=ende) ende=strt=-1;
 	return {start:strt,end:ende};
 };
+const getTopFrameWindow=window.getTopFrameWindow=()=>{
+	let w=window; while(w.parent && w.parent!==w) w=w.parent;
+	return w;
+};
+const chTitle=window.chTitle=title=>{
+	return getTopFrameWindow().document.title=title;
+};
 const copyToClipboard=window.copyToClipboard=s=>{ const d=document;
 	const txtin=d.ce("textarea").sa("class","outofscreen");
 	d.body.ac(txtin);
@@ -269,6 +276,25 @@ p.isScene_map    =function(){ const sc=this._scene; return sc && sc.constructor=
 //
 SceneManager.getScConstructor=function(){ return this._scene && this._scene.constructor; };
 { const p=Window_BattleLog.prototype,k='displayAffectedStatus'; const r=p[k]; (p[k]=function(){}).ori=r; } // 月藍沒有用這個東西
+new cfc(Graphics).add('_requestFullScreen',function(){
+	const element = getTopFrameWindow().document.body;
+	if(element.requestFullScreen) element.requestFullScreen();
+	else if(element.mozRequestFullScreen) element.mozRequestFullScreen();
+	else if(element.webkitRequestFullScreen) element.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+	else if(element.msRequestFullscreen) element.msRequestFullscreen();
+},undefined,true,true).add('_isFullScreen',function(){
+	const d=getTopFrameWindow().document;
+	return ( (d.fullScreenElement && d.fullScreenElement !== null) || (!d.mozFullScreen && !d.webkitFullscreenElement && !d.msFullscreenElement) );
+},undefined,true,true).add('_cancelFullScreen',function(){
+	const d=getTopFrameWindow().document;
+	if(d.cancelFullScreen) d.cancelFullScreen();
+	else if(d.mozCancelFullScreen) d.mozCancelFullScreen();
+	else if(d.webkitCancelFullScreen) d.webkitCancelFullScreen();
+	else if(d.msExitFullscreen) d.msExitFullscreen();
+},undefined,true,true);
+Scene_Boot.prototype.updateDocumentTitle=()=>{
+	getTopFrameWindow().document.title=$dataSystem.gameTitle;
+};
 Graphics.getScale=function(){
 	const c=this._canvas;
 	return Math.min(c.scrollWidth/c.width,c.scrollHeight/c.height);
