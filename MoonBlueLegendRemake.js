@@ -22104,12 +22104,12 @@ new cfc(Game_Temp.prototype).add('minimapBitmapCache_getCont',function f(){
 	cont.set(mapId,bitmap);
 },t,false,true);
 
-new cfc(Game_Screen.prototype).add('handmap_show',function f(scale,isHintDisabled){
+new cfc(Game_Screen.prototype).add('handmap_show',function f(scale,isOperationDisabled){
 	const sm=SceneManager; if(!sm._scene||sm._scene.constructor!==Scene_Map) return;
 	const c=this.handmap_getConf();
 	c.scale=scale===undefined?1:scale;
+	this._handmap_isOperationDisabled=isOperationDisabled;
 	sm.push(Scene_HandMap);
-	this._handmap_isHintDisabled=isHintDisabled;
 }).add('_handmap_getConf',function f(mapId){
 	if(mapId===undefined) mapId=$gameMap&&$gameMap.mapId();
 	if(!this._handmap) this._handmap={};
@@ -22253,7 +22253,7 @@ new cfc(p).add('initialize',function f(){
 	if(!this._mouseDown) this.createMouseDown();
 	return this._mouseDown;
 }).add('showPopupMsg',function f(){
-	if($gameScreen._handmap_isHintDisabled) return;
+	if($gameScreen._handmap_isOperationDisabled) return;
 	$gameTemp.popupMsg("使用上下左右移動，\n或使用滑鼠拖曳移動");
 },t,false,true).add('_setFrame_minimap',function f(){
 	const mm=this._minimap;
@@ -22274,6 +22274,7 @@ new cfc(p).add('initialize',function f(){
 	this.update_mouseDown();
 	return rtv;
 },t,false,true).add('update_shouldEnd',function f(){
+	if($gameScreen._handmap_isOperationDisabled) return;
 	if(Input.isTriggered(f.tbl[0])||TouchInput.isCancelled()){
 		this.popScene();
 		return true;
@@ -22304,6 +22305,7 @@ new cfc(p).add('initialize',function f(){
 	let tmp;
 	if(!this._moveSpeed) this._moveSpeed=dspeed;
 	let changed=false,lr=0,ud=0;
+if(!$gameScreen._handmap_isOperationDisabled){
 	if(Input.isPressed(f.tbl[0][0])) ud+=this._moveSpeed;
 	if(Input.isPressed(f.tbl[0][1])) lr-=this._moveSpeed;
 	if(Input.isPressed(f.tbl[0][2])) lr+=this._moveSpeed;
@@ -22321,6 +22323,7 @@ new cfc(p).add('initialize',function f(){
 			mdsp.visible=true;
 		}
 	}
+}
 	const nshift=!Input.isPressed(f.tbl[3]);
 	if(lr||ud){
 		const ogx=c.gx,ogy=c.gy;
