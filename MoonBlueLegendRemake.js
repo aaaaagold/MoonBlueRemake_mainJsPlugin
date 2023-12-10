@@ -26109,6 +26109,40 @@ new cfc(Game_BattlerBase.prototype).add('getData',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 更改 actor 的 param 子項定義 + 個別設定 paramMax
+ * @author agold404
+ * @help base -> class + _paramPlus ; plus -> equip ;; <paramMax:json_key_is_paramId>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors.forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{
+	const meta=dataobj&&dataobj.meta; if(!meta) return;
+	if(meta.paramMax) dataobj.paramMax=JSON.parse(meta.paramMax);
+},
+]);
+
+new cfc(Game_Actor.prototype).add('paramBase',function f(){
+	return f.ori.apply(this,arguments) + Game_Battler.prototype.paramPlus.apply(this,arguments);
+}).add('paramPlus',function f(){
+	return f.ori.apply(this,arguments) - Game_Battler.prototype.paramPlus.apply(this,arguments);
+}).add('paramMax',function f(paramId){
+	const data=this.getData();
+	if(data && data.paramMax && paramId in data.paramMax) return data.paramMax[paramId];
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
