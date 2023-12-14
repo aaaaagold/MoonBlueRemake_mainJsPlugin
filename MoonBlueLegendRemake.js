@@ -674,6 +674,13 @@ t.tbl[0].forEach(info=>{
 });
 t=undefined;
 //
+new cfc(Window_Message.prototype).add('updateClose',function f(){
+	const isClosed=this.isClosed();
+	f.ori.apply(this,arguments);
+	if(!isClosed && this.isClosed() && this._positionType!==2 && this._choiceWindow && this._choiceWindow.updatePlacement){ this.updatePlacement(); this._choiceWindow.updatePlacement(); }
+	return this._closing;
+});
+//
 new cfc(Scene_Base.prototype).add('_prevScene_store',function f(){
 	// called when 'scene.initialize'
 	this._lastBgBm=SceneManager.backgroundBitmap();
@@ -7122,7 +7129,7 @@ r=p[k]; (p[k]=function f(){
 k='updateClose';
 r=p[k]; (p[k]=function f(){
 	if(this._closing && this._nameField) this._nameField.alpha=0;
-	f.ori.call(this);
+	f.ori.apply(this,arguments);
 	return this._closing;
 }).ori=r;
 k='terminateMessage';
@@ -19919,6 +19926,7 @@ if(d.head){
 new cfc(Graphics).add('printLoadingError',function f(url,type){
 	const rtv=this._errorPrinter;
 	if(this._errorPrinter && !this._errorShowed){
+		this._errorShowed=true;
 		// create error board
 		this._errorPrinter.rf(0).ac(this._makeErrorHtml("Loading Error", "Failed to load: " + url));
 		
@@ -19928,6 +19936,7 @@ new cfc(Graphics).add('printLoadingError',function f(url,type){
 			ResourceHandler.retry();
 			evt.stopPropagation();
 			rtv.style.zIndex=-1;
+			this._errorShowed=false;
 			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("retry loading: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		this._errorPrinter.ac(btn);
@@ -19963,6 +19972,7 @@ alts:{
 			ResourceHandler.retry(1);
 			evt.stopPropagation();
 			self._errorPrinter.style.zIndex=-1;
+			self._errorShowed=false;
 			Bitmap.giveUps_add(url,emptyData.img);
 			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("give up: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
@@ -19977,6 +19987,7 @@ alts:{
 			ResourceHandler.retry(1);
 			evt.stopPropagation();
 			self._errorPrinter.style.zIndex=-1;
+			self._errorShowed=false;
 			if(typeof $gameTemp!=='undefined' && $gameTemp && $gameTemp.popupMsg) $gameTemp.popupMsg("give up: \n"+url+"\nUTC time:\n"+new Date().toISOString(),{loc:"LU",});
 		};
 		self._errorPrinter.ac(d.ce('br')).ac(btn);
@@ -20030,7 +20041,7 @@ css_inline:{
 },undefined,true).add('_updateErrorPrinter',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	const t=this._errorPrinter;
-	if(!this._errorShowed) t.style.zIndex=-1;
+	t.style.zIndex=this._errorShowed?40404:-1;
 	t.height=this._height*f.tbl[0];
 	this._centerElement(t);
 	return rtv;
