@@ -821,10 +821,12 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 	const w=getTopFrameWindow(); if(w===window) return;
 	w._w=window;
 	if(!f.tbl){
-		const arr=f.tbl=getPrefixPropertyNames(window,'$data');
-		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager');
+		const arr=f.tbl=getPrefixPropertyNames(window,'$data'); arr.uniquePop('$dataMap');
+		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager',);
+		arr.push('$dataMap','$gameTemp','$gameSystem','$gameScreen','$gameTimer','$gameMessage','$gameSwitches','$gameVariables','$gameSelfSwitches','$gameActors','$gameParty','$gameTroop','$gameMap','$gamePlayer',);
+		arr.forEach(key=>key&&Object.defineProperty(w,key,{ get:function(){ return window[key]; }, }));
 	}
-	for(let x=0,arr=f.tbl,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
+	// for(let x=0,arr=f.tbl,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 	for(let x=0,arr=arguments,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 };
 
