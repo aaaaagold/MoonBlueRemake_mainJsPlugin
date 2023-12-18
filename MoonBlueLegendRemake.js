@@ -827,19 +827,20 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 	// dynamicData
 	if(!w.exposeToTopFrame){
 		w.exposeToTopFrame=f;
-		const arr=[];
-		arr.push('$dataMap','$gameTemp','$gameSystem','$gameScreen','$gameTimer','$gameMessage','$gameSwitches','$gameVariables','$gameSelfSwitches','$gameActors','$gameParty','$gameTroop','$gameMap','$gamePlayer',);
+		const arr=f.tbl=f.tbl||getPrefixPropertyNames(window,'$data'); arr.uniquePop('$dataMap');
+		arr.uniquePush('$dataMap','$gameTemp','$gameSystem','$gameScreen','$gameTimer','$gameMessage','$gameSwitches','$gameVariables','$gameSelfSwitches','$gameActors','$gameParty','$gameTroop','$gameMap','$gamePlayer',);
 		arr.forEach(key=>key&&Object.defineProperty(w,key,{ get:function(){ return window[key]; }, }));
 	}
-	if(!f.tbl){
-		const arr=f.tbl=getPrefixPropertyNames(window,'$data'); arr.uniquePop('$dataMap');
+	{
+		const arr=[];
 		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager',);
 		arr.push('getCStyleStringStartAndEndFromString',);
 		arr.push('getPrefixPropertyNames',);
-		arr.push('getTopFrameWindow',);
-		arr.push('chTitle','copyToClipboard','pasteCanvas','listMapParents',);
+		arr.push('getTopFrameWindow','chTitle',);
+		arr.push('jurl','copyToClipboard','pasteCanvas',)
+		arr.push('listMapParents',);
+		for(let x=0,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 	}
-	for(let x=0,arr=f.tbl,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 	for(let x=0,arr=arguments,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 };
 
