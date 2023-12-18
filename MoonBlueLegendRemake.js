@@ -273,7 +273,11 @@ new cfc(p).add('command111',function f(){
 ok:()=>TouchInput.isPressed(),
 cancel:()=>TouchInput.isCancelled(),
 },
-]);
+]).add('setupChild',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	if(this._childInterpreter) this._childInterpreter._parentInterpreter=this._childInterpreter;
+	return rtv;
+});
 }
 cf(Game_System.prototype,'initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -820,13 +824,22 @@ function(r,btlr){
 const exposeToTopFrame=window.exposeToTopFrame=function f(){
 	const w=getTopFrameWindow(); if(w===window) return;
 	w._w=window;
-	if(!f.tbl){
-		const arr=f.tbl=getPrefixPropertyNames(window,'$data'); arr.uniquePop('$dataMap');
-		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager',);
+	// dynamicData
+	if(!w.exposeToTopFrame){
+		w.exposeToTopFrame=f;
+		const arr=[];
 		arr.push('$dataMap','$gameTemp','$gameSystem','$gameScreen','$gameTimer','$gameMessage','$gameSwitches','$gameVariables','$gameSelfSwitches','$gameActors','$gameParty','$gameTroop','$gameMap','$gamePlayer',);
 		arr.forEach(key=>key&&Object.defineProperty(w,key,{ get:function(){ return window[key]; }, }));
 	}
-	// for(let x=0,arr=f.tbl,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
+	if(!f.tbl){
+		const arr=f.tbl=getPrefixPropertyNames(window,'$data'); arr.uniquePop('$dataMap');
+		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager',);
+		arr.push('getCStyleStringStartAndEndFromString',);
+		arr.push('getPrefixPropertyNames',);
+		arr.push('getTopFrameWindow',);
+		arr.push('chTitle','copyToClipboard','pasteCanvas','listMapParents',);
+	}
+	for(let x=0,arr=f.tbl,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 	for(let x=0,arr=arguments,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 };
 
