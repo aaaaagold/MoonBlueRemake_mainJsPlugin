@@ -265,7 +265,10 @@ for(let x=0,arr=[0,404,];x!==arr.length;++x){
 new cfc(p).add('command111',function f(){
 	if(this._params&&this._params[0]===11){
 		const func=f.tbl[0][this._params[1]];
-		if(func && func()) return true;
+		if(func && func()){
+			this._branch[this._indent]=true;
+			return true;
+		}
 	}
 	return f.ori.apply(this,arguments);
 },[
@@ -825,19 +828,20 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 	const w=getTopFrameWindow(); if(w===window) return;
 	w._w=window;
 	// dynamicData
-	if(!w.exposeToTopFrame){
+	{
 		w.exposeToTopFrame=f;
 		const arr=f.tbl=f.tbl||getPrefixPropertyNames(window,'$data'); arr.uniquePop('$dataMap');
 		arr.uniquePush('$dataMap','$gameTemp','$gameSystem','$gameScreen','$gameTimer','$gameMessage','$gameSwitches','$gameVariables','$gameSelfSwitches','$gameActors','$gameParty','$gameTroop','$gameMap','$gamePlayer',);
-		arr.forEach(key=>key&&Object.defineProperty(w,key,{ get:function(){ return window[key]; }, }));
+		arr.forEach(key=>key&&Object.defineProperty(w,key,{ get:function(){ return window[key]; }, configurable: true }));
 	}
 	{
 		const arr=[];
 		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager',);
+		arr.push('Input','TouchInput',);
 		arr.push('getCStyleStringStartAndEndFromString',);
 		arr.push('getPrefixPropertyNames',);
 		arr.push('getTopFrameWindow','chTitle',);
-		arr.push('jurl','copyToClipboard','pasteCanvas',)
+		arr.push('jurl','copyToClipboard','pasteCanvas',);
 		arr.push('listMapParents',);
 		for(let x=0,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 	}
