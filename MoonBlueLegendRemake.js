@@ -502,7 +502,8 @@ cf(cf(cf(cf(Input,'isTexting_set',function f(){
 t=[
 none,
 ];
-new cfc(TouchInput).add('_onTouchStart',function f(){
+new cfc(TouchInput).add('_onTouchStart',function f(event){
+	this._touched=true;
 	let preventDefaulted=false;
 	for(let i=0;i<event.changedTouches.length;++i){
 		const touch=event.changedTouches[i];
@@ -525,7 +526,7 @@ new cfc(TouchInput).add('_onTouchStart',function f(){
 	if (window.cordova || window.navigator.standalone) {
 		if(!preventDefaulted){ preventDefaulted=true; event.preventDefault(); }
 	}
-}).add('_onWheel',function f(evt){
+},undefined,true,true).add('_onWheel',function f(evt){
 	if(this.bypassPreventDefault_wheel_get(evt)) evt.preventDefault=f.tbl[0];
 	return f.ori.apply(this,arguments);
 },t).add('bypassPreventDefault_wheel_get',function f(){
@@ -26170,6 +26171,119 @@ new cfc(Game_Actor.prototype).add('paramBase',function f(){
 	const data=this.getData();
 	if(data && data.paramMax && paramId in data.paramMax) return data.paramMax[paramId];
 	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 畫面方向鍵
+ * @author agold404
+ * @help TouchInput.screenTouchInput_showIfTouched(); TouchInput.screenTouchInput_hide();
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(TouchInput).add('screenTouchInput_get',function f(){
+	let rtv=this._screenTouchInput;
+if(!rtv){
+rtv=this._screenTouchInput=document.ce('div');
+const d=document,lg="linear-gradient(%%deg,rgba(0,0,0,0) 50%,rgba(255,255,255,0.5))",evtCommon=(e,k,v,touched)=>{
+	e.preventDefault();
+	Input._currentState[k]=v;
+	e.target.sa('class',touched?"screentouchinput_ontouch":"");
+},addEvt=(div,start,end)=>{
+	div.ontouchstart=start;
+	div.ontouchend=end;
+	div.ontouchleave=end;
+	div.ontouchcancel=end;
+};
+rtv.width=Graphics.boxWidth;
+rtv.height=Graphics.boxHeight;
+rtv.style.zIndex=3;
+rtv.style.userSelect="none";
+rtv.ac(d.ce('style').atxt(".screentouchinput_ontouch{background-color:rgba(255,255,255,0.25);}"));
+
+const left=d.ce('div');
+{ let div=left,css=div.style;
+css.position="absolute";
+css.left="0px";
+css.top="0px";
+css.right="50%";
+css.bottom="0px";
+css.backgroundImage=lg.replace("%%","270");
+css.clipPath="polygon(1% 1%, 50% 25%, 50% 75%, 1% 99%)";
+css.userSelect="none";
+const start=e=>evtCommon(e,'left',1,1);
+const end=e=>evtCommon(e,'left',0,0);
+addEvt(div,start,end);
+rtv.ac(div);
+}
+
+const right=d.ce('div');
+{ let div=right,css=div.style;
+css.position="absolute";
+css.left="50%";
+css.top="0px";
+css.right="0px";
+css.bottom="0px";
+css.backgroundImage=lg.replace("%%","90");
+css.clipPath="polygon(99% 99%, 50% 75%, 50% 25%, 99% 1%)";
+css.userSelect="none";
+const start=e=>evtCommon(e,'right',1,1);
+const end=e=>evtCommon(e,'right',0,0);
+addEvt(div,start,end);
+rtv.ac(div);
+}
+
+const top=d.ce('div');
+{ let div=top,css=div.style;
+css.position="absolute";
+css.left="0px";
+css.top="0px";
+css.right="0px";
+css.bottom="50%";
+css.backgroundImage=lg.replace("%%","0");
+css.clipPath="polygon(99% 1%, 75% 50%, 25% 50%, 1% 1%)";
+css.userSelect="none";
+const start=e=>evtCommon(e,'up',1,1);
+const end=e=>evtCommon(e,'up',0,0);
+addEvt(div,start,end);
+rtv.ac(div);
+}
+
+const btm=d.ce('div');
+{ let div=btm,css=div.style;
+css.position="absolute";
+css.left="0px";
+css.top="50%";
+css.right="0px";
+css.bottom="0px";
+css.backgroundImage=lg.replace("%%","180");
+css.clipPath="polygon(1% 99%, 25% 50%, 75% 50%, 99% 99%)";
+css.userSelect="none";
+const start=e=>evtCommon(e,'down',1,1);
+const end=e=>evtCommon(e,'down',0,0);
+addEvt(div,start,end);
+rtv.ac(div);
+}
+} // !rtv
+	return rtv;
+}).add('screenTouchInput_showIfTouched',function f(){
+	if(!this._touched) return;
+	const div=this.screenTouchInput_get();
+	if(!div.parentNode){
+		document.body.ac(div);
+		Graphics.addAsGameCanvas(div);
+		//Graphics._updateAsGameCanvas();
+	}
+	div.style.display="block";
+}).add('screenTouchInput_hide',function f(){
+	if(!this._screenTouchInput) return;
+	this._screenTouchInput.style.display="none";
 });
 
 })();
