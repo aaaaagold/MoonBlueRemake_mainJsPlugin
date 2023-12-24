@@ -61,10 +61,18 @@ cfc.prototype.add=function(key,f,t,d,u){
 Object.defineProperties(p,{
 back:{
 	get:function(){ return this[this.length-1]; },
-configurable: true},
+	configurable: true},
 });
 p.getnth=p.getObjAt=function(i){ return this[i]; };
 p.rnd1=function(){ return this[~~(Math.random()*this.length)]; };
+p.concat_inplace=function(...items){
+	for(let i=0,sz=arguments.length;i!==sz;++i){
+		const item=arguments[i];
+		if(item instanceof Array) for(let x=0,xs=item.length;x!==xs;++x) this.push(item.getObjAt(x));
+		else this.push(item);
+	}
+	return this;
+};
 p.pop_back=p.pop;
 p.uniqueHas=function(obj){
 	if(!this._map){
@@ -92,19 +100,31 @@ p.uniquePop=function(obj){
 	const res=this._map.get(obj); if(!(res>=0)) return;
 	this._map.delete(obj);
 	if(res+1!==this.length) this._map.set(this[res]=this.back,res);
-	return Array.prototype.pop.call(this);
+	return Array.prototype.pop.call(this)?obj:undefined;
 };
-(p.uniqueSort=function f(){
-	const arr=this.slice();
-	this.uniqueClear();
-	arr.sort.apply(this,arguments).forEach(f.tbl[0],this);
-	return this;
-}).tbl=function(x){ this.uniquePush(x); };
 p.uniqueClear=function(){
 	if(!this._map) this._map=new Map();
 	this._map.clear();
 	this.length=0;
 };
+new cfc(p).add('uniqueSort',function f(cmpFn=undefined){
+	const arr=this.slice();
+	this.uniqueClear();
+	arr.sort.apply(arr,arguments).forEach(f.tbl[0],this);
+	return this;
+},[
+function(x){ this.uniquePush(x); },
+],true,true).add('sort',function f(cmpFn=undefined){
+	return this._map?this.uniqueSort.apply(this,arguments):f.ori.apply(this,arguments);
+}).add('concat_inplace',function f(...items){
+	if(!this._map) return f.ori.apply(this,arguments);
+	for(let i=0,sz=arguments.length;i!==sz;++i){
+		const item=arguments[i];
+		if(item instanceof Array) this.uniquePushContainer(item);
+		else this.uniquePush(item);
+	}
+	return this;
+});
 p.kvHas=function(key){
 	if(!this._kvMap) this._kvMap=new Map(this);
 	return this._kvMap.has(key);
@@ -136,6 +156,7 @@ p.kvPop=function(k){
 	return rtv;
 };
 }
+if((typeof Yanfly!=='undefined')&&Yanfly.Util) Yanfly.Util.getRandomElement=arr=>arr.rnd1();
 //
 { const p=Set.prototype;
 p.intersect=function(set2){
@@ -1035,6 +1056,25 @@ function(stat){
 'preload_files_json',
 ['a','i',],
 ]);
+
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 救命, YEP 在幹嘛?
+ * @author agold404
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Sprite_Enemy.prototype).add('updateScale',function(){
+	this.scale.x=this._enemy.spriteScaleX();
+	this.scale.y=this._enemy.spriteScaleY();
+},undefined,true,true);
+
+})();
 
 
 
@@ -6213,8 +6253,9 @@ if(typeof Battle_Hud!=='undefined')(()=>{ let k,r,t;
 { const p=Battle_Hud.prototype;
 k='update';
 r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	this.x=-((this._active)<<4);
+	const rtv=f.ori.apply(this,arguments);
+	const dx=-(this._active<<4); if(this.x!==dx) this.x=dx;
+	return rtv;
 }).ori=r;
 }
 
@@ -26192,7 +26233,7 @@ new cfc(TouchInput).add('screenTouchInput_get',function f(){
 if(!rtv){
 rtv=this._screenTouchInput=document.ce('div');
 const d=document,lg="linear-gradient(%%deg,rgba(0,0,0,0) 50%,rgba(255,255,255,0.5))",evtCommon=(e,k,v,touched)=>{
-	e.preventDefault();
+	if(e.type!=='touchcancel') e.preventDefault();
 	Input._currentState[k]=v;
 	e.target.sa('class',touched?"screentouchinput_ontouch":"");
 },addEvt=(div,start,end)=>{
@@ -26779,7 +26820,24 @@ r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	const push=function(){ return Array.prototype.uniquePush.apply(this,arguments); };
 	const pop=function(){ return this.length && Array.prototype.uniquePop.call(this,this.back); };
-	[$dataActors,$dataArmors,$dataClasses,$dataEnemies,$dataItems,$dataMapInfos,$dataSkills,$dataStates,$dataTilesets,$dataTroops,$dataWeapons].forEach(arr=>{
+	const objs=[$dataActors,$dataArmors,$dataClasses,$dataEnemies,$dataItems,$dataMapInfos,$dataSkills,$dataStates,$dataTilesets,$dataTroops,$dataWeapons];
+	const sumTraitCodes=new Set([
+		Game_BattlerBase.TRAIT_XPARAM,
+		Game_BattlerBase.TRAIT_ATTACK_STATE,
+	]);
+	const piTraitCodes=new Set([
+		Game_BattlerBase.TRAIT_PARAM,
+		Game_BattlerBase.TRAIT_SPARAM,
+		Game_BattlerBase.TRAIT_ELEMENT_RATE,
+		Game_BattlerBase.TRAIT_DEBUFF_RATE,
+		Game_BattlerBase.TRAIT_STATE_RATE,
+		
+	]);
+	objs.forEach(arr=>arr.forEach(dataobj=>{ 
+		const ts=dataobj&&dataobj.traits; if(!ts) return;
+		dataobj.traits=ts.filter(t=>!( (!t.value&&sumTraitCodes.has(t.code)) || (t.value===1&&piTraitCodes.has(t.code)) ));
+	}));
+	objs.forEach(arr=>{
 		arr.tbl=new Map( arr.map((x,i)=>[x,i]).filter(x=>x[0]) );
 		arr.push=push;
 		arr.pop=pop;

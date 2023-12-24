@@ -37,8 +37,7 @@ r=p[k]; (p[k]=function(){
 /*:
  * @plugindesc 修改重複上狀態的回合數為取大；修正buff/debuff轉換時的回合數殘留問題
  * @author agold404
- * @help 詳細說明
- * 第二行
+ * @help .
  * 
  * This plugin can be renamed as you want.
  */
@@ -394,5 +393,23 @@ p.setupChoices_callBack=function(n){
 	this._branch[this._indent]=n; // mappingTbl
 };
 }
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 都 array.map 過ㄌ, 是在 concat 尛
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+Game_Enemy.prototype.traitObjects=function(){
+	return Game_Battler.prototype.traitObjects.call(this).concat_inplace(this.enemy());
+};
 
 })();
