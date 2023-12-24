@@ -26335,10 +26335,17 @@ rtv.ac(div);
 		Graphics.addAsGameCanvas(div);
 		//Graphics._updateAsGameCanvas();
 	}
+	if(this._screenTouchInput_isShown===true) return;
+	this._screenTouchInput_isShown=true;
 	div.style.display="block";
 }).add('screenTouchInput_hide',function f(){
 	if(!this._screenTouchInput) return;
+	if(this._screenTouchInput_isShown===false) return;
+	this._screenTouchInput_isShown=false;
 	this._screenTouchInput.style.display="none";
+}).add('update',function f(){
+	const sc=SceneManager._scene; if(!sc||sc.constructor!==Scene_Map) this.screenTouchInput_hide();
+	return f.ori.apply(this,arguments);
 });
 
 })();
