@@ -412,4 +412,10 @@ Game_Enemy.prototype.traitObjects=function(){
 	return Game_Battler.prototype.traitObjects.call(this).concat_inplace(this.enemy());
 };
 
+(Game_BattlerBase.prototype.allTraits=function f(){
+    return this.traitObjects().reduce(f.tbl[0],[]);
+}).tbl=[
+function(r,obj){ return r.concat_inplace(obj.traits); },
+];
+
 })();
