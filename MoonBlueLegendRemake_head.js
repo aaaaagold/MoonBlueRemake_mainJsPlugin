@@ -412,6 +412,14 @@ Game_Enemy.prototype.traitObjects=function(){
 	return Game_Battler.prototype.traitObjects.call(this).concat_inplace(this.enemy());
 };
 
+Game_Actor.prototype.traitObjects = function() {
+	const objects=Game_Battler.prototype.traitObjects.call(this);
+	objects.push(this.actor(),this.currentClass());
+	const equips=this.equips();
+	for(let i=0,sz=equips.length;i!==sz;++i) equips[i] && objects.push(equips[i]);
+	return objects;
+};
+
 (Game_BattlerBase.prototype.allTraits=function f(){
     return this.traitObjects().reduce(f.tbl[0],[]);
 }).tbl=[

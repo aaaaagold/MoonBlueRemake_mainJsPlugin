@@ -1077,7 +1077,6 @@ new cfc(Sprite_Enemy.prototype).add('updateScale',function(){
 })();
 
 
-
 ﻿"use strict";
 /*:
  * @plugindesc 誰都別想讓debug變更難，誰都別想。 YEP ㄉ作者一定沒手刻過網頁，用尛 require 。
@@ -1160,7 +1159,6 @@ function f(dataobj){
 ],true,true);
 
 })();
-
 
 
 ﻿"use strict";
@@ -1415,22 +1413,40 @@ r=p[k]; (p[k]=function f(){
 
 
 { const p=SceneManager;
+p._needRefreshes_isRefreshing=false;
 p.NOT_REFRESHED={};
-k='renderScene';
-r=p[k]; (p[k]=function f(){
+new cfc(p).add('renderScene',function f(){
 	const sc=this._scene;
 	const set=sc&&sc._needRefreshes;
 	if(set){
-		const set2=sc._needRefreshes_notYet=new Set();
-		set.forEach(f.tbl[0]);
-		set.clear();
+		const set2=sc._needRefreshes_notYet=[];
+		this._needRefreshes_isRefreshing=true;
+		set.slice().forEach(f.tbl[0]);
+		this._needRefreshes_isRefreshing=false;
+		set.uniqueClear();
 		sc._needRefreshes=set2;
 	}
 	return f.ori.apply(this,arguments);
-}).ori=r;
-p[k].tbl=[
-w=>w.refresh_do()===SceneManager.NOT_REFRESHED && SceneManager._scene._needRefreshes_notYet,
-];
+},[
+// sp=>sp.refresh_do()===SceneManager.NOT_REFRESHED && SceneManager._scene._needRefreshes_notYet, // discard if can't refresh
+sp=>sp.refresh_do(),
+]).add('addRefresh',function f(obj){
+	if(!obj||(typeof obj.refresh_do!=='function')) return console.warn('got unsupported obj',obj);
+	const sc=this._scene; if(!sc||f.tbl[0].has(sc.constructor)) return obj.refresh_do();
+	if(this._needRefreshes_isRefreshing) return obj.refresh_do();
+	let s=sc._needRefreshes; if(!s) s=sc._needRefreshes=[];
+	s.uniquePush(obj);
+},[
+new Set([Scene_Map,]), // disable pending refresh scenes
+],true,true);
+}
+
+
+{ const p=Sprite.prototype;
+p.refresh_do=p._refresh;
+p._refresh=function f(){
+	SceneManager.addRefresh(this);
+};
 }
 
 
@@ -1457,9 +1473,7 @@ r=p[k];
 	return f.ori.apply(this,arguments);
 }).ori=r;
 (p[k]=function f(){
-	const sc=SceneManager._scene;
-	let s=sc._needRefreshes; if(!s) s=sc._needRefreshes=new Set();
-	s.add(this);
+	SceneManager.addRefresh(this);
 }).ori=r;
 p[k].tbl=[t,];
 k='redrawATB';
