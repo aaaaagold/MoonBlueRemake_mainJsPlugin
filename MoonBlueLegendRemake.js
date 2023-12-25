@@ -4739,19 +4739,18 @@ p.closeNumBoard=function(id){
 			},
 		configurable: false}
 	});
-	// early preserve (>=50% usage)
 	p._enlargeIfNeeded=function(padFrontN){
 		padFrontN|=0;
 		const minLen=this._len+padFrontN+2;
 		if(this._data.length<minLen){
-			let currLen=this._data.length;
+			const currLen=this._data.length;
 			this._data.length<<=1;
 			if(this._data.length<minLen) this._data.length=minLen.ceilPow2();
 			this._strt-=padFrontN;
 			this._strt+=(this._strt<0)*this._data.length;
 			if(this._ende<this._strt){
 				if(currLen-this._strt<this._ende){
-					for(let x=this._strt;x!==currLen;++x) this._data[currLen+x]=this._data[x];
+					for(let x=currLen;x--!==this._strt;) this._data[currLen+x]=this._data[x];
 					this._strt+=currLen;
 				}else{
 					for(let x=0;x!==this._ende;++x) this._data[currLen+x]=this._data[x];
