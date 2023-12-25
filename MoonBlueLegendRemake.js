@@ -1715,40 +1715,37 @@ new cfc(SceneManager).add('push',function f(sceneClass,shouldRecordCurrentScene)
 const a=window[n]=function(){ this.initialize.apply(this, arguments); }
 const p=a.prototype = Object.create(Sprite.prototype);
 p.constructor = a;
-k='initialize';
-r=p[k]; (p[k]=function f(){
+for(let ki=0,kv=['addChildAt','removeChildAt','setChildIndex','swapChildren',];ki!==kv.length;++ki){
+k=kv[ki];
+new cfc(p).add(k,function f(){
+	console.warn('not supported: '+f.tbl[0]);
+},[
+k,
+],false,true);
+}
+new cfc(p).add('update',function f(){
+	f.ori.apply(this,arguments);
+	return f.ori.apply(this,arguments);
+}).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.children=new Queue(64);
 	return rtv;
-}).ori=r;
-k='renderCanvas';
-r=p[k]; (p[k]=function f(renderer){
+}).add('renderCanvas',function f(renderer){
 	if(!this.visible || this.worldAlpha <= 0 || !this.renderable) return;
 	this.children.forEach(f.tbl[0],renderer);
-}).ori=r;
-p[k].tbl=[
+},[
 function(sp){ sp.renderCanvas(this); },
-];
-k='renderWebGL';
-r=p[k]; (p[k]=function f(renderer){
+],false,true).add('renderWebGL',function f(renderer){
 	if(!this.visible || this.worldAlpha <= 0 || !this.renderable) return;
 	this.children.forEach(f.tbl[0],renderer);
-}).ori=r;
-p[k].tbl=[
+},[
 function(sp){ sp.renderWebGL(this); },
-];
-for(let ki=0,kv=['addChildAt','removeChildAt','setChildIndex','swapChildren',];ki!==kv.length;++ki){
-k=kv[ki];
-r=p[k]; (p[k]=function f(){
-	console.warn('not supported: '+f.tbl[0]);
-}).ori=r;
-p[k].tbl=[
-k,
-];
-}
-k='removeChild';
-r=p[k]; (p[k]=function f(child){
-	if(this.children[0]!==child) return console.warn('removeChild: child not the first');
+],false,true).add('removeChild',function f(child){
+	if(this.children[0]!==child){
+		if($gameTemp.isPlaytest()) console.warn('removeChild: child not the first');
+		if(child) child.visible=false;
+		return;
+	}
 	
 	child.parent = null;
 	child.transform._parentID = -1;
@@ -1758,10 +1755,9 @@ r=p[k]; (p[k]=function f(child){
 	this.onChildrenChange(0);
 	child.emit('removed', this);
 	
+	for(let tmp;(tmp=this.children[0]) && tmp.isPlaying && tmp.isPlaying.constructor===Function && !this.children[0].isPlaying();) this.children.pop();
 	return child;
-}).ori=r;
-k='updateTransform';
-r=p[k]; (p[k]=function f(renderer){
+},undefined,false,true).add('updateTransform',function f(renderer){
 	this._boundsID++;
 	
 	this.transform.updateTransform(this.parent.transform);
@@ -1770,47 +1766,35 @@ r=p[k]; (p[k]=function f(renderer){
 	this.worldAlpha = this.alpha * this.parent.worldAlpha;
 	
 	this.children.forEach(f.tbl[0]);
-}).ori=r;
-p[k].tbl=[
+},[
 function(child){ child.visible && child.updateTransform(); },
-];
+],false,true);
 }
 
-{ const p=BattleManager;
-k='setDamageset';
-r=p[k]; (p[k]=function f(sp){
+new cfc(BattleManager).add('setDamageset',function f(sp){
 	return this._dmgset=sp;
-}).ori=r;
-}
+},undefined,true,true);
 
-{ const p=Scene_Battle.prototype;
-k='createDisplayObjects';
-r=p[k]; (p[k]=function f(){
+new cfc(Scene_Battle.prototype).add('createDisplayObjects',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	const ds=this._dmgset=new Sprite_Damageset();
 	//this.addChildAt(ds,this.getChildIndex(this._spriteset));
 	this._spriteset.addChild(ds);
 	BattleManager.setDamageset(ds);
 	return rtv;
-}).ori=r;
-}
+});
 
-{ const p=Sprite_Damage.prototype;
-k='initialize';
-r=p[k]; (p[k]=function f(){
+new cfc(Sprite_Damage.prototype).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this._stackYR=0; // use and clear when 'update';
 	return rtv;
-}).ori=r;
-k='update';
-r=p[k]; (p[k]=function f(){
+}).add('update',function f(){
 	if(this._stackYR){
 		this.y+=this._stackYR*this.digitHeight();
 		this._stackYR=0;
 	}
 	return f.ori.apply(this,arguments);
-}).ori=r;
-}
+});
 
 { const p=Sprite_Battler.prototype;
 Object.defineProperty(p,'_damages',{ // change to Queue // debug: find who will access, and for what
@@ -1822,25 +1806,19 @@ set:function(rhs){
 	return this.__dmgs=rhs;
 },
 });
-k='getDamagePopupContainer';
-r=p[k]; (p[k]=function f(){
+new cfc(p).add('getDamagePopupContainer',function f(){
 	if(!this.__dmgs) this.__dmgs=new Queue();
 	return this.__dmgs;
-}).ori=r;
-k='pushDamageSprite';
-r=p[k]; (p[k]=function f(sprite){
+},undefined,true,true).add('pushDamageSprite',function f(sprite){
 	const yepParam=typeof Yanfly!=='nudefined' && Yanfly.Param;
 	const heightBuffer =  yepParam && Yanfly.Param.BECPopupOverlap || 1;
 	const container=this.getDamagePopupContainer();
 	container.push(sprite);
 	if(yepParam && Yanfly.Param.BECNewPopBottom) container.forEach(f.tbl[0], heightBuffer);
 	else sprite._stackYR-=heightBuffer*container.length;
-}).ori=r;
-p[k].tbl=[
+},[
 function(sp){ sp._stackYR-=this; },
-];
-k='setupDamagePopup';
-r=p[k]; (p[k]=function f(){
+],false,true).add(k='setupDamagePopup',function f(){
 	const btlr=this._battler;
 	if(btlr.isDamagePopupRequested()){
 		do{
@@ -1855,26 +1833,23 @@ r=p[k]; (p[k]=function f(){
 			}
 		}while(btlr.isDamagePopupRequested());
 	}else btlr.clearDamagePopup();
-}).ori=r;
+},false,true);
 delete Sprite_Actor.prototype[k];
-
-k='updateDamagePopup';
-r=p[k]; (p[k]=function f(){
+new cfc(p).add('updateDamagePopup',function f(){
 	const btlr=this._battler,container=this.getDamagePopupContainer();
 	for(let len=container.length;;){
 		this.setupDamagePopup();
 		if(len===container.length) break;
 		len=container.length;
 	}
-	container.forEach(f.tbl[0]);
+	// container.forEach(f.tbl[0]); // already in dmgset
 	while(container.length && !container[0].isPlaying()){
-		if(container[0].parent) container[0].parent.removeChild(container[0]); // will be removed some where in YEP ; AN DOUBLE REMOVE!
+		if(container[0].parent) container[0].parent.removeChild(container[0]); // will be removed somewhere in YEP ; AN DOUBLE REMOVE!
 		container.shift();
 	}
-}).ori=r;
-p[k].tbl=[
+},[
 sp=>sp.update(),
-];
+],false,true);
 }
 
 } // 處理傷害數字lag
@@ -4683,6 +4658,7 @@ p.closeNumBoard=function(id){
 	p.initialize=function(init_size_or_array,kargs){
 		if(init_size_or_array instanceof Array){
 			this._data=init_size_or_array;
+			this._initSize=null;
 			const len=init_size_or_array.length;
 			let v=len+1;
 			v |= v >>> 1;
@@ -4694,7 +4670,7 @@ p.closeNumBoard=function(id){
 			this._ende=this._len=len;
 		}else{
 			this._data=[];
-			this.clear(init_size_or_array,kargs);
+			this.clear(this._initSize=init_size_or_array,kargs);
 		}
 	};
 	p.objcnt=function(){return this._len;};
@@ -4704,6 +4680,7 @@ p.closeNumBoard=function(id){
 		return (tmp<0)*this._data.length+tmp;
 	};
 	p.clear=function(init_size,kargs){
+		if(init_size===undefined) init_size=this._initSize;
 		if(!(init_size>=8)) init_size=8;
 		this._ende=this._strt=0;
 		this._len=0;
@@ -4750,7 +4727,7 @@ p.closeNumBoard=function(id){
 			this._strt+=(this._strt<0)*this._data.length;
 			if(this._ende<this._strt){
 				if(currLen-this._strt<this._ende){
-					for(let x=currLen;x--!==this._strt;) this._data[currLen+x]=this._data[x];
+					for(let x=this._strt;x!==currLen;++x) this._data[currLen+x]=this._data[x];
 					this._strt+=currLen;
 				}else{
 					for(let x=0;x!==this._ende;++x) this._data[currLen+x]=this._data[x];
