@@ -4744,7 +4744,7 @@ p.closeNumBoard=function(id){
 		const minLen=this._len+padFrontN+2;
 		if(this._data.length<minLen){
 			const currLen=this._data.length;
-			this._data.length<<=1;
+			this._data.length<<=1; // 'currLen' same as delta
 			if(this._data.length<minLen) this._data.length=minLen.ceilPow2();
 			this._strt-=padFrontN;
 			this._strt+=(this._strt<0)*this._data.length;
@@ -4825,8 +4825,9 @@ p.closeNumBoard=function(id){
 		const self=arguments.length<2?null:asThis;
 		if(this._ende>=this._strt) this._data.slice(this._strt,this._ende).forEach(func,self);
 		else{
-			this._data.slice(  this._strt).forEach(func,self);
-			this._data.slice(0,this._ende).forEach(func,self);
+			const p1=this._data.slice(this._strt),p2=this._data.slice(0,this._ende);
+			p1.forEach(func,self);
+			p2.forEach(func,self);
 		}
 	};
 } }
