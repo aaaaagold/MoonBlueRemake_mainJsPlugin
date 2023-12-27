@@ -8901,7 +8901,7 @@ new金手指(function(f){
 	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
 },function(f){
 	currentlyEnableds[kw]=true;
-	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+	AudioManager.playMe({name: "山神1", volume: 100, pitch: 100});
 },[72,69,76,76,79,57,53]);
 }
 
@@ -8910,7 +8910,7 @@ new金手指(function(f){
 	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
 },function(f){
 	currentlyEnableds[kw]=true;
-	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+	AudioManager.playMe({name: "Laugh", volume: 100, pitch: 100});
 },[87,72,79,65,77,73]);
 }
 
@@ -8919,7 +8919,7 @@ new金手指(function(f){
 	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
 },function(f){
 	currentlyEnableds[kw]=true;
-	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+	AudioManager.playMe({name: "GirlLaughing", volume: 100, pitch: 100});
 },[54,54,54,65,71,69]);
 }
 
@@ -8928,7 +8928,7 @@ new金手指(function(f){
 	return !currentlyEnableds[kw] && SceneManager._scene && SceneManager._scene.constructor===Scene_Title;
 },function(f){
 	currentlyEnableds[kw]=true;
-	AudioManager.playMe({name: "Item", volume: 100, pitch: 100});
+	AudioManager.playMe({name: "Dog", volume: 100, pitch: 100});
 },[68, 73, 78, 65]);
 }
 
