@@ -20058,7 +20058,7 @@ alts:{
 },
 },true).add('printError',function f(name,msg,err){
 	this._errorShowed=true;
-	if(this._errorPrinter) this._errorPrinter.ac(this._makeErrorHtml(name, msg, err));
+	if(this._errorPrinter) this._errorPrinter.rf(0).ac(this._makeErrorHtml(name, msg, err));
 	this._applyCanvasFilter();
 	this._clearUpperCanvas();
 },undefined,true).add('_makeErrorHtml',function f(name,msg,err,noUpdateZIndex){
@@ -25964,7 +25964,7 @@ new cfc(Scene_Title.prototype).add('update',function f(){
 	const lastX=f.tbl[0][0],lastY=f.tbl[0][1];
 	f.tbl[0][0]=TouchInput.x;
 	f.tbl[0][1]=TouchInput.y;
-	if((f.tbl[0][0]===lastX&&f.tbl[0][1]===lastY)||this._nextGenTime>=Graphics.frameCount) return;
+	if(!TouchInput.isTriggered()&&((f.tbl[0][0]===lastX&&f.tbl[0][1]===lastY)||this._nextGenTime>=Graphics.frameCount)) return;
 	$gameScreen.radiusWaveEffect_gen.apply($gameScreen,f.tbl[0]);
 	this._nextGenTime=Graphics.frameCount+f.tbl[1];
 	++this._choiceIdx; this._choiceIdx%=this._choices.length;
@@ -25975,12 +25975,12 @@ new cfc(Scene_Title.prototype).add('update',function f(){
 	const arr=this._stars.filter(f.tbl[2]).reverse();
 	arr.forEach(f.tbl[3],this);
 	if(dontGen) return;
-	if((f.tbl[0][0]===lastX&&f.tbl[0][1]===lastY)||this._nextGenTime>=Graphics.frameCount) return;
+	if(!TouchInput.isTriggered()&&((f.tbl[0][0]===lastX&&f.tbl[0][1]===lastY)||this._nextGenTime>=Graphics.frameCount)) return;
 	this._nextGenTime=Graphics.frameCount+f.tbl[1];
 	const sp=new Sprite(ImageManager.loadNormalBitmap('img/system/IconSet.png'));
 	sp.x=TouchInput.x;
 	sp.y=TouchInput.y;
-	sp._v=[Math.random()*2-1,-Math.random()-1];
+	sp._v=[Math.random()*4-2,-Math.random()*2-1];
 	sp._a=[0,0.125];
 	sp._rot=(Math.random()*2-1)*Math.PI/64;
 	sp._dur=sp._durMax=~~(Math.random()*64)+16;
