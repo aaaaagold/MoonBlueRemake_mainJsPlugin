@@ -26403,7 +26403,7 @@ new cfc(AudioManager).add('playSe',function f(se){
 		if(!this._seBuffers) this._seBuffers=new Queue();
 		if(this._seBuffers.constructor!==Queue) this._seBuffers=new Queue(this._seBuffers);
 		const q=this._seBuffers;
-		while(q.length && q[0] && !q[0].isPlaying()) q.pop();
+		while(q.length && q[0] && (q[0].isError()||( q[0].isReady()&&!q[0].isPlaying() )) ) q.pop();
 		const buffer = this.createBuffer('se', se.name);
 		this.updateSeParameters(buffer, se);
 		buffer.play(false);
