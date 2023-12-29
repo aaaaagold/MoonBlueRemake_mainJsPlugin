@@ -838,6 +838,38 @@ p.onLoad_after.tbl=new Map([
 ]);
 }
 //
+new cfc(WebAudio.prototype).add('_load',function f(url){
+	if(!WebAudio._context) return;
+	const xhr=new XMLHttpRequest();
+	if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) url=Decrypter.extToEncryptExt(url);
+	xhr.open('GET', url);
+	xhr.responseType = 'arraybuffer';
+	xhr.onload=f.tbl[0].bind(this,xhr,url);
+	xhr.onerror=this._loader || function(){this._hasError = true;}.bind(this);
+	xhr.send();
+},[
+function(xhr,url){ if(xhr.status<400) this._onXhrLoad(xhr,url); },
+],false,true).add('_onXhrLoad',function f(xhr,url){
+	let array=xhr.response;
+	if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) array=Decrypter.decryptArrayBuffer(array);
+	this._readLoopComments(new Uint8Array(array));
+	WebAudio._context.decodeAudioData(array,f.tbl[0].bind(this));
+	return array;
+},[
+function(buffer){
+	this._buffer=buffer;
+	this._totalTime=buffer.duration;
+	if(this._loopLength>0&&this._sampleRate>0){
+		this._loopStart/=this._sampleRate;
+		this._loopLength/=this._sampleRate;
+	}else{
+		this._loopStart=0;
+		this._loopLength=this._totalTime;
+	}
+	this._onLoad();
+}
+],false,true);
+//
 new cfc(Game_Party.prototype).add('partyAbility_sumAll',function f(dataId){
 	return this.members().reduce(f.tbl[0].bind(dataId),0);
 },[
@@ -19958,22 +19990,26 @@ new cfc(ResourceHandler).add('createLoader',function f(url, retryMethod, resignM
 		else{
 			if(resignMethod) resignMethod();
 			if(url){
-				if(!reloaders.length) self.createLoader_loadErr(url,retryMethod);
-				reloaders.push(giveUp=>{ retryCount=0; retryMethod(giveUp&&f.tbl[retryMethod._type]||url); });
+				self.createLoader_loadErr(url,retryMethod);
+				const func=function(giveUp){ retryCount=0; retryMethod(giveUp&&f.tbl[retryMethod._type]||url); };
+				func._url=url;
+				reloaders.push(func);
 			}
 		}
 	};
 },emptyData,true).add('createLoader_loadErr',function(url,retryMethod){
 	Graphics.printLoadingError(url,retryMethod._type,);
 	SceneManager.stop();
-},undefined,true).add('retry',function (giveUp){
+},undefined,true).add('retry',function f(giveUp){
 	if(0<this._reloaders.length){
 		Graphics.eraseLoadingError();
 		SceneManager.resume();
-		this._reloaders.forEach(reloader=>reloader(giveUp));
+		this._reloaders.forEach(f.tbl[0],giveUp);
 		this._reloaders.length = 0;
 	}
-},undefined,true);
+},[
+function(reloader){ reloader(this); },
+],false,true);
 
 if(d.head){
 	const css=d.ce('style');
@@ -19987,10 +20023,17 @@ if(d.head){
 
 new cfc(Graphics).add('printLoadingError',function f(url,type){
 	const rtv=this._errorPrinter;
-	if(this._errorPrinter && !this._errorShowed){
-		this._errorShowed=true;
+	if(this._errorPrinter){
+		const canCreateBtn=!this._errorShowed;
+		if(!this._errorShowed){
+			this._errorShowed=true;
+			this._errorPrinter.rf(0);
+		}
 		// create error board
-		this._errorPrinter.rf(0).ac(this._makeErrorHtml("Loading Error", "Failed to load: " + url));
+		const newDom=this._makeErrorHtml("Loading Error", "Failed to load: " + url);
+		this._errorPrinter.ac(newDom);
+		
+		if(!canCreateBtn) return;
 		
 		// retry?
 		const btn=this._setErrActBtnStyle(d.ce('button')).atxt("Retry");
@@ -20057,8 +20100,13 @@ alts:{
 	},
 },
 },true).add('printError',function f(name,msg,err){
-	this._errorShowed=true;
-	if(this._errorPrinter) this._errorPrinter.rf(0).ac(this._makeErrorHtml(name, msg, err));
+	if(this._errorPrinter){
+		if(!this._errorShowed){
+			this._errorShowed=true;
+			this._errorPrinter.rf(0);
+		}
+		this._errorPrinter.ac(this._makeErrorHtml(name, msg, err));
+	}
 	this._applyCanvasFilter();
 	this._clearUpperCanvas();
 },undefined,true).add('_makeErrorHtml',function f(name,msg,err,noUpdateZIndex){
@@ -26333,6 +26381,59 @@ rtv.ac(div);
 	const sc=SceneManager._scene; if(!sc||sc.constructor!==Scene_Map) this.screenTouchInput_hide();
 	return f.ori.apply(this,arguments);
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc overwrite AudioManager.playSe, stopSe, StaticSe
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+AudioManager._seBuffers=new Queue(64);
+AudioManager._staticBufferMap=new Map();
+new cfc(AudioManager).add('playSe',function f(se){
+	if(se&&se.name){
+		if(!this._seBuffers) this._seBuffers=new Queue();
+		if(this._seBuffers.constructor!==Queue) this._seBuffers=new Queue(this._seBuffers);
+		const q=this._seBuffers;
+		while(q.length && q[0] && !q[0].isPlaying()) q.pop();
+		const buffer = this.createBuffer('se', se.name);
+		this.updateSeParameters(buffer, se);
+		buffer.play(false);
+		this._seBuffers.push(buffer);
+	}
+},undefined,false,true).add('stopSe',function f(){
+	this._seBuffers.forEach(f.tbl[0]);
+	this._seBuffers.length=0;
+},[
+function(buffer){ buffer.stop(); },
+],false,true).add('playStaticSe',function f(se){
+	const buffer=this.loadStaticSe(se);
+	if(buffer){
+		buffer.stop();
+		this.updateSeParameters(buffer,se);
+		buffer.play(false);
+	}
+},undefined,false,true).add('loadStaticSe',function f(se){
+	const n=se&&se.name;
+	let buffer=this._staticBufferMap.get(n);
+	if(buffer) return buffer;
+	buffer=this.createBuffer('se', n);
+	buffer._reservedSeName=n;
+	this._staticBufferMap.set(n,buffer);
+	if(this.shouldUseHtml5Audio()) Html5Audio.setStaticSe(buffer._url);
+	return buffer;
+},undefined,false,true).add('isStaticSe',function f(se){
+	const n=se&&se.name; if(!n) return;
+	return this._staticBufferMap.has(n);
+},undefined,false,true);
 
 })();
 
