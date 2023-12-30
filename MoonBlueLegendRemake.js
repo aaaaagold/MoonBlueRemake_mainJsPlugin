@@ -842,16 +842,20 @@ new cfc(WebAudio.prototype).add('_load',function f(url){
 	if(!WebAudio._context) return;
 	const xhr=new XMLHttpRequest();
 	if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) url=Decrypter.extToEncryptExt(url);
-	xhr.open('GET', url);
-	xhr.responseType = 'arraybuffer';
+	const cache=this._getCache(url); if(cache) return this._onXhrLoad(undefined,url,cache.slice());
+	xhr.open('GET',url);
+	xhr.responseType='arraybuffer';
 	xhr.onload=f.tbl[0].bind(this,xhr,url);
-	xhr.onerror=this._loader || function(){this._hasError = true;}.bind(this);
+	xhr.onerror=this._loader||function(){this._hasError=true;}.bind(this);
 	xhr.send();
 },[
 function(xhr,url){ if(xhr.status<400) this._onXhrLoad(xhr,url); },
-],false,true).add('_onXhrLoad',function f(xhr,url){
-	let array=xhr.response;
-	if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) array=Decrypter.decryptArrayBuffer(array);
+],false,true).add('_onXhrLoad',function f(xhr,url,arrayBuffer){
+	let array=arrayBuffer||xhr&&xhr.response;
+	if(!arrayBuffer){
+		if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) array=Decrypter.decryptArrayBuffer(array);
+		this._setCache(url,array.slice());
+	}
 	this._readLoopComments(new Uint8Array(array));
 	WebAudio._context.decodeAudioData(array,f.tbl[0].bind(this));
 	return array;
@@ -868,7 +872,14 @@ function(buffer){
 	}
 	this._onLoad();
 }
-],false,true);
+],false,true).add('_setCache',function f(url,arrayBuffer){
+	this.getCacheCont().setCache(url,arrayBuffer,arrayBuffer.byteLength);
+},undefined,false,true).add('_getCache',function f(url){
+	return this.getCacheCont().getCache(url);
+},undefined,false,true).add('getCacheCont',function f(){
+	if(!WebAudio._cache) WebAudio._cache=new LruCache(f.tbl[0],f.tbl[1]);
+	return WebAudio._cache;
+},[404,1<<25],false,true);
 //
 new cfc(Game_Party.prototype).add('partyAbility_sumAll',function f(dataId){
 	return this.members().reduce(f.tbl[0].bind(dataId),0);
@@ -20221,7 +20232,7 @@ new cfc(Game_Picture.prototype).add('effect_shake',function f(strengthXY,periodX
 	w.Heap.prototype.constructor=w.Heap;
 	$dddd$=w.Heap.prototype.initialize=function f(func_cmp3,arr,inPlace){
 		{
-			let lt=func_cmp3;
+			const lt=func_cmp3;
 			this._lt=(lt&&lt.constructor===Function)?(a,b)=>lt(a,b)<0:f.ori;
 		}
 		this._searchTbl=new Map();
@@ -20230,7 +20241,7 @@ new cfc(Game_Picture.prototype).add('effect_shake',function f(strengthXY,periodX
 				arr.push(arr[0]);
 				arr[0]=undefined;
 				this._data=arr;
-			}else this._data=[undefined].concat(arr);
+			}else this._data=[undefined].concat_inplace(arr);
 			this.makeHeap();
 		}else this._data=[undefined];
 	};
@@ -20332,6 +20343,81 @@ new cfc(Game_Picture.prototype).add('effect_shake',function f(strengthXY,periodX
 		return this.top;
 	};
 } }
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc LruCache
+ * @author agold404
+ * @help LruCache.setCache(key,data,size) LruCache.getCache(key)
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+const a=class LruCache{
+static supportedMaxItemCount=(1<<23)-1;
+constructor(maxItemCount,maxItemSize){
+	this._count=0;
+	this._countMax=maxItemCount|0||this.constructor.supportedMaxItemCount;
+	if(this._countMax<0||this.constructor.supportedMaxItemCount<this._countMax) this._countMax=this.constructor.supportedMaxItemCount;
+	this._size=0;
+	this._sizeMax=maxItemSize-0||Infinity;
+	this._serial=0;
+	this._serialBase=0;
+	this._serialMask=(1<<30)-1; // must > supportedMaxItemCount*2+1
+	this._infoHeap=new Heap((a,b)=>((b.serial-this._serialBase)&this._serialMask)-((a.serial-this._serialBase)&this._serialMask));
+	this._key2info=new Map();
+}
+gc(n){
+	const h=this._infoHeap;
+	for(let x=0<n?n|0:2,th=this._serialMask>>1;x--&&h.length&&th<((this._serial-h.top.serial)&this._serialMask);) this.remove(h.top.key);
+}
+_add(info){
+	// and push
+	this.gc();
+	++this._count;
+	this._size+=info.size;
+	info.serial=this._serial++;
+	this._serial&=this._serialMask;
+	const h=this._infoHeap;
+	h.push(info);
+	this._key2info.set(info.key,info);
+	if(this._countMax<this._count || this._sizeMax<this._size) this.remove(h.top.key); // only remove 1
+}
+remove(key){
+	const info=this._key2info.get(key); if(!info) return;
+	this._key2info.delete(key);
+	const h=this._infoHeap;
+	h.remove(info);
+	--this._count;
+	this._size-=info.size;
+	if(h.length) this._serialBase=h.top.serial;
+	else this._serialBase=this._serial=0;
+	return info;
+}
+setCache(key,data,size){
+	const info=this.remove(key)||{
+		key:key,
+		data:undefined,
+		size:0,
+		serial:0,
+	};
+	info.data=data;
+	info.size=size;
+	this._add(info);
+}
+getCache(key){
+	const info=this.remove(key); if(!info) return;
+	this._add(info);
+	return info&&info.data;
+}
+};
+
+window[a.name]=a;
 
 })();
 
