@@ -20368,13 +20368,14 @@ constructor(maxItemCount,maxItemSize){
 	this._sizeMax=maxItemSize-0||Infinity;
 	this._serial=0;
 	this._serialBase=0;
-	this._serialMask=(1<<30)-1; // must > supportedMaxItemCount*2+1
+	this._serialMask=(1<<30)-1; // must > supportedMaxItemCount*2
 	this._infoHeap=new Heap((a,b)=>((b.serial-this._serialBase)&this._serialMask)-((a.serial-this._serialBase)&this._serialMask));
 	this._key2info=new Map();
 }
 gc(n){
 	const h=this._infoHeap;
-	for(let x=0<n?n|0:2,th=this._serialMask>>1;x--&&h.length&&th<((this._serial-h.top.serial)&this._serialMask);) this.remove(h.top.key);
+	if(h.length&&(this._countMax<this._count || this._sizeMax<this._size)) this.remove(h.top.key);
+	if(h.length&&(this._serialMask>>1)<((this._serial-h.top.serial)&this._serialMask)) this.remove(h.top.key);
 }
 _add(info){
 	// and push
@@ -20383,10 +20384,9 @@ _add(info){
 	this._size+=info.size;
 	info.serial=this._serial++;
 	this._serial&=this._serialMask;
-	const h=this._infoHeap;
-	h.push(info);
+	this._infoHeap.push(info);
 	this._key2info.set(info.key,info);
-	if(this._countMax<this._count || this._sizeMax<this._size) this.remove(h.top.key); // only remove 1
+	this.gc();
 }
 remove(key){
 	const info=this._key2info.get(key); if(!info) return;
@@ -26520,6 +26520,77 @@ function(buffer){ buffer.stop(); },
 	const n=se&&se.name; if(!n) return;
 	return this._staticBufferMap.has(n);
 },undefined,false,true);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 幫lockpick加觸控
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	
+new cfc(Window_Lockpick.prototype).add('processHandling',function f(){
+	const center=this._lockSprite,sp=this._leftStick;
+	
+	const isCancelled=TouchInput.isCancelled();
+	const isTriggered=TouchInput.isTriggered();
+	const isPressed=TouchInput.isPressed();
+	const cancel=isCancelled;
+	let ok=false;
+	if(isPressed){
+		const centerPos=center.getGlobalPosition();
+		const x=TouchInput.x-centerPos.x;
+		const y=TouchInput.y-centerPos.y;
+		if(center._getProperFullRect(0,0).contains(x,y)) ok=true;
+		else if(isTriggered){
+			const spPos=sp.getGlobalPosition();
+			// 垂直當0, 畫面順時針轉90度
+			const dx=spPos.y-TouchInput.y;
+			if(dx>0){
+				const dy=TouchInput.x-spPos.x; // 順時針轉為正
+				const rad=Math.atan(dy/dx); 
+				sp.rotation=Math.PI+rad;
+				this.setLockPosition();
+				this.positSound();
+			}
+		}
+	}else ok=false;
+	
+	Input._currentState[f.tbl[0](pxd_lp_delete_1)]=0;
+	Input._currentState[f.tbl[0](pxd_lp_delete_2)]=0;
+	if(cancel){
+		Input._currentState[f.tbl[0](pxd_lp_delete_1)]=1;
+		Input._currentState[f.tbl[0](pxd_lp_delete_2)]=1;
+	}else if(ok){
+		Input._currentState[pxd_lp_lo_left]=1;
+		Input._currentState[pxd_lp_lo_right]=1;
+	}else{
+		Input._currentState[pxd_lp_lo_left]=0;
+		Input._currentState[pxd_lp_lo_right]=0;
+	}
+	
+	const rtv=f.ori.apply(this,arguments);
+	
+	if(cancel){
+		Input._currentState[pxd_lp_lo_left]=0;
+		Input._currentState[pxd_lp_lo_right]=0;
+	}
+	
+	return rtv;
+},[
+s=>Input._isEscapeCompatible(s)?"escape":s,
+]);
+	
+	return f.ori.apply(this,arguments);
+});
 
 })();
 
