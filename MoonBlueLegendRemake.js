@@ -585,7 +585,15 @@ new cfc(AudioManager).add('audioFileExt',function f(){
 	return f.tbl[0];
 },[
 '.ogg',
-],true,true);
+],true,true).add('createBuffer',function(folder, name) {
+	const ext = this.audioFileExt();
+	const url = this._path + folder + '/' + name + ext;
+	if(this.shouldUseHtml5Audio() && folder === 'bgm'){
+		if(this._blobUrl) Html5Audio.setup(this._blobUrl);
+		else Html5Audio.setup(url);
+		return Html5Audio;
+	}else return new WebAudio(url);
+},undefined,false,true);
 //
 SceneManager._updateSceneCnt=0|0;
 new cfc(SceneManager).add('isMapOrIsBattle',function f(){
