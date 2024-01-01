@@ -929,7 +929,7 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 	}
 	{
 		const arr=[];
-		arr.push('AudioManager','ConfigManager','DataManager','ImageManager','SceneManager',);
+		arr.push('AudioManager','BattleManager','ConfigManager','DataManager','ImageManager','SceneManager',);
 		arr.push('Input','TouchInput',);
 		arr.push('getCStyleStringStartAndEndFromString',);
 		arr.push('getPrefixPropertyNames',);
@@ -5313,14 +5313,19 @@ p[k].placingRefTroopPgs=dataobj=>{ if(!dataobj) return;
 
 (()=>{ let k,r;
 
-{ const p=Game_Battler.prototype;
-k='onBattleStart';
-r=p[k]; (p[k]=function f(){
+new cfc(Game_Battler.prototype).add('onBattleStart',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	this._dmgLog=[];
+	this.onBattleStart_dmgLog();
 	return rtv;
-}).ori=r;
-}
+}).add('onBattleStart_dmgLog',function f(){
+	this._dmgLog=[];
+},undefined,false,true).add('onBattleEnd',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.onBattleEnd_dmgLog();
+	return rtv;
+}).add('onBattleEnd_dmgLog',function f(){
+	this._dmgLog=undefined;
+});
 
 { const p=BattleManager;
 p._setDmgLogBase=function f(t,type,ele){
@@ -7055,13 +7060,15 @@ r=p[k]; (p[k]=function f(){
 
 (()=>{ let k,r,t; const gbb=Game_BattlerBase;
 
-{ const p=Game_Battler.prototype;
-k='onBattleStart';
-r=p[k]; (p[k]=function f(){
+new cfc(Game_Battler.prototype).add('onBattleStart',function f(){
+	const rtv=f.ori.apply(this,arguments);
 	this._reviveCount=this.reviveMaxCount();
-	return f.ori.apply(this,arguments);
-}).ori=r;
-}
+	return rtv;
+}).add('onBattleEnd',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._reviveCount=undefined;
+	return rtv;
+});
 
 { const p=BattleManager;
 k='checkBattleEnd';
@@ -7080,21 +7087,6 @@ p[k].forEach=btlr=>{
 		btlr.startDamagePopup();
 	}
 };
-/*
-k='startBattle';
-r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	$gameParty.members().forEach(f.forEach);
-	$gameTroop.members().forEach(f.forEach);
-}).ori=r;
-p[k].forEach=btlr=>btlr._reviveCount=btlr.reviveMaxCount();
-*/
-k='endBattle';
-r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	$gameParty.members().forEach(f.forEach);
-}).ori=r;
-p[k].forEach=btlr=>btlr._reviveCount=undefined;
 }
 
 { const p=gbb.prototype;
@@ -10242,9 +10234,10 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 { const p=BattleManager;
 k='endBattle';
 r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	$gameParty.members().forEach(f.forEach);
+	const rtv=f.ori.apply(this,arguments);
+	//$gameParty.members().forEach(f.forEach);
 	this.onDieSkill_queue_clear();
+	return rtv;
 }).ori=r;
 p[k].forEach=btlr=>btlr.onDieSkill_clearInfo();
 p.onDieSkill_queue_get=function(){
@@ -10325,16 +10318,22 @@ r=p[k]; (p[k]=function f(){
 }).ori=r;
 }
 
-{ const p=Game_Battler.prototype;
-p.onDieSkill_clearInfo=function(){
+new cfc(Game_Battler.prototype).add('onBattleEnd',function f(){
+	this.onBattleEnd_onDieSkill();
+	const isEnemyHidden=this.constructor===Game_Enemy&&this.isHidden();
+	const rtv=f.ori.apply(this,arguments);
+	if(isEnemyHidden) this.hide();
+	return rtv;
+}).add('onBattleEnd_onDieSkill',function f(){
+	this.onDieSkill_clearInfo();
+},undefined,false,true).add('onDieSkill_clearInfo',function(){
 	this._onDieSkill_cache=
 	this._onDieSkill_put=
 	this._onDieSkill_end=
 	undefined;
-};
-(t=p.onDieSkill_getList=function f(){
+}).add('onDieSkill_getList',function f(){
 	if(!this._onDieSkill_cache){
-		const acts=this._onDieSkill_cache=[],arr=this.traits(Game_BattlerBase[kwt]).sort(f.cmp).map(f.forEach);
+		const acts=this._onDieSkill_cache=[],arr=this.traits(Game_BattlerBase[kwt]).sort(f.tbl[0]).map(f.tbl[1]);
 		if(arr.length) arr.push(emptySkillIdx); // see BattleManager.processForcedAction in YEP_X_BattleSysATB.js @ line 1410
 		for(let x=0;x!==arr.length;++x){
 			this.forceAction(arr[x],-1);
@@ -10349,9 +10348,10 @@ p.onDieSkill_clearInfo=function(){
 		}
 	}
 	return this._onDieSkill_cache;
-}).forEach=t=>t.dataId;
-t.cmp=(a,b)=>a.value-b.value||a.dataId-b.dataId;
-p.onDieSkill_action_battle=function(){
+},[
+(a,b)=>a.value-b.value||a.dataId-b.dataId,
+t=>t.dataId,
+]).add('onDieSkill_action_battle',function(){
 	const bm=BattleManager;
 	if(!this.isStateAffected(this.deathStateId())){
 		{
@@ -10366,8 +10366,7 @@ p.onDieSkill_action_battle=function(){
 		return bm.onDieSkill_queue_has(this);
 	}
 	this.onDieSkill_clearInfo();
-};
-p.onDieSkill_action=function(){
+}).add('onDieSkill_action',function(){
 	if(this.friendsUnit().inBattle()) return this.onDieSkill_action_battle();
 /*
 		if(!this.friendsUnit().inBattle()){
@@ -10379,26 +10378,17 @@ p.onDieSkill_action=function(){
 			return this.onDieSkill_clearInfo();
 		}
 */
-};
-k='addState';
-r=p[k]; (p[k]=function f(){
+}).add('addState',function f(){
 	if(this.deathStateId()===arguments[0] && this.onDieSkill_action()) return;
 	return f.ori.apply(this,arguments);
-}).ori=r;
-k='removeState';
-r=p[k]; (p[k]=function f(){
+}).add('removeState',function f(){
 	if(this.deathStateId()===arguments[0]) this.onDieSkill_clearInfo();
 	return f.ori.apply(this,arguments);
-}).ori=r;
-k='regenerateAll';
-r=p[k]; (p[k]=function f(){
+}).add('regenerateAll',function f(){
 	return !this._onDieSkill_put && f.ori.apply(this,arguments);
-}).ori=r;
-k='endTurnAllATB';
-r=p[k]; (p[k]=function f(){
+}).add('endTurnAllATB',function f(){
 	return !this._onDieSkill_put && f.ori.apply(this,arguments);
-}).ori=r;
-}
+});
 
 })();
 
@@ -10777,24 +10767,21 @@ p[k].forEach=dataobj=>{ if(!dataobj) return;
 };
 }
 
-{ const p=Game_Battler.prototype;
-(t=p.battleStartStates=function f(){
-	return this.traits(gbb[kwt]).sort(f.cmp).map(f.forEach);
-}).forEach=t=>t.dataId;
-t.cmp=(a,b)=>a.value-b.value||a.dataId-b.dataId;
-}
-
-{ const p=BattleManager;
-k='startBattle';
-r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	$gameParty.members().forEach(f.forEach);
-	$gameTroop.members().forEach(f.forEach);
-}).ori=r;
-(p[k].forEach=function f(btlr){
-	btlr.battleStartStates().forEach(f.forEach,btlr);
-}).forEach=function(stateId){ this.addState(stateId); };
-}
+new cfc(Game_Battler.prototype).add('battleStartStates',function f(){
+	// get state IDs
+	return this.traits(f.tbl[0]).sort(f.tbl[1]).map(f.tbl[2]);
+},[
+gbb[kwt],
+(a,b)=>a.value-b.value||a.dataId-b.dataId,
+t=>t.dataId,
+],false,true).add('onBattleStart_battleStartStates',function f(){
+	this.battleStartStates().forEach(f.tbl[0],this);
+},[
+function(stateId){ this.addState(stateId); },
+],false,true).add('onBattleStart',function f(){
+	this.onBattleStart_battleStartStates();
+	return f.ori.apply(this,arguments);
+});
 
 })();
 
@@ -17358,9 +17345,15 @@ for(let x=0;x!==t.length;++x){ if(typeof t[x]==='function'){
 	t[x].tbl=t;
 } }
 
-cf(Game_Battler.prototype,'makeActions',function f(){
+new cfc(Game_Battler.prototype).add('makeActions',function f(){
 	this[f.tbl[8]](true);
 	return f.ori.apply(this,arguments);
+},t).add('onBattleEnd',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.onBattleEnd_技能後追加技能();
+	return rtv;
+}).add('onBattleEnd_技能後追加技能',function f(){
+	const q=this[f.tbl[8]](); if(q) q.clear();
 },t);
 
 cf(cf(Game_Action.prototype,kw_action,function f(){
@@ -17372,16 +17365,12 @@ cf(cf(Game_Action.prototype,kw_action,function f(){
 	return rtv;
 },t);
 
-cf(cf(BattleManager,'endAction',function f(){
+cf(BattleManager,'endAction',function f(){
 	const a=this._action;
 	const s=a&&a.subject();
 	const skill=s&&a.isSkill()&&a.item();
 	const rtv=f.ori.apply(this,arguments);
 	if(s && s[f.tbl[6]](skill,a)) this.startAction();
-	return rtv;
-},t),'endBattle',function f(){
-	const rtv=f.ori.apply(this,arguments);
-	$gameParty.members().forEach(f.tbl[7]);
 	return rtv;
 },t);
 
@@ -26600,7 +26589,7 @@ new cfc(p).add('update',function f(){
 
 new cfc(Scene_Boot.prototype).add('start',function f(){
 	
-new cfc(Window_Lockpick.prototype).add('processHandling',function f(){
+if(typeof Window_Lockpick==='function') new cfc(Window_Lockpick.prototype).add('processHandling',function f(){
 	const center=this._lockSprite,sp=this._leftStick;
 	
 	const isCancelled=TouchInput.isCancelled();
@@ -26629,10 +26618,11 @@ new cfc(Window_Lockpick.prototype).add('processHandling',function f(){
 	
 	Input._currentState[f.tbl[0](pxd_lp_delete_1)]=0;
 	Input._currentState[f.tbl[0](pxd_lp_delete_2)]=0;
-	if(cancel){
+	if(cancel && !this._cancelled){
+		this._cancelled=true;
 		Input._currentState[f.tbl[0](pxd_lp_delete_1)]=1;
 		Input._currentState[f.tbl[0](pxd_lp_delete_2)]=1;
-	}else if(ok){
+	}else if(ok && !this._cancelled){
 		Input._currentState[pxd_lp_lo_left]=1;
 		Input._currentState[pxd_lp_lo_right]=1;
 	}else{
@@ -26654,6 +26644,63 @@ s=>Input._isEscapeCompatible(s)?"escape":s,
 	
 	return f.ori.apply(this,arguments);
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc BattleManager 中途加入幫 call onBattleStart ; 曾經 onBattleStart 者 call onBattleEnd
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(BattleManager).add('joinedBattlers',function f(){
+	return this._joinedBattlers||(this._joinedBattlers=[]);
+},undefined,false,true).add('startBattle',function f(){
+	this.joinedBattlers().uniqueClear();
+	return f.ori.apply(this,arguments);
+}).add('endBattle',function f(){
+	this.joinedBattlers().slice().forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+btlr=>btlr.constructor!==Game_Enemy && btlr.onBattleEnd(), // enemies will be cleared in scene.terminate()
+]);
+
+new cfc(Game_Battler.prototype).add('onBattleStart',function f(){
+	BattleManager.joinedBattlers().uniquePush(this);
+	return f.ori.apply(this,arguments);
+}).add('onBattleEnd',function f(){
+	const s=BattleManager.joinedBattlers();
+	if(!s.uniqueHas(this)) return;
+	s.uniquePop(this);
+	return f.ori.apply(this,arguments);
+});
+
+t=[
+btlr=>btlr.onBattleStart(),
+];
+new cfc(Game_Party.prototype).add('addActor',function f(actorId){
+	// if large amount, change to uniquePush
+	const isInBattle=this.inBattle();
+	const s0=isInBattle&&new Set(this.members());
+	const rtv=f.ori.apply(this,arguments);
+	const s1=isInBattle&&new Set(this.members());
+	if(s1) s1.minus_inplace(s0).forEach(f.tbl[0]);
+	return rtv;
+},t).add('removeActor',function f(actorId){
+	// if large amount, change to uniquePop
+	const isInBattle=this.inBattle();
+	const s0=isInBattle&&new Set(this.members());
+	const rtv=f.ori.apply(this,arguments);
+	const s1=isInBattle&&new Set(this.members());
+	if(s1) s1.minus_inplace(s0).forEach(f.tbl[0]);
+	return rtv;
+},t);
 
 })();
 
