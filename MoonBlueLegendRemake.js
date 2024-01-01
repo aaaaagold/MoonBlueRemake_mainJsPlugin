@@ -26527,14 +26527,16 @@ rtv.ac(div);
 (()=>{ let k,r,t;
 
 AudioManager._seBuffers=new Queue(64);
+AudioManager._seCurrentFrame=new Map();
 AudioManager._staticBufferMap=new Map();
 new cfc(AudioManager).add('playSe',function f(se){
-	if(se&&se.name){
-		if(!this._seBuffers) this._seBuffers=new Queue();
+	const n=se&&se.name;
+	if(n){
+		if(!this.seCurrentFrame_add(n)) return;
 		if(this._seBuffers.constructor!==Queue) this._seBuffers=new Queue(this._seBuffers);
 		const q=this._seBuffers;
 		while(q.length && q[0] && (q[0].isError()||( q[0].isReady()&&!q[0].isPlaying() )) ) q.pop();
-		const buffer = this.createBuffer('se', se.name);
+		const buffer = this.createBuffer('se', n);
 		this.updateSeParameters(buffer, se);
 		buffer.play(false);
 		this._seBuffers.push(buffer);
@@ -26563,7 +26565,24 @@ function(buffer){ buffer.stop(); },
 },undefined,false,true).add('isStaticSe',function f(se){
 	const n=se&&se.name; if(!n) return;
 	return this._staticBufferMap.has(n);
-},undefined,false,true);
+},undefined,false,true).add('seCurrentFrame_add',function f(n){
+	const scf=this._seCurrentFrame;
+	const c=scf.get(n)|0; if(c>=f.tbl[0]) return false;
+	scf.set(n,c+1);
+	return true;
+},[
+2,
+],false,true).add('seCurrentFrame_clear',function f(){
+	this._seCurrentFrame.clear();
+});
+
+{ let p;
+try{ p=PIXI.ticker.shared; }catch(e){ p=SceneManager; }
+new cfc(p).add('update',function f(){
+	AudioManager.seCurrentFrame_clear();
+	return f.ori.apply(this,arguments);
+});
+}
 
 })();
 
