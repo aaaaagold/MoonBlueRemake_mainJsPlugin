@@ -26624,27 +26624,35 @@ if(typeof Window_Lockpick==='function') new cfc(Window_Lockpick.prototype).add('
 		}
 	}else ok=false;
 	
-	Input._currentState[f.tbl[0](pxd_lp_delete_1)]=0;
-	Input._currentState[f.tbl[0](pxd_lp_delete_2)]=0;
+	const del1=f.tbl[0](pxd_lp_delete_1);
+	const del2=f.tbl[0](pxd_lp_delete_2);
+	const lol=f.tbl[0](pxd_lp_lo_left);
+	const lor=f.tbl[0](pxd_lp_lo_right);
+	Input._currentState[del1]=0;
+	Input._currentState[del2]=0;
+	if(this._last_isPressed && !isPressed){
+		Input._currentState[lol]=0;
+		Input._currentState[lor]=0;
+	}
 	if(cancel && !this._cancelled){
 		this._cancelled=true;
-		Input._currentState[f.tbl[0](pxd_lp_delete_1)]=1;
-		Input._currentState[f.tbl[0](pxd_lp_delete_2)]=1;
+		Input._currentState[del1]=1;
+		Input._currentState[del2]=1;
 	}else if(ok && !this._cancelled){
-		Input._currentState[pxd_lp_lo_left]=1;
-		Input._currentState[pxd_lp_lo_right]=1;
-	}else{
-		Input._currentState[pxd_lp_lo_left]=0;
-		Input._currentState[pxd_lp_lo_right]=0;
+		Input._currentState[lol]=1;
+		Input._currentState[lor]=1;
 	}
 	
 	const rtv=f.ori.apply(this,arguments);
 	
-	if(cancel){
-		Input._currentState[pxd_lp_lo_left]=0;
-		Input._currentState[pxd_lp_lo_right]=0;
+	if(this._cancelled){
+		Input._currentState[del1]=0;
+		Input._currentState[del2]=0;
+		Input._currentState[lol]=0;
+		Input._currentState[lor]=0;
 	}
 	
+	this._last_isPressed=isPressed;
 	return rtv;
 },[
 s=>Input._isEscapeCompatible(s)?"escape":s,
