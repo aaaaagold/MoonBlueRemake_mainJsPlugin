@@ -2336,6 +2336,14 @@ new cfc(PartyWindowData.prototype).add('refreshPar',function f(){
 });
 }
 
+// update知道要floor，create就不知道
+if(typeof Battle_Hud!=='undefined'){
+new cfc(Battle_Hud.prototype).add('refresh_number',function f(){
+	arguments[1]|=0;
+	return f.ori.apply(this,arguments);
+});
+}
+
 })();
 
 
