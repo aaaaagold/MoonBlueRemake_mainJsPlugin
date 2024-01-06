@@ -928,7 +928,35 @@ function(buffer){
 //
 Decrypter._notFoundCache=new Set();
 new cfc(Decrypter).add('decryptImg',function f(url,bitmap){
-	if(Decrypter._notFoundCache.has(url) || !getUrlParamVal('custom')) return f.ori.apply(this,arguments);
+	url=this.extToEncryptExt(url);
+	const cache=this._getCache(url); if(cache) return this._onXhrLoad(bitmap,cache.slice());
+	
+	const requestFile=new XMLHttpRequest();
+	requestFile.open("GET",url);
+	requestFile.responseType='arraybuffer';
+	requestFile.send();
+	
+	requestFile.onload=f.tbl[0].bind(requestFile,bitmap,url);
+	
+	requestFile.onerror=f.tbl[1].bind(requestFile,bitmap);
+},[
+function(bitmap,url){
+	if(this.status<Decrypter._xhrOk){
+		const arrayBuffer=Decrypter.decryptArrayBuffer(this.response);
+		Decrypter._setCache(url,arrayBuffer.slice());
+		Decrypter._onXhrLoad(bitmap,arrayBuffer);
+	}
+},
+function(bitmap){
+	if(bitmap._loader) bitmap._loader();
+	else bitmap._onError();
+},
+],false,true).add('_onXhrLoad',function f(bitmap,arrayBuffer){
+	bitmap._image.addEventListener('load',bitmap._loadListener=Bitmap.prototype._onLoad.bind(bitmap));
+	bitmap._image.addEventListener('error',bitmap._errorListener=bitmap._loader||Bitmap.prototype._onError.bind(bitmap));
+	bitmap._image.src=Decrypter.createBlobUrl(arrayBuffer);
+},undefined,false,true).add('decryptImg',function f(url,bitmap){
+	if(Decrypter._notFoundCache.has(url) || getUrlParamVal('disableCustom')) return f.ori.apply(this,arguments);
 	jurl(url,"HEAD",0,0,'arraybuffer',f.tbl[0].bind(this,url,bitmap),f.tbl[1].bind(this,url,bitmap,f.ori,arguments));
 },[
 function(url,bitmap,resp,xhr){ if(xhr.readyState!==4) return;
@@ -945,9 +973,16 @@ function(url,bitmap,ori,argv,xhr){ if(!(xhr.readyState>=4)) return;
 		return ori.apply(this,argv);
 	}
 },
-]);
+]).add('_setCache',function f(url,arrayBuffer){
+	this.getCacheCont().setCache(url,arrayBuffer,arrayBuffer.byteLength);
+},undefined,false,true).add('_getCache',function f(url){
+	return this.getCacheCont().getCache(url);
+},undefined,false,true).add('getCacheCont',function f(){
+	if(!this._cache) this._cache=new LruCache(f.tbl[0],f.tbl[1]);
+	return this._cache;
+},[404,1<<28],false,true);
 new cfc(WebAudio.prototype).add('_load',function f(url){
-	if(!Decrypter.hasEncryptedAudio || ImageManager.isDirectPath(url) || Decrypter._notFoundCache.has(url) || !getUrlParamVal('custom')) return f.ori.apply(this,arguments);
+	if(!Decrypter.hasEncryptedAudio || ImageManager.isDirectPath(url) || Decrypter._notFoundCache.has(url) || getUrlParamVal('disableCustom')) return f.ori.apply(this,arguments);
 	jurl(url,"HEAD",0,0,'arraybuffer',f.tbl[0].bind(this,url,f.ori,arguments),f.tbl[1].bind(this,url,f.ori,arguments));
 },[
 function(url,ori,argv,resp,xhr){ if(xhr.readyState!==4) return;
