@@ -26881,6 +26881,30 @@ new cfc(Game_Party.prototype).add('addActor',function f(actorId){
 
 ﻿"use strict";
 /*:
+ * @plugindesc tune YEP: skill has reserveAtb property
+ * @author agold404
+ * @help note: <reserveAtb>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(BattleManager).add('endAction',function f(){
+	const a=this._action;
+	const s=a&&a.subject();
+	const skill=s&&a.isSkill()&&a.item();
+	const atb=skill&&skill.meta.reserveAtb&&s._atbSpeed;
+	const rtv=f.ori.apply(this,arguments);
+	if(atb) s._atbSpeed=atb;
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
