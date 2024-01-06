@@ -48,11 +48,14 @@ function cfc(p){
 	if(this===window || (typeof globalThis!=='undefined'&&this===globalThis)) throw new Error('call a constructor without new');
 	this._p=p;
 }
-cfc.prototype.constructor=cfc;
-cfc.prototype.add=function(key,f,t,d,u){
+{ const p=cfc.prototype;
+p.constructor=cfc;
+p.add=function(key,f,t,d,u){
 	cf(this._p,key,f,t,d,u);
 	return this;
 };
+p.getP=function(){ return this._p; };
+}
 
 /*
 短到不想變成插件的東西們
@@ -274,6 +277,16 @@ const listMapParents=window.listMapParents=mapId=>{
 		mapId=$dataMapInfos[mapId].parentId;
 	}
 	return rtv.reverse();
+};
+const getUrlParamVal=window.getUrlParamVal=key=>{
+	const h0=ImageManager.splitUrlQueryHash(location.href);
+	const ht=ImageManager.splitUrlQueryHash(getTopFrameWindow().location.href);
+	let r;
+	if(r===undefined) r=ImageManager._parseQs_uqh(ht,2)[key];
+	if(r===undefined) r=ImageManager._parseQs_uqh(ht,1)[key];
+	if(r===undefined) r=ImageManager._parseQs_uqh(h0,2)[key];
+	if(r===undefined) r=ImageManager._parseQs_uqh(h0,1)[key];
+	return r;
 };
 
 { const a=Game_Interpreter,p=a.prototype;
@@ -869,7 +882,11 @@ p.onLoad_after.tbl=new Map([
 new cfc(WebAudio.prototype).add('_load',function f(url){
 	if(!WebAudio._context) return;
 	const xhr=new XMLHttpRequest();
-	if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) url=Decrypter.extToEncryptExt(url);
+	xhr._needDecrypt=false;
+	if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)){
+		url=Decrypter.extToEncryptExt(url);
+		xhr._needDecrypt=true;
+	}
 	const cache=this._getCache(url); if(cache) return this._onXhrLoad(undefined,url,cache.slice());
 	xhr.open('GET',url);
 	xhr.responseType='arraybuffer';
@@ -881,7 +898,7 @@ function(xhr,url){ if(xhr.status<400) this._onXhrLoad(xhr,url); },
 ],false,true).add('_onXhrLoad',function f(xhr,url,arrayBuffer){
 	let array=arrayBuffer||xhr&&xhr.response;
 	if(!arrayBuffer){
-		if(Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) array=Decrypter.decryptArrayBuffer(array);
+		if(xhr._needDecrypt && Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) array=Decrypter.decryptArrayBuffer(array);
 		this._setCache(url,array.slice());
 	}
 	this._readLoopComments(new Uint8Array(array));
@@ -908,6 +925,48 @@ function(buffer){
 	if(!WebAudio._cache) WebAudio._cache=new LruCache(f.tbl[0],f.tbl[1]);
 	return WebAudio._cache;
 },[404,1<<25],false,true);
+//
+Decrypter._notFoundCache=new Set();
+new cfc(Decrypter).add('decryptImg',function f(url,bitmap){
+	if(Decrypter._notFoundCache.has(url) || !getUrlParamVal('custom')) return f.ori.apply(this,arguments);
+	jurl(url,"HEAD",0,0,'arraybuffer',f.tbl[0].bind(this,url,bitmap),f.tbl[1].bind(this,url,bitmap,f.ori,arguments));
+},[
+function(url,bitmap,resp,xhr){ if(xhr.readyState!==4) return;
+	const stat=xhr.status.toString();
+	if(stat.length!==3 || stat.slice(0,1)!=='2') return;
+	bitmap._image.addEventListener('load', bitmap._loadListener=Bitmap.prototype._onLoad.bind(bitmap));
+	bitmap._image.addEventListener('error', bitmap._errorListener=bitmap._loader || Bitmap.prototype._onError.bind(bitmap));
+	bitmap._image.src=url;
+},
+function(url,bitmap,ori,argv,xhr){ if(!(xhr.readyState>=4)) return;
+	const stat=xhr.status.toString();
+	if(stat==='0' || (stat.length===3 && stat[0]-0>=4)){
+		Decrypter._notFoundCache.add(url);
+		return ori.apply(this,argv);
+	}
+},
+]);
+new cfc(WebAudio.prototype).add('_load',function f(url){
+	if(!Decrypter.hasEncryptedAudio || ImageManager.isDirectPath(url) || Decrypter._notFoundCache.has(url) || !getUrlParamVal('custom')) return f.ori.apply(this,arguments);
+	jurl(url,"HEAD",0,0,'arraybuffer',f.tbl[0].bind(this,url,f.ori,arguments),f.tbl[1].bind(this,url,f.ori,arguments));
+},[
+function(url,ori,argv,resp,xhr){ if(xhr.readyState!==4) return;
+	const stat=xhr.status.toString();
+	if(stat.length!==3 || stat.slice(0,1)!=='2') return;
+	const e=Decrypter.hasEncryptedAudio;
+	Decrypter.hasEncryptedAudio=false;
+	const rtv=ori.apply(this,argv);
+	Decrypter.hasEncryptedAudio=e;
+	return rtv;
+},
+function(url,ori,argv,xhr){ if(!(xhr.readyState>=4)) return;
+	const stat=xhr.status.toString();
+	if(stat==='0' || (stat.length===3 && stat[0]-0>=4)){
+		Decrypter._notFoundCache.add(url);
+		return ori.apply(this,argv);
+	}
+},
+]);
 //
 new cfc(Game_Party.prototype).add('partyAbility_sumAll',function f(dataId){
 	return this.members().reduce(f.tbl[0].bind(dataId),0);
@@ -1813,7 +1872,7 @@ function(sp){ sp.renderCanvas(this); },
 	this.children.forEach(f.tbl[0],renderer);
 },[
 function(sp){ sp.renderWebGL(this); },
-],false,true).add('removeChild',function f(child){
+],false,true).add('removeChild',function f(child,dontTryMore){
 	if(this.children[0]!==child){
 		if($gameTemp.isPlaytest()) console.warn('removeChild: child not the first');
 		if(child) child.visible=false;
@@ -1828,7 +1887,7 @@ function(sp){ sp.renderWebGL(this); },
 	this.onChildrenChange(0);
 	child.emit('removed', this);
 	
-	for(let tmp;(tmp=this.children[0]) && tmp.isPlaying && tmp.isPlaying.constructor===Function && !this.children[0].isPlaying();) this.children.pop();
+	if(!dontTryMore) for(let tmp;(tmp=this.children[0]) && tmp.isPlaying && tmp.isPlaying.constructor===Function && !this.children[0].isPlaying();) this.removeChild(tmp,true);
 	return child;
 },undefined,false,true).add('updateTransform',function f(renderer){
 	this._boundsID++;
@@ -1883,8 +1942,8 @@ new cfc(p).add('getDamagePopupContainer',function f(){
 	if(!this.__dmgs) this.__dmgs=new Queue();
 	return this.__dmgs;
 },undefined,true,true).add('pushDamageSprite',function f(sprite){
-	const yepParam=typeof Yanfly!=='nudefined' && Yanfly.Param;
-	const heightBuffer =  yepParam && Yanfly.Param.BECPopupOverlap || 1;
+	const yepParam=typeof Yanfly!=='undefined' && Yanfly.Param;
+	const heightBuffer = yepParam && Yanfly.Param.BECPopupOverlap || 1;
 	const container=this.getDamagePopupContainer();
 	container.push(sprite);
 	if(yepParam && Yanfly.Param.BECNewPopBottom) container.forEach(f.tbl[0], heightBuffer);
@@ -5912,9 +5971,10 @@ if(p[k]) new cfc(p).add(k,function f(){
 }
 
 { const p=ImageManager;
-(p._parseQs_uqh=function f(uqh){
+(p._parseQs_uqh=function f(uqh,idx){
+	idx=idx===undefined?1:idx;
 	const rtv={};
-	if(uqh[1]) uqh[1].slice(1).split("&").forEach(f.forEach,rtv);
+	if(uqh&&uqh[idx]) uqh[idx].slice(1).split("&").forEach(f.forEach,rtv);
 	return rtv;
 }).forEach=function(x){
 	const idxe=x.indexOf('=');
@@ -5922,7 +5982,10 @@ if(p[k]) new cfc(p).add(k,function f(){
 	else this[x.slice(0,idxe)]=decodeURIComponent(x.slice(idxe+1));
 };
 p._parseQs=function(path){
-	return this._parseQs_uqh(ImageManager.splitUrlQueryHash(path));
+	return this._parseQs_uqh(ImageManager.splitUrlQueryHash(path),1);
+};
+p._parseHs=function(path){
+	return this._parseQs_uqh(ImageManager.splitUrlQueryHash(path),2);
 };
 /*
 k='loadBitmap';
@@ -25966,38 +26029,98 @@ new cfc(Game_Action.prototype).add('executeDamage',function f(trgt,val){
 	return f.ori.apply(this,arguments);
 });
 
-new cfc(Sprite_Damage.prototype).add('setup',function f(btlr){
+{ const p=Sprite_Damage.prototype;
+new cfc(p).add('setup',function f(btlr){
 	const rtv=f.ori.apply(this,arguments);
 	this.setupWeaknessRateEffect();
 	return rtv;
 }).add('setupWeaknessRateEffect',function f(){
+	this._hintData=undefined;
 	const r=this._result;
 	if((!r.hpAffected||!(0<r.hpDamage))&&!(0<r.mpDamage)) return;
 	const fc=this._flashColor;
-	let wr=r&&r.weaknessRate;
+	let wr=this._wr=r&&r.weaknessRate;
 	if(!fc||!(wr-=0)) return;
-	let isSet=false;
-	if(wr<1) isSet=this._setupWeaknessRateEffect_mixFlashColor(f.tbl[0][0],f.tbl[0][1]);
-	if(1<wr) isSet=this._setupWeaknessRateEffect_mixFlashColor(f.tbl[1][0],f.tbl[1][1]);
+	let idx=-1;
+	if(wr<1) idx=0;
+	if(1<wr) idx=1;
+	let isSet=false; if(idx>=0) isSet=this._setupWeaknessRateEffect_mixFlashColor(f.tbl[idx][0],f.tbl[idx][1],f.tbl[idx][2]);
+	this._hintData=f.tbl[idx];
+	this.addHintWord();
 	if(isSet && !this._flashDuration) this._flashDuration=f.tbl[2];
-},[
-[ /* weighted */ [141, 87, 58,168],0.75], // [ /* add */ [  0,255,  0,168],], 
-[ /* weighted */ [168,223,255,168],0.5 ], // [ /* add */ [  0,  0,255,168],], 
+},t=[
+[ /* weighted */ [141, 87, 58,168],0.75 , "\\TXTCENTER:\"RESISTED\"", n=>n*4<5, ], // [ /* add */ [  0,255,  0,168],], 
+[ /* weighted */ [168,223,255,168],0.5  , "\\TXTCENTER:\"WEAKNESS\"", n=>n>=1.25, ], // [ /* add */ [  0,  0,255,168],], 
 64,
-]).add('_setupWeaknessRateEffect_mixFlashColor',function f(color,rate){
-	return this._setupWeaknessRateEffect_mixFlashColor_weighted(color,rate);
+undefined, // 3: textWidth info
+undefined, // 4: dummyWindow for text width measurement
+"%%", // 5: anchor
+p.isPlaying, // 6: txt isPlaying
+function(){
+	if(1<this._duration){
+		--this._duration;
+		this.position.set(this.x+this._vx,this.y+this._vy);
+		this._vx+=this._dvx;
+		this._vy+=this._dvy;
+	}else this._duration=0;
+	this.alpha=this._duration/this._durationMax;
+	const p=!this.isPlaying()&&this.parent;
+	if(p) p.removeChild(this);
+}, // 7: txt update
+[[0,0],[-2,-2],0,1.0/16,], // 8: v0_x range, v0_y range, dv_x, dv_y
+0.25, // 9: bias rate
+]).add('_setupWeaknessRateEffect_mixFlashColor',function f(color,colorRate){
+	return this._setupWeaknessRateEffect_mixFlashColor_weighted(color,colorRate);
 },undefined,true,true).add('_setupWeaknessRateEffect_mixFlashColor_add',function f(color){
 	const fc=this._flashColor;
 	const len=Math.min(fc.length,color.length);
 	for(let x=0;x!==len;++x) fc[x]+=color[x];
 	return true;
-}).add('_setupWeaknessRateEffect_mixFlashColor_weighted',function f(color,rate){
-	if(rate===undefined) rate=0.5;
+}).add('_setupWeaknessRateEffect_mixFlashColor_weighted',function f(color,colorRate){
+	if(colorRate===undefined) colorRate=0.5;
 	const fc=this._flashColor;
 	const len=Math.min(fc.length,color.length);
-	for(let x=0;x!==len;++x) fc[x]=fc[x]*(1-rate)+color[x]*rate;
+	for(let x=0;x!==len;++x) fc[x]=fc[x]*(1-colorRate)+color[x]*colorRate;
 	return true;
+}).add('addHintWord',function f(p){
+	if(!this._hintData||(!p&&!this.parent)||!this._hintData[3](this._wr)) return;
+	if(!this._hintData._styledTxt) this._hintData._styledTxt="\\TXTCOLOR\"rgba("+this._hintData[0].slice(0,3)+","+f.tbl[5]+")\""+this._hintData[2];
+	p=p||this.parent;
+	if(!f.tbl[3]){
+		f.tbl[3]={};
+		f.tbl[4]=new Window_Base(0,0,1,1);
+		f.tbl[3]._lh=f.tbl[4].fittingHeight(1);
+	}
+	if(!(this._hintData[2] in f.tbl[3])) f.tbl[3][this._hintData[2]]=(f.tbl[4].standardPadding()<<1)+~~(f.tbl[4].textWidth(this._hintData[2])+1);
+	
+	// not removing old words
+	const sp=this._hintWordSp=new Window_Base(0,0,f.tbl[3][this._hintData[2]],f.tbl[3]._lh);
+	sp._windowFrameSprite.visible=sp._windowBackSprite.visible=0;
+	sp._durationMax=sp._duration=this._duration;
+	sp._vx=Math.random()*(f.tbl[8][0][1]-f.tbl[8][0][0])+f.tbl[8][0][0];
+	sp._vy=Math.random()*(f.tbl[8][1][1]-f.tbl[8][1][0])+f.tbl[8][1][0];
+	sp._dvx=f.tbl[8][2];
+	sp._dvy=f.tbl[8][3];
+	const r=1-this._wr;
+	sp.drawTextEx(this._hintData._styledTxt.replace(f.tbl[5],Math.max(Math.abs(r)+r*f.tbl[9],0)||0),0,0);
+	makeDummyWindowProto(sp);
+	sp._windowContentsSprite.anchor.set(0.5,0.5);
+	sp.position.set(this.x,this.y);
+	sp.isPlaying=f.tbl[6];
+	sp.update=f.tbl[7];
+	p.addChild(sp);
+},t);
+Object.defineProperty(p,'parent',{
+set:function(rhs){
+	this._parent=rhs;
+	if(rhs) this.addHintWord();
+	return this._parent;
+},get:function(){
+	return this._parent;
+},configurable:true,
 });
+t[-1]=undefined;
+}
 
 })();
 
