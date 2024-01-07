@@ -744,12 +744,23 @@ t.tbl[0].forEach(info=>{
 });
 t=undefined;
 //
-new cfc(Window_Message.prototype).add('updateClose',function f(){
+new cfc(Window_Base.prototype).add('updateClose',function f(){
 	const isClosed=this.isClosed();
-	f.ori.apply(this,arguments);
-	if(!isClosed && this.isClosed() && this._positionType!==2 && this._choiceWindow && this._choiceWindow.updatePlacement){ this.updatePlacement(); this._choiceWindow.updatePlacement(); }
-	return this._closing;
-});
+	const rtv=f.ori.apply(this,arguments);
+	if(!isClosed && this.isClosed()) this.onclosed();
+	return rtv;
+}).add('onclosed',function f(){
+},undefined,false,true);
+new cfc(Window_Message.prototype).add('onclosed',function f(){
+	Window_Base.prototype.onclosed.apply(this,arguments);
+	if(this._positionType!==2 && this._choiceWindow && this._choiceWindow.updatePlacement){ this.updatePlacement(); this._choiceWindow.updatePlacement(); }
+},undefined,false,true);
+if(Window_Message.prototype.updateClose===Window_Base.prototype.updateClose){
+new cfc(Window_Message.prototype).add('updateClose',function f(){
+	const rtv=Window_Base.prototype.updateClose.apply(this,arguments);
+	return rtv;
+},undefined,false,true);
+}
 //
 new cfc(Scene_Base.prototype).add('_prevScene_store',function f(){
 	// called when 'scene.initialize'
@@ -945,7 +956,7 @@ function(bitmap,url){
 		const arrayBuffer=Decrypter.decryptArrayBuffer(this.response);
 		Decrypter._setCache(url,arrayBuffer.slice());
 		Decrypter._onXhrLoad(bitmap,arrayBuffer);
-	}
+	}else this.onerror();
 },
 function(bitmap){
 	if(bitmap._loader) bitmap._loader();
@@ -1025,6 +1036,7 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 		const arr=[];
 		arr.push('AudioManager','BattleManager','ConfigManager','DataManager','ImageManager','SceneManager',);
 		arr.push('Input','TouchInput',);
+		arr.push('Graphics',);
 		arr.push('getCStyleStringStartAndEndFromString',);
 		arr.push('getPrefixPropertyNames',);
 		arr.push('getTopFrameWindow','chTitle',);
@@ -11129,6 +11141,7 @@ ix:12,
 	if(this._toDetail_lastItem===item) return;
 	this._toDetail_lastItem=item;
 	{
+		dw.onclosed && dw.onclosed();
 		const bm=dw.contents;
 		bm && bm.clear();
 	}
@@ -26899,6 +26912,292 @@ new cfc(BattleManager).add('endAction',function f(){
 	if(atb) s._atbSpeed=atb;
 	return rtv;
 });
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 文字換視窗背景
+ * @author agold404
+ * @help \BGIMG"id|z軸|路徑|類型|alpha|原點x|原點y|伸縮x比例|伸縮y比例|參考寬|參考高|起始x比例|起始y比例"
+ * \BGIMG"id|z軸|路徑|延展|alpha"
+ * 
+基本參數大概是
+- 自訂 id 。同時顯示多個圖片背景時要使用不同 id 。
+- z 軸。多個圖片的上下層依據，數值越小的在越底下。不是填數字則視為 0 。
+- 檔案路徑
+- 類型。同 Windows 桌面：
+  - 延展: 圖片填滿整個視窗
+  - 置中: 圖片以原點放在窗內起始位置
+    - 圖內原點設在圖片中心、參考視窗內起始設為參考1單位視窗的一半，就是置中。
+    - 你也可以很有病的把參考視窗內起始放在邊邊甚至出界。
+  - 重複: 圖片以原點從窗內起始位置開始填滿視窗
+  - 置中切: 同置中，但會切出界。
+
+接下來是怎麼調會比較方便要加ㄉ參數，不一定都會加上去
+- 圖片 alpha 值(不透明度)。 0 到 1 。預設 1 。
+- 圖內原點 x 座標(置中/重複用ㄉ)。以原始圖片大小為準。預設圖片正中心。
+- 圖內原點 y 座標(置中/重複用ㄉ)。以原始圖片大小為準。預設圖片正中心。
+- 圖片伸縮 x 比例(置中/重複用ㄉ)。以以上設定的原點為中心伸縮。預設 1 。
+- 圖片伸縮 y 比例(置中/重複用ㄉ)。以以上設定的原點為中心伸縮。預設 1 。
+- 參考 1 單位視窗寬。依據視窗實際寬度除上該值，為圖片寬的_伸縮比例_。填入非數字就是當下視窗寬=預設。計算後的_伸縮比例_與圖片伸縮 x 比例相乘。(置中/重複用ㄉ)
+- 參考 1 單位視窗高。依據視窗實際高度除上該值，為圖片高的_伸縮比例_。填入非數字就是當下視窗高=預設。計算後的_伸縮比例_與圖片伸縮 y 比例相乘。(置中/重複用ㄉ)
+- 參考視窗內起始 x 比例(置中/重複用ㄉ)。預設 0.5 ，正中間。
+- 參考視窗內起始 y 比例(置中/重複用ㄉ)。預設 0.5 ，正中間。
+
+預計輸入方式：
+`\BGIMG"` _**id**_ `|` _**z軸**_ `|` _**路徑**_ `|` _**類型**_  `|` _**alpha**_  `|` _**原點x**_ `|` _**原點y**_ `|` _**伸縮x比例**_ `|` _**伸縮y比例**_ `|` _**參考寬**_ `|` _**參考高**_ `|` _**起始x比例**_ `|` _**起始y比例**_ `"` ```txt
+\BGIMG"id|z軸|路徑|類型|alpha|原點x|原點y|伸縮x比例|伸縮y比例|參考寬|參考高|起始x比例|起始y比例"
+```
+延展的話只要填這樣：
+`\BGIMG"` _**id**_ `|` _**z軸**_ `|` _**路徑**_ `|延展|` _**alpha**_  `"` ```txt
+\BGIMG"id|z軸|路徑|延展|alpha"
+```
+
+只有1張圖的話id和z軸都填0或都隨便填就好
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+t=[
+"BGIMG",
+[/\\/g,/^[ \t]*|[ \t]*$/,], // 1: replacing matcher
+(n,d)=>{
+	const rtv=n-0;
+	return !n||isNaN(rtv)?d:rtv;
+}, // 2: to num with default
+{
+alpha:1,
+imgax:0.5,
+imgay:0.5,
+imgsx:1,
+imgsy:1,
+wndax:0.5,
+wnday:0.5,
+}, // 3: default
+function(wnd,bmp){
+	if(this._img!==bmp) return;
+	wnd.bgImg_setupSp(this);
+}, // 4: onImgLoad
+"延展", // 5: bypass
+{
+"延展":"bgImg_setupSp_延展",
+"置中":"bgImg_setupSp_置中",
+"指定":"bgImg_setupSp_置中",
+"重複":"bgImg_setupSp_重複",
+"置中切":"bgImg_setupSp_置中切",
+"指定切":"bgImg_setupSp_置中切",
+}, // 6: type to setup func
+function(imgsp){
+	const imgf=imgsp._frame; if(!imgf) return; // ????
+	const frm=new Rectangle(imgf.x,imgf.y,imgf.width,imgf.height);
+	const imgs=imgsp.scale; if(!imgs.x||!imgs.y) return; // ????
+	const sp=this;
+	const imgb=imgsp.bitmap;
+	const imgw=imgs.x*imgb.width;
+	const imgh=imgs.y*imgb.height;
+	const imgp=imgsp.position;
+	let imgx0=imgp.x,imgxe=imgx0+imgw; if(imgxe<imgx0){ let tmp=imgx0; imgx0=imgxe; imgxe=tmp; }
+	let imgy0=imgp.y,imgye=imgy0+imgh; if(imgye<imgy0){ let tmp=imgy0; imgy0=imgye; imgye=tmp; }
+	let imgx=imgsp.x;
+	let imgy=imgsp.y;
+	if(imgx0<sp._x0){
+		const dx=(sp._x0-imgx0)/imgs.x;
+		if(imgs.x<0) frm.width+=dx;
+		else{
+			frm.width-=dx;
+			frm.x+=dx;
+			imgx+=dx*imgs.x;
+		}
+	}
+	if(imgy0<sp._y0){
+		const dy=(sp._y0-imgy0)/imgs.y;
+		if(imgs.y<0) frm.height+=dy;
+		else{
+			frm.height-=dy;
+			frm.y+=dy;
+			imgy+=dy*imgs.y;
+		}
+	}
+	if(sp._xe<imgxe){
+		const dx=(imgxe-sp._xe)/imgs.x;
+		if(imgs.x<0){
+			frm.width+=dx;
+			frm.x-=dx;
+			imgx+=dx*imgs.x;
+		}else frm.width-=dx;
+	}
+	if(sp._ye<imgye){
+		const dy=(imgye-sp._ye)/imgs.y;
+		if(imgs.y<0){
+			frm.height+=dy;
+			frm.y-=dy;
+			imgy+=dy*imgs.y;
+		}else frm.height-=dy;
+	}
+	imgp.set(imgx,imgy);
+	imgsp.setFrame(frm.x,frm.y,frm.width,frm.height);
+}, // 7: 切邊
+];
+
+new cfc(Window_Base.prototype).add('processEscapeCharacter',function f(code,textState){
+	return (code===f.tbl[0])?this.changeBgImg(this.processCStyleStringContent(textState)):f.ori.apply(this,arguments);
+},t).add('changeBgImg',function f(infoStr){
+	if(!infoStr) return;
+	const infos=infoStr.split("|");
+	const id=infos[0];
+	const z=infos[1]-0||0;
+	const path=infos[2].replace(f.tbl[1][0],'/');
+	const type=infos[3].replace(f.tbl[1][1],'');
+	const alpha=f.tbl[2](infos[4],f.tbl[3].alpha);
+	const imgax=f.tbl[2](infos[5],f.tbl[3].imgax);
+	const imgay=f.tbl[2](infos[6],f.tbl[3].imgay);
+	const imgsx=f.tbl[2](infos[7],f.tbl[3].imgsx);
+	const imgsy=f.tbl[2](infos[8],f.tbl[3].imgsy);
+	const rwndw=f.tbl[2](infos[9],this.width);
+	const rwndh=f.tbl[2](infos[10],this.height);
+	const wndax=f.tbl[2](infos[11],f.tbl[3].wndax);
+	const wnday=f.tbl[2](infos[12],f.tbl[3].wnday);
+	
+	const sp=this.bgImg_getSp(id);
+	sp._bgImgZ=z;
+	sp._img=ImageManager.loadNormalBitmap(path);
+	sp._type=type;
+	sp.alpha=alpha;
+	if(sp._type===f.tbl[5]){
+		sp._imgax=0;
+		sp._imgay=0;
+		sp._imgsx=1;
+		sp._imgsy=1;
+		sp._rwndw=1;
+		sp._rwndh=1;
+		sp._wndax=0;
+		sp._wnday=0;
+		
+		sp._x0=0;
+		sp._y0=0;
+		sp._xe=0;
+		sp._ye=0;
+	}else{
+		sp._imgax=imgax;
+		sp._imgay=imgay;
+		sp._imgsx=imgsx;
+		sp._imgsy=imgsy;
+		sp._rwndw=rwndw;
+		sp._rwndh=rwndh;
+		sp._wndax=wndax;
+		sp._wnday=wnday;
+		sp.scale.set(this.width/rwndw,this.height/rwndh);
+		
+		const xo=sp._wndax*sp._rwndw;
+		const yo=sp._wnday*sp._rwndh;
+		sp._x0=0-xo;
+		sp._y0=0-yo;
+		sp._xe=sp._rwndw-xo;
+		sp._ye=sp._rwndh-yo;
+	}
+	
+	sp._img.addLoadListener(f.tbl[4].bind(sp,this));
+},t).add('bgImg_getCont',function f(){
+	if(!this._bgImgRoot){
+		this._windowSpriteContainer.addChildAt(this._bgImgRoot=new Sprite(),0);
+		this.bgImg_updateRootPlacement();
+		this._bgImgRoot._id2sp=new Map();
+	}
+	return this._bgImgRoot;
+},t).add('bgImg_updateRootPlacement',function f(){
+	this._bgImgRoot.y=-this._windowSpriteContainer.y; // match y=0 in 'this'
+},t).add('bgImg_getSp',function f(id){
+	const m=this.bgImg_getCont()._id2sp;
+	let sp=m.get(id); if(!sp) m.set(id,sp=new Sprite());
+	return sp;
+},t).add('bgImg_setupSp_延展',function f(sp){
+	sp.position.set(0,0);
+	sp.anchor.set(0,0);
+	sp.scale.set(this.width/sp._img.width,this.height/sp._img.height);
+	sp.bitmap=sp._img;
+},t).add('bgImg_setupSp_置中',function f(sp){
+	const imgsp=new Sprite(sp._img);
+	sp.addChild(imgsp);
+	const imgdx=-sp._imgax*sp._imgsx*sp._img.width;
+	const imgdy=-sp._imgay*sp._imgsy*sp._img.height;
+	//imgsp.anchor.set(sp._imgax,sp._imgay);
+	imgsp.scale.set(sp._imgsx,sp._imgsy);
+	imgsp.position.set(imgdx,imgdy);
+},t).add('bgImg_setupSp_重複',function f(sp){
+	const xo=-sp._x0;
+	const yo=-sp._y0;
+	const ws=sp._img.width*sp._imgsx;
+	const hs=sp._img.height*sp._imgsy;
+	let x0b=xo-ws*sp._imgax,x0e=x0b+ws; if(x0e<x0b){ let tmp=x0b; x0b=x0e; x0e=tmp; }
+	let y0b=yo-hs*sp._imgay,y0e=y0b+hs; if(y0e<y0b){ let tmp=y0b; y0b=y0e; y0e=tmp; }
+	const w=Math.abs(ws);
+	const h=Math.abs(hs);
+	const imgdx=-ws*sp._imgax;
+	const imgdy=-hs*sp._imgay;
+	for(let y=yo-Math.ceil((y0b-0)/h)*h,ye=Math.max(yo+Math.ceil((sp._rwndh-y0e)/h)*h,y)+h,
+		xb=xo-Math.ceil((x0b-0)/w)*w,xe=Math.max(xo+Math.ceil((sp._rwndw-x0e)/w)*w,xb)+w;y<ye;y+=h){
+		for(let x=xb;x<xe;x+=w){
+			const imgsp=new Sprite(sp._img);
+			//imgsp.anchor.set(sp._imgax,sp._imgay); // use calc. translate manually (imgdx,imgdy)
+			imgsp.scale.set(sp._imgsx,sp._imgsy);
+			imgsp.position.set(x-xo+imgdx,y-yo+imgdy); // sp is moved in root.updateChildren
+			sp.addChild(imgsp);
+		}
+	}
+	this.bgImg_setupSp_切邊(sp);
+},t).add('bgImg_setupSp_置中切',function f(sp){
+	this.bgImg_setupSp_置中(sp);
+	this.bgImg_setupSp_切邊(sp);
+},t).add('bgImg_setupSp_切邊',function f(sp){
+	sp.children.forEach(f.tbl[7],sp);
+},t).add('bgImg_setupSp',function f(sp){
+	const func=this[f.tbl[6][sp._type]];
+	if(func){
+		this.onclosed_clearBgImg(sp);
+		return func.apply(this,arguments);
+	}
+},t).add('updateClose',function f(){
+	const isClosed=this.isClosed();
+	f.ori.apply(this,arguments);
+	if(!isClosed && this.isClosed()) this.onclosed();
+	return this._closing;
+}).add('onclosed',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	this.onclosed_clearBgImg();
+	return rtv;
+}).add('onclosed_clearBgImg',function f(sp){
+	const p=sp||this._bgImgRoot;
+	const arr=p&&p.children;
+	if(arr){
+		for(let x=arr.length;x--;) p.removeChildAt(x);
+		if(p._id2sp) p._id2sp.clear();
+	}
+},t).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.bgImg_updateChildren();
+	return rtv;
+}).add('bgImg_updateChildren',function f(){
+	const root=this.bgImg_getCont();
+	{ const c=root.children; while(c.length) root.removeChildAt(c.length-1); }
+	this.bgImg_updateRootPlacement();
+	const arr=[];
+	root._id2sp.forEach(f.tbl[0].bind(arr));
+	root._wndw=this.width;
+	root._wndh=this.height;
+	arr.sort(f.tbl[1]).forEach(f.tbl[2],root);
+},[
+function f(v,k){ this.push(v); },
+(spA,spB)=>spA._bgImgZ-spB._bgImgZ,
+function f(sp){
+	sp.x=this._wndw*sp._wndax;
+	sp.y=this._wndh*sp._wnday;
+	this.addChild(sp);
+},
+]);
 
 })();
 
