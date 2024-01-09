@@ -15460,9 +15460,11 @@ note=>DataManager.sendLoadReq_byNote(note),
 
 new cfc(DataManager).add('onLoad_after_map',function f(obj){
 	const rtv=f.ori && f.ori.apply(this,arguments),sm=SceneManager,sc=sm._scene;
-	if(sm.isScene_map()) this.onLoad_map_preload(obj); // not only sc._transfer
+	if(sc && ( (sc._transfer&&sm.isScene_map())||f.tbl[0].has(sm._previousClass) )) this.onLoad_map_preload(obj);
 	return rtv;
-}).add('onLoad_map_preload',function f(obj){
+},[
+new Set([Scene_Load,Scene_Options,]),
+]).add('onLoad_map_preload',function f(obj){
 	const collect={ani:new Set(),se:new Set(),};
 	obj.events.forEach(f.tbl[2],collect);
 	collect.ani.forEach(f.tbl[3]);
