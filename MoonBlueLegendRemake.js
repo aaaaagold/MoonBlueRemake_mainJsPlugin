@@ -890,7 +890,7 @@ p.onLoad_after.tbl=new Map([
 ]);
 }
 //
-new cfc(WebAudio.prototype).add('_load',function f(url){
+new cfc(WebAudio.prototype).add('_load',function f(url,noerr){
 	if(!WebAudio._context) return;
 	const xhr=new XMLHttpRequest();
 	xhr._needDecrypt=false;
@@ -902,7 +902,7 @@ new cfc(WebAudio.prototype).add('_load',function f(url){
 	xhr.open('GET',url);
 	xhr.responseType='arraybuffer';
 	xhr.onload=f.tbl[0].bind(this,xhr,url);
-	xhr.onerror=this._loader||function(){this._hasError=true;}.bind(this);
+	xhr.onerror=(this._noerr||noerr)?none:(this._loader||function(){this._hasError=true;}.bind(this));
 	xhr.send();
 },[
 function(xhr,url){ if(xhr.status<400) this._onXhrLoad(xhr,url); },
@@ -928,14 +928,17 @@ function(buffer){
 	}
 	this._onLoad();
 }
-],false,true).add('_setCache',function f(url,arrayBuffer){
+],false,true).add('initialize',function f(url,noerr){
+	this._noerr=noerr;
+	return f.ori.apply(this,arguments);
+}).add('_setCache',function f(url,arrayBuffer){
 	this.getCacheCont().setCache(url,arrayBuffer,arrayBuffer.byteLength);
 },undefined,false,true).add('_getCache',function f(url){
 	return this.getCacheCont().getCache(url);
 },undefined,false,true).add('getCacheCont',function f(){
 	if(!WebAudio._cache) WebAudio._cache=new LruCache(f.tbl[0],f.tbl[1]);
 	return WebAudio._cache;
-},[404,1<<25],false,true);
+},[404,1<<26],false,true);
 //
 Decrypter._notFoundCache=new Set();
 new cfc(Decrypter).add('decryptImg',function f(url,bitmap){
@@ -15451,16 +15454,13 @@ function f(pg){ pg.list.forEach(f.tbl[0],this); },
 function f(evtd){ evtd && evtd.pages.forEach(f.tbl[1],this); },
 aniName=>ImageManager.loadAnimation(aniName,0),
 function f(timing){ timing.se && this.se.add(timing.se.name); },
-seName=>jurl(
-	AudioManager._path+'se/'+seName+(Decrypter.hasEncryptedAudio?Decrypter.extToEncryptExt(AudioManager.audioFileExt()):AudioManager.audioFileExt()),
-	"GET",0,0,'arraybuffer',
-),
+seName=>new WebAudio(AudioManager._path+'se/'+seName+AudioManager.audioFileExt(),true),
 note=>DataManager.sendLoadReq_byNote(note),
 ]; t.forEach(f=>f.tbl=f.ori=t);
 
 new cfc(DataManager).add('onLoad_after_map',function f(obj){
 	const rtv=f.ori && f.ori.apply(this,arguments),sm=SceneManager,sc=sm._scene;
-	if(sm.isScene_map() && sc._transfer) this.onLoad_map_preload(obj);
+	if(sm.isScene_map()) this.onLoad_map_preload(obj); // not only sc._transfer
 	return rtv;
 }).add('onLoad_map_preload',function f(obj){
 	const collect={ani:new Set(),se:new Set(),};
@@ -27922,7 +27922,7 @@ r=p[k]; (p[k]=function f(func,isAfter){
 })();
 
 // dump data/*.json when testing
-(()=>{ let k,r,t;
+if(Utils.isOptionValid('test'))(()=>{ let k,r,t;
 
 { const p=DataManager;
 k='onLoad';
@@ -27988,7 +27988,7 @@ useSrc:new Set(['$dataMap',]),
 })();
 
 // log requested img or audio paths
-(()=>{ let k,r,t;
+if(new Date().getTime()<1706832000000)(()=>{ let k,r,t;
 
 { const p=XMLHttpRequest.prototype;
 k='open';
