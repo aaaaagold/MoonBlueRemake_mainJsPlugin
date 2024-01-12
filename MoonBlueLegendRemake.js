@@ -890,7 +890,7 @@ p.onLoad_after.tbl=new Map([
 ]);
 }
 //
-new cfc(WebAudio.prototype).add('_load',function f(url,noerr){
+new cfc(WebAudio.prototype).add('_load',function f(url,noerr,putCacheOnly){
 	if(!WebAudio._context) return;
 	const xhr=new XMLHttpRequest();
 	xhr._needDecrypt=false;
@@ -898,20 +898,21 @@ new cfc(WebAudio.prototype).add('_load',function f(url,noerr){
 		url=Decrypter.extToEncryptExt(url);
 		xhr._needDecrypt=true;
 	}
-	const cache=this._getCache(url); if(cache) return this._onXhrLoad(undefined,url,cache.slice());
+	const cache=this._getCache(url); if(cache) return !(this._putCacheOnly||putCacheOnly)&&this._onXhrLoad(undefined,url,cache.slice());
 	xhr.open('GET',url);
 	xhr.responseType='arraybuffer';
-	xhr.onload=f.tbl[0].bind(this,xhr,url);
+	xhr.onload=f.tbl[0].bind(this,xhr,url,this._putCacheOnly||putCacheOnly);
 	xhr.onerror=(this._noerr||noerr)?none:(this._loader||function(){this._hasError=true;}.bind(this));
 	xhr.send();
 },[
-function(xhr,url){ if(xhr.status<400) this._onXhrLoad(xhr,url); },
-],false,true).add('_onXhrLoad',function f(xhr,url,arrayBuffer){
+function(xhr,url,putCacheOnly){ if(xhr.status<400) this._onXhrLoad(xhr,url,undefined,putCacheOnly); },
+],false,true).add('_onXhrLoad',function f(xhr,url,arrayBuffer,putCacheOnly){
 	let array=arrayBuffer||xhr&&xhr.response;
 	if(!arrayBuffer){
 		if(xhr._needDecrypt && Decrypter.hasEncryptedAudio && !ImageManager.isDirectPath(url)) array=Decrypter.decryptArrayBuffer(array);
 		this._setCache(url,array.slice());
 	}
+	if(putCacheOnly) return;
 	this._readLoopComments(new Uint8Array(array));
 	WebAudio._context.decodeAudioData(array,f.tbl[0].bind(this));
 	return array;
@@ -928,8 +929,9 @@ function(buffer){
 	}
 	this._onLoad();
 }
-],false,true).add('initialize',function f(url,noerr){
+],false,true).add('initialize',function f(url,noerr,putCacheOnly){
 	this._noerr=noerr;
+	this._putCacheOnly=putCacheOnly;
 	return f.ori.apply(this,arguments);
 }).add('_setCache',function f(url,arrayBuffer){
 	this.getCacheCont().setCache(url,arrayBuffer,arrayBuffer.byteLength);
@@ -15454,7 +15456,7 @@ function f(pg){ pg.list.forEach(f.tbl[0],this); },
 function f(evtd){ evtd && evtd.pages.forEach(f.tbl[1],this); },
 aniName=>ImageManager.loadAnimation(aniName,0),
 function f(timing){ timing.se && this.se.add(timing.se.name); },
-seName=>new WebAudio(AudioManager._path+'se/'+seName+AudioManager.audioFileExt(),true),
+seName=>new WebAudio(AudioManager._path+'se/'+seName+AudioManager.audioFileExt(),true,true),
 note=>DataManager.sendLoadReq_byNote(note),
 ]; t.forEach(f=>f.tbl=f.ori=t);
 
