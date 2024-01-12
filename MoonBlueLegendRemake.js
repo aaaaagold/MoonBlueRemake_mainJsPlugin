@@ -26141,7 +26141,7 @@ function(){
 		f.tbl[4]=new Window_Base(0,0,1,1);
 		f.tbl[3]._lh=f.tbl[4].fittingHeight(1);
 	}
-	if(!(this._hintData[2] in f.tbl[3])) f.tbl[3][this._hintData[2]]=(f.tbl[4].standardPadding()<<1)+~~(f.tbl[4].textWidth(this._hintData[2])+1);
+	if(!(this._hintData[2] in f.tbl[3])) f.tbl[3][this._hintData[2]]=(f.tbl[4].standardPadding()<<1)+(f.tbl[4].textPadding()<<1)+~~(f.tbl[4].textWidth(this._hintData[2])+1);
 	
 	// not removing old words
 	const sp=this._hintWordSp=new Window_Base(0,0,f.tbl[3][this._hintData[2]],f.tbl[3]._lh);
@@ -27200,6 +27200,187 @@ function f(sp){
 	this.addChild(sp);
 },
 ]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 幫MOG新增觸控點換角
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.initialize_actorArrow();
+	return rtv;
+}).add('initialize_actorArrow',function f(){
+	this._actorArrowCloserX=this._actorArrowCloserX;
+	this._actorArrowDx=this._actorArrowDx;
+	this._actorArrowDy=this._actorArrowDy;
+	this._actorArrowRef=this._actorArrowRef;
+},undefined,false,true).add('create_actorArrow',function f(){
+	// placeholder
+},undefined,false,true).add('create_actorArrow_param',function f(ref,closerX,dx,dy,tMax){
+	this._actorArrowRef=ref; if(!ref) return;
+	const sw=ref.parent; if(!sw) return;
+	this._actorArrowCloserX=closerX;
+	this._actorArrowDx=dx;
+	this._actorArrowDy=dy;
+	
+	const ua=sw._upArrowSprite,da=sw._downArrowSprite; if(!ua||!da) return;
+	const tmp=new Window_Base(0,0,256,1);
+	const h=tmp.fittingHeight(1);
+	f.tbl[0](da,tmp,h,"W");
+	f.tbl[0](ua,tmp,h,"Q");
+	da._t|=0;
+	ua._t|=0;
+	ua._tMax=da._tMax=Math.max(tMax-0||0,1);
+},[
+(arrow,tmp,h,txt)=>{
+	const w=(tmp.standardPadding()<<1)+(tmp.textPadding()<<1)+~~(tmp.textWidth(txt)+1);
+	const sp=new Window_Base(-w*0.5,-h*0.5+arrow.height,w,h);
+	sp.alpha=1.5;
+	//sp._windowFrameSprite.visible=sp._windowBackSprite.visible=0;
+	sp.drawTextEx('\\TXTCENTER:'+JSON.stringify(txt)+'',0,0);
+	makeDummyWindowProto(sp);
+	arrow.addChild(arrow._wordSp=sp);
+},
+],false,true).add('update_actorArrow_updatePlacement',function f(da,ua,ref,closerX,dx,dy){
+	// supposed 'ref instanceof Sprite' is true
+	const y=ref.y+ref.height*(0.5-ref.anchor.y);
+	const ax=ref.anchor.x;
+	ua.position.set(ref.x+closerX-ref.width*    ax  -ua.width* (1-ua.anchor.x) +dx,y+dy);
+	da.position.set(ref.x-closerX+ref.width* (1-ax) +da.width*    da.anchor.x  +dx,y+dy);
+	ua.alpha=da.alpha=ref.alpha*0.5;
+},undefined,false,true).add('update_actorArrow_onclick',function f(){
+	const ref=this._actorArrowRef;
+	if(!ref||!TouchInput.isTriggered()) return;
+	const sw=ref.parent; if(!sw) return; // should be existed already
+	const ua=sw._upArrowSprite,da=sw._downArrowSprite;
+	if(!ua||!da||!$gameParty) return;
+	const x=TouchInput.x,y=TouchInput.y;
+	let ud=0;
+	if(sw.downArrowVisible){
+		const dpt=da.toLocal({x:x,y:y}),dptWord={x:dpt.x-da._wordSp.x,y:dpt.y-da._wordSp.y,};
+		ud+=!!(f.tbl[0](da,dpt)||f.tbl[0](da._wordSp,dptWord));
+	}
+	if(sw.upArrowVisible){
+		const upt=ua.toLocal({x:x,y:y}),uptWord={x:upt.x-ua._wordSp.x,y:upt.y-ua._wordSp.y,};
+		ud-=!!(f.tbl[0](ua,upt)||f.tbl[0](ua._wordSp,uptWord));
+	}
+	if(ud){
+		SoundManager.playCursor();
+		(ud<0)?this.previousActor():this.nextActor();
+	}
+},[
+(sp,localPoint)=>{
+	const a=sp.anchor,s=sp.scale;
+	const ax=a?a.x:0;
+	const ay=a?a.y:0;
+	const w=s.x*sp.width;
+	const h=s.y*sp.height;
+	return new Rectangle(-ax*w,-ay*h,w,h).contains(localPoint.x,localPoint.y);
+},
+],false,true).add('update_actorArrow_display',function f(){
+	const ref=this._actorArrowRef; if(!ref) return;
+	const sw=ref.parent; if(!sw) return; // should be existed already
+	const ua=sw._upArrowSprite,da=sw._downArrowSprite;
+	if(!ua||!da||!$gameParty) return;
+	if(!($gameParty._actors.length>=2)){ sw.upArrowVisible=sw.downArrowVisible=false; return; }
+	sw.upArrowVisible=sw.downArrowVisible=true;
+	this.update_actorArrow_updatePlacement(da,ua,ref,this._actorArrowCloserX-0||0,this._actorArrowDx-0||0,this._actorArrowDy-0||0);
+	f.tbl[0](da);
+	f.tbl[0](ua);
+},[
+sp=>{
+	sp.anchor.y=Math.sin(sp._t++/sp._tMax*Math.PI)+0.5;
+	sp._t%=sp._tMax;
+},
+],false,true).add('update_actorArrow',function f(){
+	this.update_actorArrow_display();
+	this.update_actorArrow_onclick();
+},false,true);
+
+if(typeof _mog_scnSkill_create!=='undefined') new cfc(Scene_Skill.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.create_actorArrow();
+	return rtv;
+}).add('create_actorArrow',function f(){
+	const sw=this._helpWindow; if(!sw) return;
+	const ref=sw&&sw._windowContentsSprite; if(!ref) return;
+	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3]);
+	return ref;
+},[
+196, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
+-1.5, // 1: this._actorArrowDx: adjust x, dx.  x+dx
+-543, // 2: this._actorArrowDy: adjust y, dy.  y+dy
+64, // 3: tMax
+],false,true).add('update',function f(){
+	if(this._updating) return;
+	this._updating=true;
+	const rtv=f.ori.apply(this,arguments);
+	this.update_actorArrow();
+	this._updating=false;
+	return rtv;
+});
+
+if(typeof _mog_scEquipM_create!=='undefined') new cfc(Scene_Equip.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.create_actorArrow();
+	return rtv;
+}).add('create_actorArrow',function f(){
+	const sw=this._statusWindow; if(!sw) return;
+	const ref=sw&&sw._faceSprite; if(!ref) return;
+	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3]);
+	return ref;
+},[
+32, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
+0, // 1: this._actorArrowDx: adjust x, dx.  x+dx
+-128, // 2: this._actorArrowDy: adjust y, dy.  y+dy
+64, // 3: tMax
+],false,true).add('update',function f(){
+	if(this._updating) return;
+	this._updating=true;
+	const rtv=f.ori.apply(this,arguments);
+	this.update_actorArrow();
+	this._updating=false;
+	return rtv;
+});
+
+if(typeof _mog_scStatusM_create!=='undefined') new cfc(Scene_Status.prototype).add('createMeters',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.create_actorArrow();
+	return rtv;
+}).add('create_actorArrow',function f(){
+	const sw=this._statusWindow; if(!sw) return;
+	const ref=sw&&sw._windowContentsSprite; if(!ref) return;
+	const ua=sw._upArrowSprite,da=sw._downArrowSprite;
+	if(!ua||!da){
+		sw.addChild(sw._downArrowSprite=new Sprite());
+		sw.addChild(sw._upArrowSprite=new Sprite());
+		Window_Base.prototype._refreshArrows.call(sw);
+	}
+	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3]);
+	return ref;
+},[
+371.5, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
+-168, // 1: this._actorArrowDx: adjust x, dx.  x+dx
+-278, // 2: this._actorArrowDy: adjust y, dy.  y+dy
+64, // 3: tMax
+]).add('update',function f(){
+	if(this._updating) return;
+	this._updating=true;
+	const rtv=f.ori.apply(this,arguments);
+	this.update_actorArrow();
+	this._updating=false;
+	return rtv;
+});
 
 })();
 
