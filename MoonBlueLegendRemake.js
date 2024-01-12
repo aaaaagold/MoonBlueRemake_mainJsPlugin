@@ -938,6 +938,9 @@ function(buffer){
 },undefined,false,true).add('_getCache',function f(url){
 	return this.getCacheCont().getCache(url);
 },undefined,false,true).add('getCacheCont',function f(){
+	//const tw=getTopFrameWindow();
+	//if(!WebAudio._cache) WebAudio._cache=tw._webAudioCache=tw._webAudioCache||new LruCache(f.tbl[0],f.tbl[1]);
+	// do not cache on top for flexibility of file content changes
 	if(!WebAudio._cache) WebAudio._cache=new LruCache(f.tbl[0],f.tbl[1]);
 	return WebAudio._cache;
 },[404,1<<26],false,true);
@@ -994,7 +997,8 @@ function(url,bitmap,ori,argv,xhr){ if(!(xhr.readyState>=4)) return;
 },undefined,false,true).add('_getCache',function f(url){
 	return this.getCacheCont().getCache(url);
 },undefined,false,true).add('getCacheCont',function f(){
-	if(!this._cache) this._cache=new LruCache(f.tbl[0],f.tbl[1]);
+	const tw=getTopFrameWindow();
+	if(!this._cache) this._cache=tw._decryptImgCache=tw._decryptImgCache||new LruCache(f.tbl[0],f.tbl[1]);
 	return this._cache;
 },[404,1<<28],false,true);
 new cfc(WebAudio.prototype).add('_load',function f(url){
