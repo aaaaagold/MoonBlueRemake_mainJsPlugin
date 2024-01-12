@@ -27933,6 +27933,7 @@ r=p[k]; (p[k]=function f(){
 		.replace(/人工智能/g,'人工智慧')
 		.replace(/生意欣隆/g,'生意興隆')
 		.replace(/小姐姐/g,'小姐')
+		.replace(/舉發/g,'檢舉')
 		.replace(/诶/g,'誒')
 		// .replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
 		;
