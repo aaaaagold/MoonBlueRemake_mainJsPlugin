@@ -27221,36 +27221,79 @@ function f(sp){
 
 (()=>{ let k,r,t;
 
+const path_bgs=[
+"BLR_custom/MainMenu/SubMenu/Common/PressQ_bg.png",
+"BLR_custom/MainMenu/SubMenu/Common/PressW_bg.png",
+],path_arrows=[
+"BLR_custom/MainMenu/SubMenu/Common/PressQ_arrow.png",
+"BLR_custom/MainMenu/SubMenu/Common/PressW_arrow.png",
+];
+
 new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.initialize_actorArrow();
 	return rtv;
 }).add('initialize_actorArrow',function f(){
+	this._actorArrowH=this._actorArrowH|0;
 	this._actorArrowCloserX=this._actorArrowCloserX;
 	this._actorArrowDx=this._actorArrowDx;
 	this._actorArrowDy=this._actorArrowDy;
 	this._actorArrowRef=this._actorArrowRef;
 },undefined,false,true).add('create_actorArrow',function f(){
 	// placeholder
-},undefined,false,true).add('create_actorArrow_param',function f(ref,closerX,dx,dy,tMax){
+},undefined,false,true).add('create_actorArrow_param',function f(ref,closerX,dx,dy,tMax,hArrow,arrowBtm,btnBgs,btnArrows){
 	this._actorArrowRef=ref; if(!ref) return;
 	const sw=ref.parent; if(!sw) return;
 	this._actorArrowCloserX=closerX;
 	this._actorArrowDx=dx;
 	this._actorArrowDy=dy;
+	this._actorArrowH=hArrow;
 	
 	const ua=sw._upArrowSprite,da=sw._downArrowSprite; if(!ua||!da) return;
 	const tmp=new Window_Base(0,0,256,1);
 	const h=tmp.fittingHeight(1);
-	f.tbl[0](da,tmp,h,"W");
-	f.tbl[0](ua,tmp,h,"Q");
+	f.tbl[0](da,tmp,h,"W",hArrow,arrowBtm);
+	f.tbl[0](ua,tmp,h,"Q",hArrow,arrowBtm);
 	da._t|=0;
 	ua._t|=0;
 	ua._tMax=da._tMax=Math.max(tMax-0||0,1);
+	if(hArrow) ua._tMax=-ua._tMax;
+	const arrows=[ua,da];
+	for(let i=0,sz=arrows.length;i!==sz;++i){
+		const a=arrows[i];
+		const alpha=a._wordSp.alpha;
+		if(btnBgs){
+			const paths=btnBgs[0],scale=btnBgs[1]-0;
+			if(paths[i]){
+				const x=a._wordSp.x+a._wordSp.width*0.5,y=a._wordSp.y+a._wordSp.height*0.5;
+				if(a._wordSp&&a._wordSp.parent) a._wordSp.parent.removeChild(a._wordSp);
+				a._wordSp=new Sprite(ImageManager.loadNormalBitmap(paths[i]));
+				a._wordSp.alpha=alpha;
+				a._wordSp.anchor.set(0.5,0.5);
+				a._wordSp.position.set(x,y);
+				a._wordSp.scale.set(isNaN(scale)?1:scale);
+				a.addChild(a._wordSp);
+			}
+		}
+		if(btnArrows){
+			const paths=btnArrows[0],scale=btnArrows[1]-0;
+			if(paths[i]){
+				const sp=new Sprite(ImageManager.loadNormalBitmap(paths[i]));
+				sp._anchorDx=hArrow?0.3125-i*0.625:0;
+				sp.anchor.set(0.5,0.5);
+				sp.position.set(0,0);
+				sp.scale.set(isNaN(scale)?1:scale);
+				const alphaAdj=new Sprite();
+				alphaAdj.addChild(a._arrowSp=sp);
+				alphaAdj.alpha=alpha;
+				a.addChild(alphaAdj);
+			}
+		}
+	}
 },[
-(arrow,tmp,h,txt)=>{
+(arrow,tmp,h,txt,hArrow,arrowBtm)=>{
 	const w=(tmp.standardPadding()<<1)+(tmp.textPadding()<<1)+~~(tmp.textWidth(txt)+1);
-	const sp=new Window_Base(-w*0.5,-h*0.5+arrow.height,w,h);
+	const sp=arrowBtm?new Window_Base(-w*0.5,-h*0.5-arrow.height,w,h):new Window_Base(-w*0.5,-h*0.5+arrow.height,w,h);
 	sp.alpha=1.5;
 	//sp._windowFrameSprite.visible=sp._windowBackSprite.visible=0;
 	sp.drawTextEx('\\TXTCENTER:'+JSON.stringify(txt)+'',0,0);
@@ -27261,8 +27304,13 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 	// supposed 'ref instanceof Sprite' is true
 	const y=ref.y+ref.height*(0.5-ref.anchor.y);
 	const ax=ref.anchor.x;
-	ua.position.set(ref.x+closerX-ref.width*    ax  -ua.width* (1-ua.anchor.x) +dx,y+dy);
-	da.position.set(ref.x-closerX+ref.width* (1-ax) +da.width*    da.anchor.x  +dx,y+dy);
+	if(this._actorArrowH){
+		ua.position.set(ref.x+closerX-ref.width*    ax  -ua.width*       0.5       +dx,y+dy);
+		da.position.set(ref.x-closerX+ref.width* (1-ax) +da.width*       0.5       +dx,y+dy);
+	}else{
+		ua.position.set(ref.x+closerX-ref.width*    ax  -ua.width* (1-ua.anchor.x) +dx,y+dy);
+		da.position.set(ref.x-closerX+ref.width* (1-ax) +da.width*    da.anchor.x  +dx,y+dy);
+	}
 	ua.alpha=da.alpha=ref.alpha*0.5;
 },undefined,false,true).add('update_actorArrow_onclick',function f(){
 	const ref=this._actorArrowRef;
@@ -27301,12 +27349,22 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 	if(!($gameParty._actors.length>=2)){ sw.upArrowVisible=sw.downArrowVisible=false; return; }
 	sw.upArrowVisible=sw.downArrowVisible=true;
 	this.update_actorArrow_updatePlacement(da,ua,ref,this._actorArrowCloserX-0||0,this._actorArrowDx-0||0,this._actorArrowDy-0||0);
-	f.tbl[0](da);
-	f.tbl[0](ua);
+	const idx=this._actorArrowH|0;
+	f.tbl[idx](da);
+	f.tbl[idx](ua);
 },[
 sp=>{
 	sp.anchor.y=Math.sin(sp._t++/sp._tMax*Math.PI)+0.5;
 	sp._t%=sp._tMax;
+	if(sp._arrowSp && sp._arrowSp.anchor) sp._arrowSp.anchor.y=sp.anchor.y;
+},
+sp=>{
+	sp.anchor.x=Math.sin(sp._t++/sp._tMax*Math.PI)+0.5;
+	sp._t%=Math.abs(sp._tMax);
+	if(sp._arrowSp && sp._arrowSp.anchor){
+		sp.anchor.x+=sp._arrowSp._anchorDx;
+		sp._arrowSp.anchor.x=sp.anchor.x;
+	}
 },
 ],false,true).add('update_actorArrow',function f(){
 	this.update_actorArrow_display();
@@ -27320,13 +27378,17 @@ if(typeof _mog_scnSkill_create!=='undefined') new cfc(Scene_Skill.prototype).add
 }).add('create_actorArrow',function f(){
 	const sw=this._helpWindow; if(!sw) return;
 	const ref=sw&&sw._windowContentsSprite; if(!ref) return;
-	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3]);
+	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3],f.tbl[4],f.tbl[5],f.tbl[6],f.tbl[7]);
 	return ref;
 },[
 196, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
 -1.5, // 1: this._actorArrowDx: adjust x, dx.  x+dx
--543, // 2: this._actorArrowDy: adjust y, dy.  y+dy
+-517, // 2: this._actorArrowDy: adjust y, dy.  y+dy
 64, // 3: tMax
+true, // 4: use LR instead of UD ?
+true, // 5: arrow at bottom?
+[path_bgs,1.5], // 6: btn bg path, scale
+[path_arrows,1.5], // 7: btn arrow path, scale
 ],false,true).add('update',function f(){
 	if(this._updating) return;
 	this._updating=true;
@@ -27343,13 +27405,17 @@ if(typeof _mog_scEquipM_create!=='undefined') new cfc(Scene_Equip.prototype).add
 }).add('create_actorArrow',function f(){
 	const sw=this._statusWindow; if(!sw) return;
 	const ref=sw&&sw._faceSprite; if(!ref) return;
-	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3]);
+	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3],f.tbl[4],f.tbl[5],f.tbl[6],f.tbl[7]);
 	return ref;
 },[
-32, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
-0, // 1: this._actorArrowDx: adjust x, dx.  x+dx
--128, // 2: this._actorArrowDy: adjust y, dy.  y+dy
+24, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
+8, // 1: this._actorArrowDx: adjust x, dx.  x+dx
+-121, // 2: this._actorArrowDy: adjust y, dy.  y+dy
 64, // 3: tMax
+true, // 4: use LR instead of UD ?
+true, // 5: arrow at bottom?
+[path_bgs,1.5], // 6: btn bg path, scale
+[path_arrows,1.5], // 7: btn arrow path, scale
 ],false,true).add('update',function f(){
 	if(this._updating) return;
 	this._updating=true;
@@ -27372,13 +27438,17 @@ if(typeof _mog_scStatusM_create!=='undefined') new cfc(Scene_Status.prototype).a
 		sw.addChild(sw._upArrowSprite=new Sprite());
 		Window_Base.prototype._refreshArrows.call(sw);
 	}
-	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3]);
+	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3],f.tbl[4],f.tbl[5],f.tbl[6],f.tbl[7]);
 	return ref;
 },[
-371.5, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
--168, // 1: this._actorArrowDx: adjust x, dx.  x+dx
--278, // 2: this._actorArrowDy: adjust y, dy.  y+dy
+363.5, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
+-175, // 1: this._actorArrowDx: adjust x, dx.  x+dx
+-260, // 2: this._actorArrowDy: adjust y, dy.  y+dy
 64, // 3: tMax
+true, // 4: use LR instead of UD ?
+true, // 5: arrow at bottom?
+[path_bgs,1.5], // 6: btn bg path, scale
+[path_arrows,1.5], // 7: btn arrow path, scale
 ]).add('update',function f(){
 	if(this._updating) return;
 	this._updating=true;
