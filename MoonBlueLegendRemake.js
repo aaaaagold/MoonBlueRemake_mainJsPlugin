@@ -2750,6 +2750,7 @@ r=p[k]; (t=p[k]=function f(){
 	const arr=this._data,incNull=this.includes(null);
 	if(incNull) arr.pop();
 	DataManager.sortDataObjList(arr);
+	this._onTopEndIdx=0;
 	if(incNull) arr.push(null);
 	return rtv;
 }).ori=r;
@@ -10254,8 +10255,7 @@ for(let x=0,s=new Set();x!==keys.length;++x) if(s.has(keys[x])) throw new Error(
 
 idxv.push(Infinity);
 
-{ const p=Scene_Battle.prototype;
-p.itemShortcutFly=function(){
+new cfc(Scene_Battle.prototype).add('itemShortcutFly',function f(){
 	const sc=SceneManager._scene;
 	if(sc._partyCommandWindow.active) return;
 	const cmdW=sc._actorCommandWindow,itemW=sc._itemWindow;
@@ -10270,18 +10270,17 @@ p.itemShortcutFly=function(){
 		cmdW._index=idx;
 		cmdW.processOk();
 	}
-	for(let x=0,arr=itemW._data;x!==arr.length;++x){ if(arr[x]){ const key=DataManager.getDataObjSortingKey(arr[x]); if(key>=idxv[ch] && key<idxv[ch+1]){
+	for(let x=itemW._onTopEndIdx|0,arr=itemW._data;x!==arr.length;++x){ if(arr[x]){ const key=DataManager.getDataObjSortingKey(arr[x]); if(key>=f.tbl[0][ch] && key<f.tbl[0][ch+1]){
 		itemW.select(Math.min(itemW.maxPageItems()-itemW.maxCols()+x,arr.length));
 		itemW.select(x);
 		break;
 	} } }
-};
-k='update';
-r=p[k]; (p[k]=function f(){
+},[
+idxv,
+],false,true).add('update',function f(){
 	this.itemShortcutFly();
 	return f.ori.apply(this,arguments);
-}).ori=r;
-}
+});
 
 })();
 
@@ -14847,8 +14846,10 @@ new cfc(Window_Options.prototype).add('makeCommandList',function f(){
 new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
 	let rtv=f.ori.apply(this,arguments);
 	if(this[f.tbl[1]]){
-		const arr0=[],arr1=[];
-		for(let x=0,arr=this._data;x!==arr.length;++x) (arr[x]&&$gameParty.gainLogger_isNew($gameParty.itemContainer(arr[x]),arr[x])?arr0:arr1).push(arr[x]);
+		if(!(this._data.length>=this._onTopEndIdx)) this._onTopEndIdx=this._data.length;
+		const arr0=this._data.slice(0,this._onTopEndIdx),arr1=[],arr=this._data;
+		for(let x=this._onTopEndIdx,xs=arr.length;x!==xs;++x) (arr[x]&&$gameParty.gainLogger_isNew($gameParty.itemContainer(arr[x]),arr[x])?arr0:arr1).push(arr[x]);
+		this._onTopEndIdx=arr0.length;
 		for(let x=0;x!==arr1.length;++x) arr0.push(arr1[x]);
 		if(rtv===this._data) rtv=arr0;
 		this._data=arr0;
@@ -21090,8 +21091,12 @@ new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
 			if(!this._favItems_lastData) this._favItems_lastData={};
 			const lastData=this._favItems_lastData;
 			let rtv=f.ori.apply(this,arguments);
-			const arr0=[],arr1=[];
-			for(let x=0,arr=this._data;x!==arr.length;++x) (arr[x]&&$gameSystem.favItems_is(arr[x])?arr0:arr1).push(arr[x]);
+			if(!(this._data.length>=this._onTopEndIdx)) this._onTopEndIdx=this._data.length;
+			const arr0=[],arr1=[],arr=this._data;
+			for(let x=0,xs=this._onTopEndIdx;x!==xs;++x) (arr[x]&&$gameSystem.favItems_is(arr[x])?arr0:arr1).push(arr[x]);
+			const padEnd=arr1.length;
+			for(let x=this._onTopEndIdx,xs=arr.length;x!==xs;++x) (arr[x]&&$gameSystem.favItems_is(arr[x])?arr0:arr1).push(arr[x]);
+			this._onTopEndIdx=arr0.length+padEnd;
 			if(arr0.length){
 				for(let x=0;x!==arr1.length;++x) arr0.push(arr1[x]);
 				if(rtv===this._data) rtv=arr0;
@@ -21121,6 +21126,13 @@ new cfc(Scene_Item.prototype).add('create',function f(){
 	} }
 	return rtv;
 },['t']);
+
+new cfc(Scene_Battle.prototype).add('create',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._itemWindow._favItems_isCacheData=true;
+	this._itemWindow._favItems_lastData=undefined;
+	return rtv;
+});
 
 })();
 
