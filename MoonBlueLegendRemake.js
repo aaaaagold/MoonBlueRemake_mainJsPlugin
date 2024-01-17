@@ -27241,6 +27241,8 @@ const path_bgs=[
 "BLR_custom/MainMenu/SubMenu/Common/PressW_arrow.png",
 ];
 
+const equipBtnSettingPath="BLR_custom/MainMenu/SubMenu/Equip/ActorSelBtnPos.txt";
+
 new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.initialize_actorArrow();
@@ -27278,6 +27280,7 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 			const paths=btnBgs[0],scale=btnBgs[1]-0;
 			if(paths[i]){
 				const x=a._wordSp.x+a._wordSp.width*0.5,y=a._wordSp.y+a._wordSp.height*0.5;
+				a._wordWindowSp=a._wordSp;
 				if(a._wordSp&&a._wordSp.parent) a._wordSp.parent.removeChild(a._wordSp);
 				a._wordSp=new Sprite(ImageManager.loadNormalBitmap(paths[i]));
 				a._wordSp.alpha=alpha;
@@ -27324,7 +27327,17 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 		da.position.set(ref.x-closerX+ref.width* (1-ax) +da.width*    da.anchor.x  +dx,y+dy);
 	}
 	ua.alpha=da.alpha=ref.alpha*0.5;
-},undefined,false,true).add('update_actorArrow_onclick',function f(){
+	for(let x=2,arr=arguments;x--;){
+		const a=arr[x];
+		if(a._wordWindowSp){ const bmp=a._wordSp.bitmap; if(f.tbl[0](bmp)){
+			const p=a._wordSp.parent; if(p) p.removeChild(a._wordSp);
+			p.addChild(a._wordSp=a._wordWindowSp);
+			a._wordWindowSp=undefined;
+		} }
+	}
+},[
+bmp=>bmp.isReady() && Math.max(bmp.width,bmp.height)<2,
+],false,true).add('update_actorArrow_onclick',function f(){
 	const ref=this._actorArrowRef;
 	if(!ref||!TouchInput.isTriggered()) return;
 	const sw=ref.parent; if(!sw) return; // should be existed already
@@ -27413,8 +27426,36 @@ true, // 5: arrow at bottom?
 if(typeof _mog_scEquipM_create!=='undefined') new cfc(Scene_Equip.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.create_actorArrow();
+	this.create_parseActorSelBtnPos();
 	return rtv;
-}).add('create_actorArrow',function f(){
+}).add('initialize',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	ImageManager.otherFiles_addLoad(f.tbl[0]);
+	return rtv;
+},t=[
+equipBtnSettingPath,
+new Map([
+['closeX','_actorArrowCloserX'],
+['dx','_actorArrowDx'],
+['dy','_actorArrowDy'],
+]), // 1: keys in txt to properties
+[/\r/g,''], // 2: replace
+['\n','='], // 3: spliters
+]).add('create_parseActorSelBtnPos',function f(){
+	// key=val
+	const raw=ImageManager.otherFiles_getData(f.tbl[0]);
+	if(!raw) return;
+	const arr=raw.replace(f.tbl[2][0],f.tbl[2][1]).split(f.tbl[3][0]);
+	for(let x=0,xs=arr.length;x!==xs;++x){
+		if(!arr[x]) continue;
+		const idx=arr[x].indexOf('=');
+		if(idx<0) continue; // not supported in this case
+		const key=arr[x].slice(0,idx);
+		const pname=f.tbl[1].get(key);
+		if(!pname) continue;
+		this[pname]=arr[x].slice(0,idx+1)-0||0;
+	}
+},t).add('create_actorArrow',function f(){
 	const sw=this._statusWindow; if(!sw) return;
 	const ref=sw&&sw._faceSprite; if(!ref) return;
 	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3],f.tbl[4],f.tbl[5],f.tbl[6],f.tbl[7]);
@@ -28287,6 +28328,8 @@ p.copyXhrPathLog=function(){
 }
 
 })();
+
+var _agold404_version='2024-01-17 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
