@@ -27258,6 +27258,7 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 	this._actorArrowDx=this._actorArrowDx;
 	this._actorArrowDy=this._actorArrowDy;
 	this._actorArrowRef=this._actorArrowRef;
+	this._actorArrowAlphaRefRate=0.0625;
 },undefined,false,true).add('create_actorArrow',function f(){
 	// placeholder
 },undefined,false,true).add('create_actorArrow_param',function f(ref,closerX,dx,dy,tMax,hArrow,arrowBtm,btnBgs,btnArrows){
@@ -27269,6 +27270,8 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 	this._actorArrowH=hArrow;
 	
 	const ua=sw._upArrowSprite,da=sw._downArrowSprite; if(!ua||!da) return;
+	ua._alphaRefRate=this._actorArrowAlphaRefRate;
+	da._alphaRefRate=this._actorArrowAlphaRefRate;
 	const tmp=new Window_Base(0,0,256,1);
 	const h=tmp.fittingHeight(1);
 	f.tbl[0](da,tmp,h,"W",hArrow,arrowBtm);
@@ -27299,7 +27302,7 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 			const paths=btnArrows[0],scale=btnArrows[1]-0;
 			if(paths[i]){
 				const sp=new Sprite(ImageManager.loadNormalBitmap(paths[i]));
-				sp._anchorDx=hArrow?0.3125-i*0.625:0;
+				sp._anchorDx=hArrow?0.28125-i*0.5625:0;
 				sp.anchor.set(0.5,0.5);
 				sp.position.set(0,0);
 				sp.scale.set(isNaN(scale)?1:scale);
@@ -27308,18 +27311,19 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 				alphaAdj.alpha=alpha;
 				a.addChild(alphaAdj);
 			}
-		}
+		}else a._alphaRefRate=f.tbl[1];
 	}
 },[
 (arrow,tmp,h,txt,hArrow,arrowBtm)=>{
 	const w=(tmp.standardPadding()<<1)+(tmp.textPadding()<<1)+~~(tmp.textWidth(txt)+1);
 	const sp=arrowBtm?new Window_Base(-w*0.5,-h*0.5-arrow.height,w,h):new Window_Base(-w*0.5,-h*0.5+arrow.height,w,h);
-	sp.alpha=1.5;
+	sp.alpha=13;
 	//sp._windowFrameSprite.visible=sp._windowBackSprite.visible=0;
 	sp.drawTextEx('\\TXTCENTER:'+JSON.stringify(txt)+'',0,0);
 	makeDummyWindowProto(sp);
 	arrow.addChild(arrow._wordSp=sp);
 },
+0.5,
 ],false,true).add('update_actorArrow_updatePlacement',function f(da,ua,ref,closerX,dx,dy){
 	// supposed 'ref instanceof Sprite' is true
 	const y=ref.y+ref.height*(0.5-ref.anchor.y);
@@ -27331,17 +27335,20 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 		ua.position.set(ref.x+closerX-ref.width*    ax  -ua.width* (1-ua.anchor.x) +dx,y+dy);
 		da.position.set(ref.x-closerX+ref.width* (1-ax) +da.width*    da.anchor.x  +dx,y+dy);
 	}
-	ua.alpha=da.alpha=ref.alpha*0.5;
 	for(let x=2,arr=arguments;x--;){
 		const a=arr[x];
 		if(a._wordWindowSp){ const bmp=a._wordSp.bitmap; if(f.tbl[0](bmp)){
 			const p=a._wordSp.parent; if(p) p.removeChild(a._wordSp);
 			p.addChild(a._wordSp=a._wordWindowSp);
 			a._wordWindowSp=undefined;
+			a._alphaRefRate=f.tbl[1][0];
+			a._wordSp.alpha=f.tbl[1][1];
 		} }
+		a.alpha=ref.alpha*a._alphaRefRate;
 	}
 },[
 bmp=>bmp.isReady() && Math.max(bmp.width,bmp.height)<2,
+[0.5,1.5],
 ],false,true).add('update_actorArrow_onclick',function f(){
 	const ref=this._actorArrowRef;
 	if(!ref||!TouchInput.isTriggered()) return;
@@ -27417,8 +27424,8 @@ if(typeof _mog_scnSkill_create!=='undefined') new cfc(Scene_Skill.prototype).add
 64, // 3: tMax
 true, // 4: use LR instead of UD ?
 true, // 5: arrow at bottom?
-[path_bgs,1.5], // 6: btn bg path, scale
-[path_arrows,1.5], // 7: btn arrow path, scale
+[path_bgs,1], // 6: btn bg path, scale
+[path_arrows,1], // 7: btn arrow path, scale
 ],false,true).add('update',function f(){
 	if(this._updating) return;
 	this._updating=true;
@@ -27432,9 +27439,12 @@ if(typeof _mog_scEquipM_create!=='undefined') new cfc(Scene_Equip.prototype).add
 	const rtv=f.ori.apply(this,arguments);
 	this.create_parseActorSelBtnPos();
 	this.create_actorArrow();
+	this.createFaceSprite();
 	return rtv;
 }).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
+	this._faceX=this._faceX;
+	this._faceY=this._faceY;
 	ImageManager.otherFiles_addLoad(f.tbl[0]);
 	return rtv;
 },t=[
@@ -27443,6 +27453,10 @@ new Map([
 ['closeX','_actorArrowCloserX'],
 ['dx','_actorArrowDx'],
 ['dy','_actorArrowDy'],
+['faceX','_faceX'],
+['nameX','_nameX'],
+['nameY','_nameY'],
+['nameFontSize','_nameFontSize'],
 ]), // 1: keys in txt to properties
 [/\r/g,''], // 2: replace
 ['\n','='], // 3: spliters
@@ -27476,15 +27490,45 @@ new Map([
 64, // 3: tMax
 true, // 4: use LR instead of UD ?
 true, // 5: arrow at bottom?
-[path_bgs,1.5], // 6: btn bg path, scale
-[path_arrows,1.5], // 7: btn arrow path, scale
+[path_bgs,1], // 6: btn bg path, scale
+[path_arrows,1], // 7: btn arrow path, scale
 ],false,true).add('update',function f(){
 	if(this._updating) return;
 	this._updating=true;
 	const rtv=f.ori.apply(this,arguments);
 	this.update_actorArrow();
+	this.update_nameWindow();
 	this._updating=false;
 	return rtv;
+}).add('createFaceSprite',function f(){
+	const sw=this._statusWindow; if(!sw) return;
+	if(!sw._faceSprite) sw.createFaceSprite();
+	const sp=sw._faceSprite;
+	sp.position.set(useDefaultIfIsNaN(this._faceX,sp.x),useDefaultIfIsNaN(this._faceY,sp.y));
+	sw.drawActorName=f.tbl[0].bind(this);
+	sw._sc=this;
+	sw.refresh();
+	return sp;
+},[
+function f(){
+	const ref=this._statusWindow;
+	let wnd=this._nameWindow;
+	if(!wnd){
+		wnd=this._nameWindow=new Window_Base(0,0,ref.width,ref.height);
+		makeDummyWindowProto(wnd);
+		ref.addChild(wnd);
+		wnd._windowFrameSprite.visible=wnd._windowBackSprite.visible=0;
+	}
+	const bmp=wnd.contents;
+	bmp.clear();
+	bmp.fontSize=useDefaultIfIsNaN(this._nameFontSize,ref.contents.fontSize);
+	arguments[1]=useDefaultIfIsNaN(this._nameX-((arguments[0] instanceof Game_Actor)?ref.textWidth(arguments[0].name())>>1:0),arguments[1]);
+	arguments[2]=useDefaultIfIsNaN(this._nameY,arguments[2]);
+	wnd.drawActorName.apply(wnd,arguments);
+},
+]).add('update_nameWindow',function f(){
+	const ref=this._statusWindow; if(!ref) return;
+	this._nameWindow.alpha=ref._windowContentsSprite.alpha;
 });
 
 if(typeof _mog_scStatusM_create!=='undefined') new cfc(Scene_Status.prototype).add('createMeters',function f(){
@@ -27509,8 +27553,8 @@ if(typeof _mog_scStatusM_create!=='undefined') new cfc(Scene_Status.prototype).a
 64, // 3: tMax
 true, // 4: use LR instead of UD ?
 true, // 5: arrow at bottom?
-[path_bgs,1.5], // 6: btn bg path, scale
-[path_arrows,1.5], // 7: btn arrow path, scale
+[path_bgs,1], // 6: btn bg path, scale
+[path_arrows,1], // 7: btn arrow path, scale
 ]).add('update',function f(){
 	if(this._updating) return;
 	this._updating=true;
