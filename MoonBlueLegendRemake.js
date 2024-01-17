@@ -226,6 +226,10 @@ p.scale=function(r){
 };
 }
 
+const useDefaultIfIsNaN=window.useDefaultIfIsNaN=(n,d)=>{
+	const rtv=n-0;
+	return isNaN(rtv)?d:rtv;
+};
 const getCStyleStringStartAndEndFromString=window.getCStyleStringStartAndEndFromString=(s,strt,ende)=>{
 	// suppose s is a String
 	if(ende===undefined) ende=s.length;
@@ -1046,6 +1050,7 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 		arr.push('AudioManager','BattleManager','ConfigManager','DataManager','ImageManager','SceneManager',);
 		arr.push('Input','TouchInput',);
 		arr.push('Graphics',);
+		arr.push('useDefaultIfIsNaN');
 		arr.push('getCStyleStringStartAndEndFromString',);
 		arr.push('getPrefixPropertyNames',);
 		arr.push('getTopFrameWindow','chTitle',);
@@ -27425,8 +27430,8 @@ true, // 5: arrow at bottom?
 
 if(typeof _mog_scEquipM_create!=='undefined') new cfc(Scene_Equip.prototype).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
-	this.create_actorArrow();
 	this.create_parseActorSelBtnPos();
+	this.create_actorArrow();
 	return rtv;
 }).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -27453,12 +27458,16 @@ new Map([
 		const key=arr[x].slice(0,idx);
 		const pname=f.tbl[1].get(key);
 		if(!pname) continue;
-		this[pname]=arr[x].slice(0,idx+1)-0||0;
+		this[pname]=arr[x].slice(idx+1)-0||0;
 	}
 },t).add('create_actorArrow',function f(){
 	const sw=this._statusWindow; if(!sw) return;
 	const ref=sw&&sw._faceSprite; if(!ref) return;
-	this.create_actorArrow_param(ref,f.tbl[0],f.tbl[1],f.tbl[2],f.tbl[3],f.tbl[4],f.tbl[5],f.tbl[6],f.tbl[7]);
+	this.create_actorArrow_param(ref,
+		useDefaultIfIsNaN(this._actorArrowCloserX,f.tbl[0]),
+		useDefaultIfIsNaN(this._actorArrowDx,f.tbl[1]),
+		useDefaultIfIsNaN(this._actorArrowDy,f.tbl[2]),
+	f.tbl[3],f.tbl[4],f.tbl[5],f.tbl[6],f.tbl[7]);
 	return ref;
 },[
 24, // 0: this._actorArrowCloserX: adjust width. positive for getting closer each
