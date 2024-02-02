@@ -326,6 +326,7 @@ cf(Game_System.prototype,'initialize',function f(){
 	return rtv;
 });
 Game_Timer.prototype.onExpire=()=>{}; // not abort battle
+Game_Unit.prototype.allMembers=function(){ return this.members(); };
 Game_Troop.prototype.makeUniqueNames=()=>{}; // not set letter
 new cfc(Game_Action.prototype).add('applyGlobal',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -347,6 +348,14 @@ ConfigManager.readVolume=function(config, name){ const value=config[name]; retur
 p._findChildren_r=function(f,rtv){ if(f(this)) rtv.push(this); for(let x=0,arr=this.children;x!==arr.length;++x) arr[x]._findChild_r(f,rtv); return rtv; };
 p.findChildren=function(f){ const rtv=[]; return this._findChild_r(f,rtv); };
 }
+//
+new cfc(Game_Enemy.prototype).add('skills',function f(){
+	return this.getData().actions.map(f.tbl[0]).concat_inplace(this.addedSkills()).map(f.tbl[1]).filter(f.tbl[2]);
+},[
+act=>act&&act.skillId,
+i=>$dataSkills[i],
+x=>x,
+],false,true);
 //
 Sprite_Actor.prototype.damageOffsetY=()=>-32; // 角色身上的數字上shift
 { const p=SceneManager;
@@ -449,7 +458,7 @@ const getStr_英文不好齁=t=function f(){
 10,
 672,
 '\n\n給看ㄅ懂英文ㄉ人ㄉ台譯版：',
-'\n\n給"比破麻還不如，看ㄅ懂英文ㄉ破破麻"ㄉ台譯版：',
+'\n\n給"比ㄆㄇ還不如，看ㄅ懂英文的ㄆㄇ"的台譯版：',
 ];
 const makeDummyWindowProto=t=function f(c,withContents,withCursor){
 	let tmp;
@@ -893,6 +902,12 @@ p.onLoad_after.tbl=new Map([
 	['$dataTilesets',	p._onLoad_after_tileset],
 ]);
 }
+//
+new cfc(ImageManager).add('loadWithoutError_get',function f(){
+	return this._loadWithoutError;
+},undefined,false,true).add('loadWithoutError_set',function f(val){
+	return this._loadWithoutError=val;
+},undefined,false,true);
 //
 new cfc(WebAudio.prototype).add('_load',function f(url,noerr,putCacheOnly){
 	if(!WebAudio._context) return;
@@ -2019,11 +2034,12 @@ function(sp){ sp._stackYR-=this; },
 				const sprite = new Sprite_Damage();
 				sprite.x = this.x + this.damageOffsetX();
 				sprite.y = this.y + this.damageOffsetY();
-				sprite.setup(this._battler);
+				sprite.setup(btlr);
 				this.pushDamageSprite(sprite);
 				BattleManager._dmgset.addChild(sprite);
-				this._battler.clearResult();
 			}
+			if(btlr._damagePopup===true) btlr.clearDamagePopup();
+			btlr.clearResult();
 		}while(btlr.isDamagePopupRequested());
 	}else btlr.clearDamagePopup();
 },false,true);
@@ -7315,7 +7331,7 @@ r=p[k]; (p[k]=function f(){
 }
 
 { const p=Game_Interpreter.prototype;
-t=(p.command101=function f(){
+new cfc(Game_Interpreter.prototype).add('command101',function f(){
 	if($gameMessage.isBusy()) return false;
 	$gameMessage.setFaceImage(this._params[0], this._params[1]);
 	$gameMessage.setBackground(this._params[2]);
@@ -7333,9 +7349,9 @@ t=(p.command101=function f(){
 					txt=txt.slice(idx+1);
 				}
 			}
-			$gameMessage.addText(txt);
+			$gameMessage.addText?$gameMessage.addText(txt):$gameMessage.add(txt);
 		}
-		if ($gameMessage._texts.length >= $gameSystem.messageRows()) break;
+		if( $gameMessage._texts.length >= ($gameSystem.messageRows?$gameSystem.messageRows():SceneManager._scene._messageWindow.numVisibleRows()) ) break;
 	}
 	const func=f.tbl[this.nextEventCode()];
 	if(func){
@@ -7345,7 +7361,16 @@ t=(p.command101=function f(){
 	++this._index;
 	this.setWaitMode('message');
 	return false;
-}).tbl=[]; for(let x=1e3;x--;) t[x]=0;
+},t=[],false,true).add('isContinueMessageString',function f(){
+	const rtv=f.ori&&f.ori.apply(this,arguments);
+	return rtv || f.tbl[0].some(f.tbl[1],this);
+},[
+[
+function f(){ return this.nextEventCode() === 401; },
+], // 0: 
+function f(func){ return func.call(this); }, // 1: 
+]);
+for(let x=1e3;x--;) t[x]=0;
 t[102]=function(){ this.setupChoices(this.currentCommand().parameters); };
 t[103]=function(){ this.setupNumInput(this.currentCommand().parameters); };
 t[104]=function(){ this.setupItemChoice(this.currentCommand().parameters); };
@@ -8487,7 +8512,9 @@ cf(Scene_Boot,'loadSystemImages',function f(){
 ()=>{
 	const rsrvId='-'+Math.random();
 	const base=ImageManager.reserveSystem('IconSet');
+	ImageManager.loadWithoutError_set(true);
 	const buff=ImageManager.reserveSystem(buffIconImgName,undefined,rsrvId);
+	ImageManager.loadWithoutError_set(false);
 	base.addSeries(buffIconImgName,buff);
 	const f=()=>{
 		base._image_ori=base._image_ori||base._image;
@@ -20163,15 +20190,17 @@ new cfc(ResourceHandler).add('createLoader',function f(url, retryMethod, resignM
 	const self=this;
 	retryInterval = retryInterval || this._defaultRetryInterval;
 	const reloaders = this._reloaders;
+	const noerr=ImageManager.loadWithoutError_get();
 	let retryCount = 0;
 	return function(){
 		if(retryCount<retryInterval.length) setTimeout(retryMethod, retryInterval[retryCount++]);
 		else{
 			if(resignMethod) resignMethod();
 			if(url){
-				self.createLoader_loadErr(url,retryMethod);
 				const func=function(giveUp){ retryCount=0; retryMethod(giveUp&&f.tbl[retryMethod._type]||url); };
 				func._url=url;
+				if(noerr) return func(true);
+				else self.createLoader_loadErr(url,retryMethod);
 				reloaders.push(func);
 			}
 		}
@@ -22940,6 +22969,14 @@ new cfc(Sprite_Battler.prototype).add('setShadow_commonBeg',function f(btlr){
 	this._shadowSprite.visible=true;
 }).add('setShadow_commonEnd',function f(btlr){
 	if(!btlr) this._shadowSprite.visible=false;
+}).add('setShadow',function f(btlr){
+	if(!this._shadowSprite) return;
+	btlr=btlr||this._battler;
+	this.setShadow_commonBeg(btlr);
+	if(btlr){ const data=btlr.getData(); if(this.isHideShadow(data)){
+		this._shadowSprite.visible=false;
+	} }
+	this.setShadow_commonEnd(btlr);
 });
 
 new cfc(t={}).add('setBattler',function f(btlr){
@@ -22953,22 +22990,12 @@ new cfc(t={}).add('setBattler',function f(btlr){
 ]));
 Sprite_Enemy.prototype.setBattler=Sprite_Actor.prototype.setBattler=t.setBattler;
 
-new cfc(Sprite_Actor.prototype).add('setShadow',function f(btlr){
-	btlr=btlr||this._battler;
-	this.setShadow_commonBeg(btlr);
-	if(btlr){ const data=btlr.getData(); if((data && data.meta && data.meta.noShadow)){
-		this._shadowSprite.visible=false;
-	} }
-	this.setShadow_commonEnd(btlr);
+new cfc(Sprite_Actor.prototype).add('isHideShadow',function f(data){
+	return data && data.meta && data.meta.noShadow;
 });
 
-new cfc(Sprite_Enemy.prototype).add('setShadow',function f(btlr){
-	btlr=btlr||this._battler;
-	this.setShadow_commonBeg(btlr);
-	if(btlr){ const data=btlr.getData(); if((data && data.meta && !data.meta.showShadow)){
-		this._shadowSprite.visible=false;
-	} }
-	this.setShadow_commonEnd(btlr);
+new cfc(Sprite_Enemy.prototype).add('isHideShadow',function f(data){
+	return data && data.meta && !data.meta.showShadow;
 });
 
 })();
@@ -24212,6 +24239,8 @@ new cfc(DataManager).add('extractSaveContents',function f(contents){
 
 new cfc(Scene_Shop.prototype).add('initialize',function f(){
 	const rtv=f.ori.apply(this,arguments);
+	this._backImg_loadFailed=false;
+	ImageManager.loadWithoutError_set(true);
 	this._backImg_buy=ImageManager.loadNormalBitmap('BLR_custom/Shop/Buy/frame.png');
 	this._backImg_sell=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/frame.png');
 	this._backImg_buyBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Buy/a01.png');
@@ -24221,10 +24250,25 @@ new cfc(Scene_Shop.prototype).add('initialize',function f(){
 	this._backImg_weaponBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b02.png');
 	this._backImg_armorBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b03.png');
 	this._backImg_keyItemBtn=ImageManager.loadNormalBitmap('BLR_custom/Shop/Sell/b04.png');
+	ImageManager.loadWithoutError_set(false);
 	
 	return rtv;
 }).add('create',function f(){
 	const rtv=f.ori.apply(this,arguments);
+	if([
+		this._backImg_buy,
+		this._backImg_sell,
+		this._backImg_buyBtn,
+		this._backImg_sellBtn,
+		this._backImg_leaveBtn,
+		this._backImg_itemBtn,
+		this._backImg_weaponBtn,
+		this._backImg_armorBtn,
+		this._backImg_keyItemBtn,
+	].some(f.tbl[3])){
+		this._backImg_loadFailed=true;
+		return rtv;
+	}
 	const c=this.children,bs=this._backgroundSprite,wl=this._windowLayer;
 	let idx=0;
 	if(bs&&bs.parent===this) idx=Math.max(c.indexOf(bs)+1,idx);
@@ -24264,7 +24308,7 @@ new cfc(Scene_Shop.prototype).add('initialize',function f(){
 	catw.padding=cmdw.padding=0;
 	return rtv;
 },[
-x=>x._windowBackSprite.visible=x._windowFrameSprite.alpha=0,
+x=>x._windowBackSprite.visible=x._windowFrameSprite.alpha=0, // 0: 
 {
 // use global (0,0) their (0,0)
 buyBtn:{x:28,y:125,},
@@ -24274,13 +24318,15 @@ itemBtn:{x:37,y:199,},
 weaponBtn:{x:228,y:199,},
 armorBtn:{x:419,y:199,},
 keyItemBtn:{x:609,y:199,},
-},
+}, // 1: 
 function(g,idx){
 	const src=g.children[idx];
 	return new Rectangle(src.x-this.x,src.y-this.y,src.width,src.height);
-},
+}, // 2: 
+bmp=>!(bmp.width>=2||bmp.height>=2), // 3: 
 ]).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
+	if(this._backImg_loadFailed) return rtv;
 	const cmdw=this._commandWindow,catw=this._categoryWindow;
 	const cmdg=this._commandGroup,catg=this._categoryGroup;
 	const idxCmdw=cmdw.index(),idxCatw=catw.index();
@@ -25844,7 +25890,7 @@ new cfc(Graphics).add('_defaultStretchMode',function f(){
 new cfc(BattleManager).add('startAction',function f(){
 	const s=this._subject;
 	const rtv=f.ori.apply(this,arguments);
-	if(s) s.setATBCharging(false);
+	if(s && s.setATBCharging) s.setATBCharging(false);
 	return rtv;
 });
 
@@ -26122,11 +26168,11 @@ new cfc(Game_Action.prototype).add('executeDamage',function f(trgt,val){
 { const p=Sprite_Damage.prototype;
 new cfc(p).add('setup',function f(btlr){
 	const rtv=f.ori.apply(this,arguments);
-	this.setupWeaknessRateEffect();
+	this.setupWeaknessRateEffect(btlr);
 	return rtv;
-}).add('setupWeaknessRateEffect',function f(){
+}).add('setupWeaknessRateEffect',function f(btlr){
 	this._hintData=undefined;
-	const r=this._result;
+	const r=this._result || btlr.result();
 	if((!r.hpAffected||!(0<r.hpDamage))&&!(0<r.mpDamage)) return;
 	const fc=this._flashColor;
 	let wr=this._wr=r&&r.weaknessRate;
