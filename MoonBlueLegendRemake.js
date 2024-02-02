@@ -2508,7 +2508,7 @@ if(typeof SpriteWeatherEX!=='undefined') SpriteWeatherEX.prototype.updateScroll 
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if('undefined'!==typeof SpriteWeatherEX)(()=>{ let k,r,t;
 
 { const p=SpriteWeatherEX.prototype;
 
@@ -2674,7 +2674,7 @@ r=p[k]; (p[k]=function f(){
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if('undefined'!==typeof SpriteWeatherEX)(()=>{ let k,r,t;
 
 t=[];
 t._initFunc=function(){
@@ -13299,7 +13299,7 @@ p[k].tbl=24;
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if('undefined'!==typeof Moghunter)(()=>{ let k,r,t;
 
 { const p=Window_EquipStatus.prototype;
 k='windowHeight';
@@ -13634,7 +13634,7 @@ txtWidth:undefined,
 k='drawItem';
 r=p[k]; (p[k]=function f(index){
 	let rtv;
-	this.contents.fontSize = Moghunter.scEquip_FontSize;
+	if('undefined'!==typeof Moghunter) this.contents.fontSize = Moghunter.scEquip_FontSize;
 	if(this._actor){
 		const rect=this.itemRect(index);
 		this.changeTextColor(this.systemColor());
@@ -17204,7 +17204,7 @@ cf(Scene_Boot.prototype,'start',function f(){
 },t=[
 listPath,
 function f(data){
-	return data.replace(f.tbl[0][0],f.tbl[0][1]).split(f.tbl[1]).map(f.tbl[2]).filter(f.tbl[3]);
+	return data&&data.replace(f.tbl[0][0],f.tbl[0][1]).split(f.tbl[1]).map(f.tbl[2]).filter(f.tbl[3]);
 },
 "",
 function f(group){
@@ -17240,6 +17240,7 @@ cf(cf(Scene_Title.prototype,'create',function f(){
 	return f.ori.apply(this,arguments);
 }),'create_customTitle',function f(){
 	if(!(f.tbl.length>=5)) f.tbl.push( f.tbl[1](ImageManager.otherFiles_getData(f.tbl[0])) );
+	if(!f.tbl[4]){ while(f.tbl.length>=5) f.tbl.pop(); return; }
 	const ch=f.tbl[4].filter(f.tbl[3]).rnd1();
 	$dataSystem.title1Name=ch[0];
 	$dataSystem.title2Name=ch[1]||f.tbl[2]; // ""
@@ -17261,6 +17262,7 @@ t=r=undefined;
 (()=>{ let k,r,t;
 
 cf(cf(Scene_MenuBase.prototype,'_createBackground_common_after',function f(imgMgrLoaderFunc){
+	if(!imgMgrLoaderFunc) return;
 	this.addChild(this._magicCircle=new Sprite(imgMgrLoaderFunc.call(ImageManager,"MagicCircle")));
 	this.addChild(this._title=new Sprite(imgMgrLoaderFunc.call(ImageManager,"Title")));
 	this._magicCircle.bitmap.addLoadListener(f.tbl[1].bind(this));
@@ -18553,7 +18555,7 @@ new cfc(Scene_Menu.prototype).add('createCommands',function f(){
 },t).add('refreshGold',function f(forced){
 	if(f.ori) console.warn("not expected having f.ori");
 	const gold=this.getGoldVal(),sp=this._goldSprite,conf=this.getConfig_cmdPos();
-	if(!conf || !sp.bitmap || (!forced && sp._lastVal===gold)) return;
+	if(!conf || !sp || !sp.bitmap || (!forced && sp._lastVal===gold)) return;
 	sp.bitmap.clear();
 	sp.bitmap.drawText(''+(sp._lastVal=gold),0,0,conf.goldw,conf.goldh,conf.golda);
 },t).add('_getConfig_cmdPos',function f(){
@@ -23622,7 +23624,7 @@ function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
 	if('dy' in info) state.y+=info.dy;
 }).add('update',function f(){
 	this.updateFade();
-	this._root.update();
+	if(this._root) this._root.update();
 	if(!TouchInput.isPressed()) this._lastTouchSelect=-1;
 	if(TouchInput.isCancelled()||Input.isTriggered(f.tbl[0])) return this.popScene();
 	const ti=TouchInput;
@@ -23640,16 +23642,19 @@ function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
 		if(isNaN(idxOri)) this._idxRow=Math.min(deltaUd,0);
 		else this._idxRow+=deltaUd;
 	}
-	if(idxOri!==this._idxRow){
-		this._idxRow+=this._rows.length;
-		this._idxRow%=this._rows.length;
-	}
-	if(idxOri!==this._idxRow){
-		const sp=this._rows[this._idxRow];
-		this.moveSelRectTo(sp);
-		const idx=this._getOptionsWindowSelectIdx(sp._info._key);
-		this._optionsWindow.select(idx);
-		SoundManager.playCursor();
+	if(!this._rows||!this._rows.length) this._idxRow=-1;
+	else{
+		if(idxOri!==this._idxRow){
+			this._idxRow+=this._rows.length;
+			this._idxRow%=this._rows.length;
+		}
+		if(idxOri!==this._idxRow){
+			const sp=this._rows[this._idxRow];
+			this.moveSelRectTo(sp);
+			const idx=this._getOptionsWindowSelectIdx(sp._info._key);
+			this._optionsWindow.select(idx);
+			SoundManager.playCursor();
+		}
 	}
 	if(!(this._idxRow>=0)) return;
 	const neg_adj=(!Input.isRepeated('right')-!Input.isRepeated('left'))*(1+Input.isPressed('shift')*f.tbl[1]);
@@ -23663,6 +23668,18 @@ function(bitmap){ if(!(this.x>=bitmap.width)) this.x=bitmap.width; },
 9,
 ]).add('hitTest',function f(x,y){
 	if(!ImageManager.isReady()) return -1;
+	if(!this._interactives){
+		const w=this._optionsWindow;
+		const p=w.toLocal({x:x,y:y});
+		const idx=w.hitTest(p.x,p.y);
+		if(!(idx>=0)) ;
+		else if(idx===w.index()) w.processOk();
+		else{
+			w.select(idx);
+			SoundManager.playCursor();
+		}
+		return;
+	}
 	for(let i=0,arr=this._interactives;i<arr.length;++i){ const sp=arr[i];
 		const rect=this.getGlobalRect(sp);
 		if(!rect.contains(x,y)) continue;
@@ -25636,7 +25653,7 @@ new cfc(BattleManager).add('disableAbortEscapeSoundOnce',function f(){
  * This plugin can be renamed as you want.
  */
 
-(()=>{ let k,r,t;
+if('undefined'!==typeof Battle_Hud)(()=>{ let k,r,t;
 
 t=[
 160,
@@ -27310,7 +27327,7 @@ new cfc(Scene_MenuBase.prototype).add('initialize',function f(){
 				alphaAdj.addChild(a._arrowSp=sp);
 				alphaAdj.alpha=alpha;
 				a.addChild(alphaAdj);
-			}
+			}else a._alphaRefRate=f.tbl[1];
 		}else a._alphaRefRate=f.tbl[1];
 	}
 },[
