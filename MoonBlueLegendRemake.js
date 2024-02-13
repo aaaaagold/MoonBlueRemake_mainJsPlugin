@@ -27632,6 +27632,44 @@ true, // 5: arrow at bottom?
 
 ﻿"use strict";
 /*:
+ * @plugindesc MOG天氣淡出 // alpha changing
+ * @author agold404
+ * @help ㄌㄐ插件做一半
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+if(('undefined'!==typeof Imported) && Imported.MOG_Weather_EX){
+new cfc(SpriteWeatherEX.prototype).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.mogWeatherEX_UpdateChAlpha(this._id);
+	return rtv;
+}).add('mogWeatherEX_UpdateChAlpha',function f(id){
+	const arr=$gameSystem._weatherEX_Data;
+	const info=arr&&arr[id]&&arr[id]._chAlpha; if(!info) return;
+	const sp=this;
+	const r=Math.min(1,++info.dur/info.durMax);
+	if(info.durMax<info.dur) info.dur=info.durMax;
+	sp.alpha=(1-r)*info.from+r*info.to;
+},undefined,false,true);
+new cfc(Game_System.prototype).add('mogWeatherEx_chAlpha',function f(id,dur,from,to){
+	if(!(0<(dur|=0))) return;
+	return this._weatherEX_Data[id]._chAlpha={
+		dur:0,
+		durMax:dur,
+		from:from,
+		to:to,
+	};
+});
+}
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
