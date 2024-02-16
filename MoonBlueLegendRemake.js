@@ -22519,10 +22519,11 @@ new cfc(Game_Temp.prototype).add('minimapBitmapCache_getCont',function f(){
 	cont.set(mapId,bitmap);
 },t,false,true);
 
-new cfc(Game_Screen.prototype).add('handmap_show',function f(scale,isOperationDisabled){
+new cfc(Game_Screen.prototype).add('handmap_show',function f(scale,isOperationDisabled,drawTimeoutMs){
 	const sm=SceneManager; if(!sm._scene||sm._scene.constructor!==Scene_Map) return;
 	const c=this.handmap_getConf();
 	c.scale=scale===undefined?1:scale;
+	c.drawTimeoutMs=drawTimeoutMs;
 	this._handmap_isOperationDisabled=isOperationDisabled;
 	sm.push(Scene_HandMap);
 }).add('_handmap_getConf',function f(mapId){
@@ -22625,6 +22626,7 @@ new cfc(p).add('initialize',function f(){
 	return ff;
 },t,false,true).add('init_minimap',function f(){
 	this._minimap=new Sprite_Minimap();
+	this._minimap._drawTimeoutMs=this._conf.drawTimeoutMs;
 	if(!this._minimap._inited){
 		this._minimap=undefined;
 		return true;
@@ -22866,10 +22868,26 @@ new cfc(p).add('initialize',function f(){
 	if(h===undefined||(h>=$dataMap.height -y)) h=$dataMap.height -y;
 	
 	const bmp=this.bitmap;
-	if(bmp){ for(let j=y,je=y+h;j<je;++j){ for(let i=x,ie=x+w;i<ie;++i){ if(!this.painted(i,j)){ for(let z=0;z<4;++z){
-		const tileId=$gameMap.tileId(i,j,z); if(!Tilemap.isVisibleTile(tileId)) continue;
-		Tilemap.isAutotile(tileId)?this._drawAutotile(bmp, tileId, i*this._tileWidth, j*this._tileHeight):this._drawNormalTile(bmp, tileId, i*this._tileWidth, j*this._tileHeight);
-	} this.painted_setVal(i,j,true); } } } }
+	if(bmp){
+		const j0=y,je=y+h,i0=x,ie=x+w,W=$dataMap.width<<1,arr=[];
+		for(let j=j0;j<je;++j) for(let i=i0;i<ie;++i) if(!this.painted(i,j)) arr.uniquePush(j*W+i);
+		this._remainedTileCnt=arr.length;
+		for(let timesup=false,dt=this._drawTimeoutMs,ctr0=0<dt?2e2:Infinity,ctr=ctr0,tF=0<dt?Date.now()+dt:Infinity;!timesup&&arr.length;){
+			const curr=arr[~~(Math.random()*arr.length)];
+			arr.uniquePop(curr);
+			const i=curr%W,j=~~(curr/W);
+			for(let z=0;z<4;++z){
+				const tileId=$gameMap.tileId(i,j,z); if(!Tilemap.isVisibleTile(tileId)) continue;
+				Tilemap.isAutotile(tileId)?this._drawAutotile(bmp, tileId, i*this._tileWidth, j*this._tileHeight):this._drawNormalTile(bmp, tileId, i*this._tileWidth, j*this._tileHeight);
+			}
+			this.painted_setVal(i,j,true);
+			if(!(0<--ctr)){
+				ctr=ctr0;
+				const t=Date.now();
+				if(tF<t){ timesup=true; break; }
+			}
+		}
+	}
 },t).add('_isTableTile',function f(){
 	return Tilemap.prototype._isTableTile.apply(this,arguments);
 },t).add('_drawNormalTile',function f(bitmap, tileId, dx, dy){
