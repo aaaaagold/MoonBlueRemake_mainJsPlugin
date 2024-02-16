@@ -4488,6 +4488,7 @@ r=p[k]; (p[k]=function f(renderer){
 	const old_attr_offset=[];
 	for(let i=0;i!==old_attr_cnt;++i){
 		old_attr[i]=gl.getActiveAttrib(old_prog,i);
+		if(!old_attr[i]) continue;
 		old_attr_idx[i]=gl.getAttribLocation(old_prog,old_attr[i].name);
 		old_attr_size[i]=gl.getVertexAttrib(old_attr_idx[i],gl.VERTEX_ATTRIB_ARRAY_SIZE);
 		old_attr_type[i]=gl.getVertexAttrib(old_attr_idx[i],gl.VERTEX_ATTRIB_ARRAY_TYPE);
@@ -4636,6 +4637,7 @@ r=p[k]; (p[k]=function f(renderer){
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, old_abi, gl.STATIC_DRAW);
 	gl.bindBuffer(gl.ARRAY_BUFFER, old_ab, gl.STATIC_DRAW);
 	for(let i=0,sz=old_attr_cnt;i!==sz;++i){
+		if(!old_attr[i]) continue;
 		gl.vertexAttribPointer(
 			old_attr_idx[i],
 			old_attr_size[i],
