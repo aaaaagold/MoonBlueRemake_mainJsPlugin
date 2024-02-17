@@ -22817,7 +22817,14 @@ p.constructor=a;
 t=[
 a.ori.prototype,
 a.ori,
-[48,48], // tile size [w,h] ; if this become non const, update it in initData()
+[
+()=>$gameMap.tileWidth(),
+()=>$gameMap.tileHeight(),
+], // 2: tile size [w,h] ; if this become non const, update it in initData()
+[
+()=>$gameMap.screenTileX()<<1,
+()=>$gameMap.screenTileY()<<1,
+], // 3: max draw X,Y
 ];
 p.isMapValid=function(){
 	return $dataMap && $gameMap && $gameMap.mapId() && $gamePlayer && !$gamePlayer.isTransferring();
@@ -22838,8 +22845,8 @@ new cfc(p).add('initialize',function f(){
 		this.flags=tm.flags;
 	}
 	
-	this._tileWidth=f.tbl[2][0];
-	this._tileHeight=f.tbl[2][1];
+	this._tileWidth=f.tbl[2][0]();
+	this._tileHeight=f.tbl[2][1]();
 	
 	let bmp=$gameTemp.minimapBitmapCache_get($gameMap.mapId());
 	if(!bmp){
@@ -22869,12 +22876,24 @@ new cfc(p).add('initialize',function f(){
 	if(w===undefined||(w>=$dataMap.width  -x)) w=$dataMap.width  -x;
 	if(h===undefined||(h>=$dataMap.height -y)) h=$dataMap.height -y;
 	
-	const bmp=this.bitmap;
-	if(bmp){
-		const j0=y,je=y+h,i0=x,ie=x+w,W=$dataMap.width<<1,arr=[];
-		for(let j=j0;j<je;++j) for(let i=i0;i<ie;++i) if(!this.painted(i,j)) arr.uniquePush(j*W+i);
-		this._remainedTileCnt=arr.length;
-		for(let timesup=false,dt=this._drawTimeoutMs,ctr0=0<dt?2e2:Infinity,ctr=ctr0,tF=0<dt?Date.now()+dt:Infinity;!timesup&&arr.length;){
+	const bmp=this.bitmap; if(!bmp) return;
+	
+	const j0=y,je=y+h;
+	const i0=x,ie=x+w;
+	const limX=f.tbl[3][0](),dx=Math.max(~~(w/limX),1);
+	const limY=f.tbl[3][1](),dy=Math.max(~~(h/limY),1);
+	const W=$dataMap.width<<1,dt=this._drawTimeoutMs,arr=[];
+	const ctr0=0<dt?1e2:Infinity;
+	let timesup=false,tF=0;
+	do{
+		this._strtDy|=0; ++this._strtDy; this._strtDy%=dy;
+		this._strtDx|=0; ++this._strtDx; this._strtDx%=dx;
+		for(let j=j0+this._strtDy;j<je;j+=dy) for(let i=i0+this._strtDx;i<ie;i+=dx) if(!this.painted(i,j)) arr.uniquePush(j*W+i);
+		//this._remainedTileCnt=arr.length;
+		this._currDrawTileCnt=arr.length;
+		if(!this._currDrawTileCnt) break;
+		if(!tF) tF=0<dt?Date.now()+dt:Infinity;
+		for(let ctr=ctr0;!timesup&&arr.length;){
 			const curr=arr[~~(Math.random()*arr.length)];
 			arr.uniquePop(curr);
 			const i=curr%W,j=~~(curr/W);
@@ -22889,7 +22908,7 @@ new cfc(p).add('initialize',function f(){
 				if(tF<t){ timesup=true; break; }
 			}
 		}
-	}
+	}while(!timesup&&(1<dx||1<dy)); // don't use !arr.length : might be the last that meets time's up.
 },t).add('_isTableTile',function f(){
 	return Tilemap.prototype._isTableTile.apply(this,arguments);
 },t).add('_drawNormalTile',function f(bitmap, tileId, dx, dy){
