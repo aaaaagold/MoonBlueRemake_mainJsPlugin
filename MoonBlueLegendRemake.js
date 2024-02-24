@@ -1699,6 +1699,72 @@ p[k].tbl=[t,];
 
 ﻿"use strict";
 /*:
+ * @plugindesc gotGmgLim 受擊傷害上限
+ * @author agold404
+ * @help 有 trait 的 note <受擊傷害上限:數字>
+ * 有多個時取最小。僅套用"傷害"。輸入負值會很好玩。
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+
+const kw='受擊傷害上限';
+const kwt='TRAIT_'+kw;
+const kwget='get_'+kw;
+const kwgetMin='getMin_'+kw;
+gbb.addEnum(kwt);
+
+t=[kwgetMin,kwget,gbb[kwt],kw,kwt,];
+
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits,c,t; if(!ts) ts=dataobj.traits=[];
+	const n=meta[kw]-0; if(isNaN(n)) return;
+	ts.push({code:gbb[kwt],dataId:0,value:n,});
+},
+]);
+
+new cfc(Game_Battler.prototype).add(kwget,function f(){
+	return this.traits(f.tbl[2]);
+},t).add(kwgetMin,function f(item){
+	const arr=this[f.tbl[1]]();
+	let rtv=Infinity;
+	for(let x=arr.length;x--;) rtv=Math.min(rtv,arr[x].value);
+	return rtv;
+},t);
+
+new cfc(Game_Action.prototype).add('executeDamage',function f(trgt,val){
+	if(this.isDamage()) arguments[1]=Math.min(val,trgt[f.tbl[0]]());
+	return f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc This plugin extends [SV]overlay slot via providing developers writting down overlay ID in note
  * @author agold404
  *
@@ -20967,11 +21033,21 @@ for(let x=0,arr=['_updateCursor','_updatePauseSign',];x!==arr.length;++x) cf(p,a
 t=undefined;
 }
 
+new cfc(Game_System.prototype).add('flashbackText_savedCont_get',function f(){
+	let q=this._flashbackText_savedCont;
+	if(!(q instanceof Queue)) q=Object.assign(new Queue(),q);
+	this._flashbackText_savedCont=q;
+	return q;
+});
+
 new cfc(Game_Temp.prototype).add('flashbackText_add',function f(txt,face,fidx,nameField){
 	if($gameSystem && $gameSystem._flashbackText_disabled) return;
 	if(!f.tbl[0].re) f.tbl[0].re=/(?<!(\\))((\\\\)*)(\\([VPNvpn])\[(\d+)\])/g;
 	if(!f.tbl[0].re_discards) f.tbl[0].re_discards=/\f/g;
-	this._flashbackText_getCont().push({txt:txt.replace(f.tbl[0].re_discards,'').replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},nameField:nameField,y:undefined,height:undefined,_debug:{_mapId:$gameMap&&$gameMap._mapId,},});
+	const obj={txt:txt.replace(f.tbl[0].re_discards,'').replace(f.tbl[0].re,f.tbl[0]),face:{name:face,idx:fidx},nameField:nameField,y:undefined,height:undefined,_debug:{_mapId:$gameMap&&$gameMap._mapId,},};
+	this._flashbackText_getCont().push(obj);
+	const q=$gameSystem.flashbackText_savedCont_get();
+	q.push(obj); for(let th=f.tbl[1];th<q.length;) q.pop();
 },[
 function f(){
 	if(!f.tbl){
@@ -20986,10 +21062,18 @@ function f(){
 	if(key in f.tbl) return slashes+f.tbl[key](val);
 	return arguments[0];
 },
+10,
 ]).add('_flashbackText_getCont',function f(){
-	let rtv=this._flashbackTexts; if(!rtv) rtv=this._flashbackTexts=[];
+	let rtv=this._flashbackTexts;
+	if(!rtv){
+		rtv=this._flashbackTexts=[];
+		const saved=$gameSystem&&$gameSystem.flashbackText_savedCont_get();
+		if(saved) saved.forEach(f.tbl[0],rtv);
+	}
 	return rtv;
-}).add('flashbackText_getCont',function f(){
+},[
+function(x){ this.push(x); },
+]).add('flashbackText_getCont',function f(){
 	return this._flashbackText_getCont();
 }).add('flashbackText_clearAll',function f(){
 	this.flashbackText_getCont().length=0;
@@ -27703,6 +27787,296 @@ new cfc(Game_System.prototype).add('mogWeatherEx_chAlpha',function f(id,dur,from
 	};
 });
 }
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 事件獲得增加
+ * @author agold404
+ * @help 有 trait 的 note ，先算倍再算加
+ * 
+<事件獲得增加金幣量:500>
+<事件獲得增加金幣倍:2>
+<事件獲得增加道具量:[[id,量],["all",量]]>
+<事件獲得增加道具倍:[[id,倍],["all",倍]]>
+<事件獲得增加防具量:[[id,量],["all",量]]>
+<事件獲得增加防具倍:[[id,倍],["all",倍]]>
+<事件獲得增加武器量:[[id,量],["all",量]]>
+<事件獲得增加武器倍:[[id,倍],["all",倍]]>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+(()=>{ let k,r,t; const gbb=Game_BattlerBase;
+
+if(!gbb._enumMax) gbb._enumMax=404;
+if(!gbb.addEnum) gbb.addEnum=window.addEnum;
+
+const prefix='事件獲得增加';
+const kw_gold=prefix+'金幣';
+const kw_gold_mul=kw_gold+'倍';
+const kw_gold_add=kw_gold+'量';
+const kw_item=prefix+'道具';
+const kw_item_mul=kw_item+'倍';
+const kw_item_add=kw_item+'量';
+const kw_armor=prefix+'防具';
+const kw_armor_mul=kw_armor+'倍';
+const kw_armor_add=kw_armor+'量';
+const kw_weapon=prefix+'武器';
+const kw_weapon_mul=prefix+'倍';
+const kw_weapon_add=prefix+'量';
+const kwt_gold_mul='TRAIT_'+kw_gold_mul;
+const kwt_gold_add='TRAIT_'+kw_gold_add;
+const kwt_item_mul='TRAIT_'+kw_item_mul;
+const kwt_item_add='TRAIT_'+kw_item_add;
+const kwt_armor_mul='TRAIT_'+kw_armor_mul;
+const kwt_armor_add='TRAIT_'+kw_armor_add;
+const kwt_weapon_mul='TRAIT_'+kw_weapon_mul;
+const kwt_weapon_add='TRAIT_'+kw_weapon_add;
+gbb.addEnum(kwt_gold_mul);
+gbb.addEnum(kwt_gold_add);
+gbb.addEnum(kwt_item_mul);
+gbb.addEnum(kwt_item_add);
+gbb.addEnum(kwt_armor_mul);
+gbb.addEnum(kwt_armor_add);
+gbb.addEnum(kwt_weapon_mul);
+gbb.addEnum(kwt_weapon_add);
+const cal_kw_gold='cal_'+kw_gold;
+const cal_kw_item='cal_'+kw_item;
+const cal_kw_armor='cal_'+kw_armor;
+const cal_kw_weapon='cal_'+kw_weapon;
+
+const putMul=(ts,key,id,val)=>{ val-=0;
+	if(!isNaN(val)) ts.push({code:gbb[key],dataId:id,value:val,});
+},putAdd=(ts,key,id,val)=>{ val-=0;
+	if(val) ts.push({code:gbb[key],dataId:id,value:val,});
+};
+new cfc(Scene_Boot.prototype).add('start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	let ts=dataobj.traits; if(!ts) ts=dataobj.traits=[];
+	putMul(ts,kwt_gold_mul,0,meta[kw_gold_mul]-0);
+	putAdd(ts,kwt_gold_add,0,meta[kw_gold_add]-0);
+	if(meta[kw_item_mul]) for(let arr=JSON.parse(meta[kw_item_mul]),x=arr.length;x--;) putMul(ts,kwt_item_mul,arr[x][0],arr[x][1]);
+	if(meta[kw_item_add]) for(let arr=JSON.parse(meta[kw_item_add]),x=arr.length;x--;) putAdd(ts,kwt_item_add,arr[x][0],arr[x][1]);
+	if(meta[kw_armor_mul]) for(let arr=JSON.parse(meta[kw_armor_mul]),x=arr.length;x--;) putMul(ts,kwt_armor_mul,arr[x][0],arr[x][1]);
+	if(meta[kw_armor_add]) for(let arr=JSON.parse(meta[kw_armor_add]),x=arr.length;x--;) putAdd(ts,kwt_armor_add,arr[x][0],arr[x][1]);
+	if(meta[kw_weapon_mul]) for(let arr=JSON.parse(meta[kw_weapon_mul]),x=arr.length;x--;) putMul(ts,kwt_weapon_mul,arr[x][0],arr[x][1]);
+	if(meta[kw_weapon_add]) for(let arr=JSON.parse(meta[kw_weapon_add]),x=arr.length;x--;) putAdd(ts,kwt_weapon_add,arr[x][0],arr[x][1]);
+},
+]);
+
+new cfc(Game_Battler.prototype).add(cal_kw_gold,function f(val){
+	const muls=this.traitsPi(f.tbl[0],0),adds=this.traitsSum(f.tbl[1],0);
+	return val*muls+adds;
+},[
+gbb[kwt_gold_mul],
+gbb[kwt_gold_add],
+]).add(cal_kw_item,function f(val,dataobj){ const id=dataobj&&dataobj.id;
+	const muls=this.traitsPi(f.tbl[0],id)*this.traitsPi(f.tbl[0],'all'),adds=this.traitsSum(f.tbl[1],id)+this.traitsSum(f.tbl[1],'all');
+	return val*muls+adds;
+},[
+gbb[kwt_item_mul],
+gbb[kwt_item_add],
+]).add(cal_kw_armor,function f(val,dataobj){ const id=dataobj&&dataobj.id;
+	const muls=this.traitsPi(f.tbl[0],id)*this.traitsPi(f.tbl[0],'all'),adds=this.traitsSum(f.tbl[1],id)+this.traitsSum(f.tbl[1],'all');
+	return val*muls+adds;
+},[
+gbb[kwt_armor_mul],
+gbb[kwt_armor_add],
+]).add(cal_kw_weapon,function f(val,dataobj){ const id=dataobj&&dataobj.id;
+	const muls=this.traitsPi(f.tbl[0],id)*this.traitsPi(f.tbl[0],'all'),adds=this.traitsSum(f.tbl[1],id)+this.traitsSum(f.tbl[1],'all');
+	return val*muls+adds;
+},[
+gbb[kwt_weapon_mul],
+gbb[kwt_weapon_add],
+]);
+
+new cfc(Game_Interpreter.prototype).add('command125',function f(){
+	let value = this.operateValue(this._params[0], this._params[1], this._params[2]);
+	const v0=value;
+	for(let arr=$gameParty.members(),x=arr.length;x--;) value=Math.max(arr[x][f.tbl[0]](v0),value);
+	$gameParty.gainGold(value|0);
+	return true;
+},[
+cal_kw_gold,
+]).add('cmdCommon_gainThings',function f(dataobjv,cal_kw){
+	const dataobj=dataobjv[this._params[0]];
+	const v0=this.operateValue(this._params[1], this._params[2], this._params[3]);
+	let n=v0;
+	for(let arr=$gameParty.members(),x=arr.length;x--;) n=Math.max(arr[x][cal_kw](v0,dataobj),n);
+	$gameParty.gainItem(dataobj,n|0);
+	return true;
+}).add('command126',function f(){
+	return this.cmdCommon_gainThings($dataItems,f.tbl[0]);
+},[
+cal_kw_item,
+]).add('command127',function f(){
+	return this.cmdCommon_gainThings($dataWeapons,f.tbl[0]);
+},[
+cal_kw_weapon,
+]).add('command128',function f(){
+	return this.cmdCommon_gainThings($dataArmors,f.tbl[0]);
+},[
+cal_kw_armor,
+]);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc black holes visual effect api
+ * @author agold404
+ * @help $gameScreen.renderBlackHolesEffect_genHole({x:384,y:256,r:0,},{x:512,y:512,r:128,},0,64,8);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Graphics).add('renderOtherEffects',function f(){
+	this.renderBlackHolesEffect();
+	return f.ori.apply(this,arguments);
+}).add('renderBlackHolesEffect',function f(){
+	const d=document;
+	if(!f.tbl[1]){
+		const div=d.ce('div').sa('style',this._canvas.ga('style'));
+		div.width=this._canvas.width;
+		div.height=this._canvas.height;
+		d.body.ac(div.ac(f.tbl[1]=d.ce('canvas').sa('style','width:100%;height:100%;')));
+		this.addAsGameCanvas(div);
+	}
+	const dstCanvas=f.tbl[1];
+	const dstCtx=f.tbl[2]||(f.tbl[2]=dstCanvas.getContext('2d'));
+	const dstW=~~(f.tbl[3]*this._canvas.width),dstH=~~(f.tbl[3]*this._canvas.height);
+	{ let needClear=true;
+	if(dstCanvas.width!==dstW){ dstCanvas.width=dstW; needClear=false; }
+	if(dstCanvas.height!==dstH){ dstCanvas.height=dstH; needClear=false; }
+	if(needClear) dstCtx.clearRect(0,0,dstW,dstH);
+	}
+	if(Graphics.frameCount<f.tbl[0]) f.tbl[0]=Graphics.frameCount; // new game or load game
+	const dfc=Graphics.frameCount-f.tbl[0];
+	f.tbl[0]=Graphics.frameCount;
+	
+	if(!$gameScreen) return;
+	const cont=$gameScreen.renderBlackHolesEffect_getCont(); if(!cont.length) return;
+	
+	const srcData=this.getImageData(),dstData=dstCtx.getImageData(0,0,dstW,dstH);
+	const infos=cont.slice(); cont.length=0;
+	for(let i=0,sz=infos.length;i!==sz;++i){
+		const info=infos[i];
+		const opt=info.opt;
+		info.dur+=dfc;
+		
+		const r1=info.dur/info.fadeOutFc; if(!(1>=r1)) continue;
+		const r0=1-r1;
+		let refX=0,refY=0,sp;
+		if(!isNaN(opt.evtId)){
+			if(!SceneManager.isScene_map()) continue;
+			const chr=$gameMap._events[opt.evtId]||$gamePlayer;
+			sp=chr&&chr.getSprite(); if(!sp) continue;
+		}else if(opt.btlr){
+			if(!SceneManager.isScene_battle()) continue;
+			sp=opt.btlr.getSprite(); if(!sp) continue;
+		}
+		if(sp){
+			refX=sp.x;
+			refY=sp.y;
+		}
+		const holeX=refX+info.holeXyr0.x*r0+info.holeXyr1.x*r1;
+		const holeY=refY+info.holeXyr0.y*r0+info.holeXyr1.y*r1;
+		const holeR=info.holeXyr0.r*r0+info.holeXyr1.r*r1;
+		const alpha=info.dur>=info.fadeInFc?info.keepFc<info.dur?(info.fadeOutFc-info.dur)/(info.fadeOutFc-info.keepFc):1:info.dur/info.fadeInFc;
+		
+		this.renderBlackHolesEffect_drawHole1(srcData,dstData,f.tbl[3],alpha,holeX,holeY,holeR,opt&&opt.holeCenterColor);
+		cont.push(info);
+	}
+	dstCtx.putImageData(dstData,0,0);
+},[
+0, // 0: fc
+undefined, // 1: canvas
+undefined, // 2: ctx
+0.25, // 3: dstScale
+]).add('renderBlackHolesEffect_drawHole1',function f(srcData,dstData,dstScale,alpha,holeX,holeY,holeR,holeCenterColor){
+	if(!(0<dstScale)||!(0<holeR)) return;
+	holeCenterColor=holeCenterColor||f.tbl[0];
+	
+	const r=holeR*dstScale,ox=~~(holeX*dstScale),oy=~~(holeY*dstScale),dstW=dstData.width,srcW=srcData.width,srcW_1=srcW-1,srcH_1=srcData.height-1,isWebGL=this.isWebGL();
+	const r2=r*r,yL=Math.min(oy+r,dstData.height-1)|0,xL=Math.min(ox+r,dstW-1)|0,x0=Math.max(ox-r,0)|0;
+	for(let y=Math.max(oy-r,0)|0;y<=yL;++y){ for(let x=x0;x<=xL;++x){
+		const dx=x-ox,dy=y-oy,dist2=dx*dx+dy*dy; if(r2<dist2) continue;
+		const dstIdx=(y*dstW+x)<<2;
+		const rad01=Math.sqrt(dist2/r2);
+		let dx1=dx/rad01,dy1=dy/rad01;
+		const dstX1=ox+dx1,dstY1=oy+dy1;
+		const dstX1c=dstX1.clamp(0,xL),dstY1c=dstY1.clamp(0,yL);
+		const r1x=(dstX1c-ox)/dx1,r1y=(dstY1c-oy)/dy1;
+		const r1c=Math.min(r1x||Infinity,r1y||Infinity);
+		dx1*=r1c; dy1*=r1c;
+		const dstIdx1=((~~(oy+dy1)).clamp(0,yL)*dstW+(~~(ox+dx1)).clamp(0,xL))<<2;
+		const srcX=(~~(holeX+dx1/dstScale)).clamp(0,srcW_1),srcY=(~~(holeY+dy1/dstScale)).clamp(0,srcH_1);
+		const srcIdx=((isWebGL?srcH_1-srcY:srcY)*srcW+srcX)<<2,p=rad01;
+		const q=1-p,dstAR1=dstData.data[dstIdx1|3]/255;
+		const srcAR1=1-dstAR1;
+		for(let c=0;c!==4;++c){
+			const srcC=(srcAR1*srcData.data[srcIdx|c]+dstAR1*dstData.data[dstIdx1|c]);
+			dstData.data[dstIdx|c]=(1-alpha)*dstData.data[dstIdx|c]+alpha*(srcC*p+holeCenterColor[c]*q);
+		}
+	} }
+},[
+[0,0,0,255], // 0: default hole center color
+]).add('renderBlackHolesEffect_dstScale',()=>0.25);
+
+new cfc(Game_Screen.prototype).add('renderBlackHolesEffect_getCont',function f(){
+	let rtv=this._renderBlackHolesEffectv; if(!rtv) rtv=this._renderBlackHolesEffectv=[];
+	return rtv;
+}).add('renderBlackHolesEffect_genHole',function f(holeXyr0,holeXyr1,fadeInFc,keepFc,fadeOutFc,opt){
+	if(!holeXyr0) holeXyr0=holeXyr1;
+	if(!holeXyr1) holeXyr1=holeXyr0;
+	if(!holeXyr0||!holeXyr1) return;
+	const r0=holeXyr0.r|0,r1=holeXyr1.r|0; if(!r0&&!r1) return;
+	holeXyr0.x|=0;
+	holeXyr0.y|=0;
+	holeXyr1.x|=0;
+	holeXyr1.y|=0;
+	fadeInFc|=0;
+	keepFc|=0;
+	fadeOutFc|=0;
+	keepFc+=fadeInFc;
+	fadeOutFc+=keepFc;
+	if(!(0<fadeOutFc)) return;
+	
+	opt=opt||{};
+	this.renderBlackHolesEffect_getCont().push({
+		holeXyr0:holeXyr0,
+		holeXyr1:holeXyr1,
+		dur:0,
+		fadeInFc:fadeInFc,
+		keepFc:keepFc,
+		fadeOutFc:fadeOutFc,
+		opt:opt,
+	});
+});
 
 })();
 
