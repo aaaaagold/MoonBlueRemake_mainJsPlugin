@@ -28083,6 +28083,62 @@ new cfc(Game_Screen.prototype).add('renderBlackHolesEffect_getCont',function f()
 
 ﻿"use strict";
 /*:
+ * @plugindesc 圖片歪斜API
+ * @author agold404
+ * @help 僅直接使用PIXI的skew
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Picture.prototype).add('initBasic',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.initSkew();
+	return rtv;
+}).add('initSkew',function f(){
+	this.setSkew(0,0);
+	return this;
+}).add('setSkew',function f(x,y,d){
+	this._skewDur=d||0;
+	if(undefined!==x) this._skewTX=x;
+	if(undefined!==y) this._skewTY=y;
+	this.updateSkew();
+	return this;
+}).add('show',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.initSkew();
+	return rtv;
+}).add('updateSkew',function f(){
+	if(1<this._skewDur){
+		--this._skewDur;
+		this._skewX+=(this._skewTX-this._skewX)/this._skewDur;
+		this._skewY+=(this._skewTY-this._skewY)/this._skewDur;
+	}else{
+		this._skewDur=0;
+		this._skewX=this._skewTX;
+		this._skewY=this._skewTY;
+	}
+}).add('update',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.updateSkew();
+	return rtv;
+});
+
+new cfc(Sprite_Picture.prototype).add('updateOther',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.updateSkew();
+	return rtv;
+}).add('updateSkew',function f(){
+	const pic=this.picture();
+	this.skew.set(pic._skewX||0,pic._skewY||0);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
