@@ -28896,7 +28896,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-01-17 0';
+var _agold404_version='2024-02-24 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
