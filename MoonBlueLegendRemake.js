@@ -365,6 +365,18 @@ p.isScene_map    =function(){ const sc=this._scene; return sc && sc.constructor=
 //
 SceneManager.getScConstructor=function(){ return this._scene && this._scene.constructor; };
 { const p=Window_BattleLog.prototype,k='displayAffectedStatus'; const r=p[k]; (p[k]=function(){}).ori=r; } // 月藍沒有用這個東西
+new cfc(Game_Battler.prototype).add('getCounterAttackSkillId',function f(){
+	return 1;
+},undefined,true,true);
+new cfc(BattleManager).add('invokeMagicReflection',function f(subject,target){
+	return this.invokeNormalAction(subject,subject);
+},undefined,false,true).add('invokeCounterAttack',function f(subject,target){
+	const act=this._action;
+	this._action=new Game_Action(target);
+	this._action.setSkill(target.getCounterAttackSkillId());
+	this.invokeNormalAction(target,subject);
+	this._action=act;
+},undefined,false,true);
 new cfc(Graphics).add('_requestFullScreen',function(){
 	const element = getTopFrameWindow().document.body;
 	if(element.requestFullScreen) element.requestFullScreen();
@@ -28952,7 +28964,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-02-24 0';
+var _agold404_version='2024-02-28 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
