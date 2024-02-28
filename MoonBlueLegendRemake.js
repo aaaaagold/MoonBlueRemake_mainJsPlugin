@@ -364,6 +364,17 @@ p.isScene_map    =function(){ const sc=this._scene; return sc && sc.constructor=
 }
 //
 SceneManager.getScConstructor=function(){ return this._scene && this._scene.constructor; };
+new cfc(Game_Action.prototype).add('makeTargets',function f(){
+	let targets;
+	if(this.isForOpponent()) targets = this.makeTargets_confused() || this.targetsForOpponents();
+	else if(this.isForFriend()) targets = this.makeTargets_confused() || this.targetsForFriends();
+	return this.repeatTargets(targets || []);
+},undefined,false,true).add('isConfuseResisted',function f(){
+	return false;
+}).add('makeTargets_confused',function f(){
+	if(this._forcing || this.isConfuseResisted() || !this.subject().isConfused()) return;
+	return [this.confusionTarget()];
+});
 { const p=Window_BattleLog.prototype,k='displayAffectedStatus'; const r=p[k]; (p[k]=function(){}).ori=r; } // 月藍沒有用這個東西
 new cfc(Game_Battler.prototype).add('getCounterAttackSkillId',function f(){
 	return 1;
@@ -28151,6 +28162,30 @@ new cfc(Sprite_Picture.prototype).add('updateOther',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 技能/道具抗混亂
+ * @author agold404
+ * @help <confuseResisted> 對使用者作用的直接抗
+ * <canBeConfused> 會變成可被混亂，有 <confuseResisted> 時無效。
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Action.prototype).add('isConfuseResisted',function f(){
+	{ const item=this.item(),meta=item&&item.meta; if(meta){
+	if(meta.confuseResisted) return true;
+	if(meta.canBeConfused) return false;
+	} }
+	if(this.isForUser()) return true;
+	return f.ori.apply(this,arguments);
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -28964,7 +28999,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-02-28 0';
+var _agold404_version='2024-02-28 1';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
