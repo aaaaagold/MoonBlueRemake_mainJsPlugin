@@ -9287,7 +9287,7 @@ se:{name: "Ice4", volume: 75, pitch: 100},
 gainAmount:DateNow<TR303?1:9999,
 });
 new金手指(canGain,gainItems,[65,71,79,76,68,52,48,52,],undefined,{
-cmp:DateNow<TR404?(dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0):(dataobj=>dataobj&&dataobj.description&&dataobj.name&&(dataobj.name==="開鎖勾"||dataobj.occasion^3)),
+cmp:DateNow<TR404?(dataobj=>dataobj&&dataobj.description&&dataobj.name.indexOf("黃金ㄉ魔法書")>=0):(dataobj=>dataobj&&dataobj.description&&dataobj.name&&( dataobj.name==="開鎖勾"||(0&&dataobj.occasion^3)||((window._agold404_cheatFilter instanceof Function)&&window._agold404_cheatFilter(dataobj)) )),
 se:{name: "Magic1", volume: 75, pitch: 100},
 gainAmount:DateNow<TR404?1:9999,
 });
