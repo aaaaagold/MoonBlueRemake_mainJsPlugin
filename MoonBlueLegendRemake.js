@@ -24300,7 +24300,8 @@ new cfc(SceneManager).add('updateMain',function f(){
 		return true;
 	}else Input.frameFastForward_end();
 },t).add('isFrameFastForwardDisabled',function f(){
-	if(!(DateNow<TR)) return false;
+	if(this.isSceneChanging()) return true;
+	if(this.isFrameFastForwardDisabled_isFalse&&this.isFrameFastForwardDisabled_isFalse()) return false;
 	if(!$gameSystem) return;
 	const scc=this._scene&&this._scene.constructor;
 	let func;
@@ -28415,6 +28416,7 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 		const bmp=sp.children[0].bitmap=this._pictureArr._bmp.get(info.imgPath); if(!bmp) continue;
 		DataManager.parseAnimationPictures_apply.call(this,sp,bmp,info);
 		sp._currInfo=info;
+		sp.z=this.z;
 	}
 	this.updatePosition_pictures();
 },[
@@ -29272,7 +29274,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-02 2';
+var _agold404_version='2024-03-03 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
