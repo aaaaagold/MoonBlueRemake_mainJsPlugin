@@ -20014,11 +20014,12 @@ new cfc(Game_System.prototype).add('partyMembers_clearCurrent',function f(){
 	return rtv;
 }).add('partyMembers_save',function f(id){
 	const obj=this._partyMembers_getDict();
-	obj[id]=$gameParty._actors;
+	obj[id]=$gameParty._actors.slice();
 	return this;
 }).add('partyMembers_load',function f(id){
 	const obj=this._partyMembers_getDict();
-	$gameParty._actors=obj[id];
+	if(obj[id]) $gameParty._actors=obj[id].slice();
+	else $gameParty._actors=[];
 	return this;
 }).add('partyMembers_delete',function f(id){
 	const obj=this._partyMembers_getDict();
@@ -29271,7 +29272,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-02 1';
+var _agold404_version='2024-03-02 2';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
