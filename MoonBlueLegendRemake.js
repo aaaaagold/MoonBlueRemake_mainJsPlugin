@@ -2183,7 +2183,7 @@ function(timing){ this.processTimingData(timing); },
 			if(this._duration % this._rate === 0) this.updateFrame();
 		}
 	}
-},true,true).add('setupRate',function f(settingData){
+},undefined,true,true).add('setupRate',function f(settingData){
 	this._rate=this.calcRate(settingData);
 },true,true).add('calcRate',function f(settingData){
 	let rtv=settingData&&settingData.rate;
@@ -28272,6 +28272,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 						endType:info.endType,
 						imgPath:info.imgPath,
 						imgOrigin:info.imgOrigin,
+						imgReflect:info.imgReflect,
 						positionReference:info.positionReference,
 						imgFrame:f.tbl[4](info.imgFrame[tp-1],info.imgFrame[tp],r),
 						position:f.tbl[4](info.position[tp-1],info.position[tp],r),
@@ -29270,7 +29271,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-02 0';
+var _agold404_version='2024-03-02 1';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
