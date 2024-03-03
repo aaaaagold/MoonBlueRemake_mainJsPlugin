@@ -22689,8 +22689,8 @@ a.ori.prototype,
 a.ori,
 [Input.keyMapper[109],Input.keyMapper[189],], // -,numPad-
 [Input.keyMapper[107],Input.keyMapper[187],], // +,numPad+
-[0.5,2], // *
-0.125, // +
+[1.0/256,0.5,2,], // wheelY scale , map scale * , map scale * ,
+0.125, // map scale +
 ['img/system/IconSet.png',{
  x:(75&15)*Window_Base._iconWidth,
  y:(75>>4)*Window_Base._iconHeight,
@@ -22698,7 +22698,7 @@ a.ori,
  height:Window_Base._iconHeight,
 }],
 undefined, // 7:reserved: keySymbols for marker adjustments
-1.0/256, // 8: wheelY scale
+undefined, // 8:reserved: keySymbols for marker adjustments
 ];
 { const c="M".charCodeAt(),km=Input.keyMapper; t[8]=km[c]=km[c]||'m';  }
 new cfc(p).add('initialize',function f(){
@@ -22813,10 +22813,10 @@ new cfc(p).add('initialize',function f(){
 	let scl=0;
 	if(Input.isTriggered(f.tbl[2][0])||Input.isTriggered(f.tbl[2][1])) --scl;
 	if(Input.isTriggered(f.tbl[3][0])||Input.isTriggered(f.tbl[3][1])) ++scl;
-	scl-=TouchInput.wheelY*f.tbl[8];
+	scl-=TouchInput.wheelY*f.tbl[4][0];
 	if(scl){
 		const ori=this._conf.scale;
-		if(Input.isPressed('shift')) this._conf.scale*=f.tbl[4][1-(scl<0)];
+		if(Input.isPressed('shift')) this._conf.scale*=f.tbl[4][1+(scl<0)];
 		else this._conf.scale+=f.tbl[5]*scl;
 		if(!(0<this._conf.scale*ori)) this._conf.scale=ori;
 	}
@@ -29282,7 +29282,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-03 1';
+var _agold404_version='2024-03-03 2';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
