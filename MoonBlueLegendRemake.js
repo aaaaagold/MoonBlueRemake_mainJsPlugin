@@ -22698,6 +22698,7 @@ a.ori,
  height:Window_Base._iconHeight,
 }],
 undefined, // 7:reserved: keySymbols for marker adjustments
+1.0/256, // 8: wheelY scale
 ];
 { const c="M".charCodeAt(),km=Input.keyMapper; t[8]=km[c]=km[c]||'m';  }
 new cfc(p).add('initialize',function f(){
@@ -22812,6 +22813,7 @@ new cfc(p).add('initialize',function f(){
 	let scl=0;
 	if(Input.isTriggered(f.tbl[2][0])||Input.isTriggered(f.tbl[2][1])) --scl;
 	if(Input.isTriggered(f.tbl[3][0])||Input.isTriggered(f.tbl[3][1])) ++scl;
+	scl-=TouchInput.wheelY*f.tbl[8];
 	if(scl){
 		const ori=this._conf.scale;
 		if(Input.isPressed('shift')) this._conf.scale*=f.tbl[4][1-(scl<0)];
@@ -22930,9 +22932,10 @@ a.ori,
 ()=>$gameMap.tileHeight(),
 ], // 2: tile size [w,h] ; if this become non const, update it in initData()
 [
-()=>$gameMap.screenTileX()<<1,
-()=>$gameMap.screenTileY()<<1,
+()=>($gameMap.screenTileX()<<1)|1,
+()=>($gameMap.screenTileY()<<1)|1,
 ], // 3: max draw X,Y
+function gcd(a,b){ return b?gcd(b, a % b):a; }, // 4: gcd
 ];
 p.isMapValid=function(){
 	return $dataMap && $gameMap && $gameMap.mapId() && $gamePlayer && !$gamePlayer.isTransferring();
@@ -22988,8 +22991,13 @@ new cfc(p).add('initialize',function f(){
 	
 	const j0=y,je=y+h;
 	const i0=x,ie=x+w;
-	const limX=f.tbl[3][0](),dx=Math.max(~~(w/limX),1);
-	const limY=f.tbl[3][1](),dy=Math.max(~~(h/limY),1);
+	const limX=f.tbl[3][0](),dx0=Math.max(~~(w/limX),1);
+	const limY=f.tbl[3][1](),dy0=Math.max(~~(h/limY),1);
+	let dx=dx0,dy=dy0;
+	if(f.tbl[4](dx0,dy0)!==1){
+		if(dx===dy||Math.max(dx,dy)<4) ++dy;
+	}
+	//if(window._dbg) console.log(dx0,dy0,f.tbl[4](dx0,dy0),'',dx,dy,f.tbl[4](dx,dy)); // debug
 	const W=$dataMap.width<<1,dt=this._drawTimeoutMs,arr=[];
 	const ctr0=0<dt?1e2:Infinity;
 	let timesup=false,tF=0;
@@ -29274,7 +29282,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-03 0';
+var _agold404_version='2024-03-03 1';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
