@@ -9267,10 +9267,13 @@ const always=()=>true,gainLvUpExp=f=>{
 		AudioManager.playSe(f.se);
 		for(let x=0,arr=f.tbl.items;x!==arr.length;++x) $gameParty.gainItem(arr[x],f.gainAmount);
 	}
-},canGain=f=>(f.getObjArr&&f.getObjArr()||$dataItems)&&$gameParty,varEditTry=f=>{
+},canGain=f=>(f.getObjArr&&f.getObjArr()||$dataItems)&&$gameParty&&!isInDlc(),varEditTry=f=>{
 	const tmp=$dataSystem.variables.filter(f.cmp);
 	if(tmp.length) AudioManager.playSe(f.se);
-},canEditVar=()=>$gameVariables;
+},canEditVar=()=>$gameVariables,isInDlc=()=>{
+	const mapId=$gameMap&&$gameMap.mapId();
+	return mapId<600 && mapId>=500;
+};
 
 // gain
 
@@ -27029,13 +27032,13 @@ if(typeof Window_Lockpick==='function') new cfc(Window_Lockpick.prototype).add('
 			const spPos=sp.getGlobalPosition();
 			// 垂直當0, 畫面順時針轉90度
 			const dx=spPos.y-TouchInput.y;
+			const dy=TouchInput.x-spPos.x; // 順時針轉為正
 			if(dx>0){
-				const dy=TouchInput.x-spPos.x; // 順時針轉為正
 				const rad=Math.atan(dy/dx); 
 				sp.rotation=Math.PI+rad;
-				this.setLockPosition();
-				this.positSound();
-			}
+			}else sp.rotation=(dy<0?0.5:-0.5)*Math.PI;
+			this.setLockPosition();
+			this.positSound();
 		}
 	}else ok=false;
 	
@@ -28247,6 +28250,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 		const imgs=arr._imgs=[];
 		const byFrames=arr._byFrames=[];
 		{ let maxFrame=0; for(let x=0;x!==xs;++x) maxFrame=Math.max(maxFrame,Math.max.apply(null,arr[x].animationFrames)+1||0);
+		const frms=animation.frames; if(frms&&frms.push) while(maxFrame>=frms.length) frms.push([]);
 		for(let frm=maxFrame+1;frm--;) (byFrames[frm]=[])._ids=new Map(); // +1 above and +1 here for end mark
 		}
 		// put data per animation frame
@@ -28327,6 +28331,7 @@ endType:[new Set(t=["keep","remove"]),"remove"], // 3-endType: supported values,
 positionReference:[new Set(t=["target","screen"]),"screen"], // 3-positionReference: supported values, default value
 }, // 3: default values
 function f(a,b,r){ if(b==null) b=a;
+	if(a===b) return b;
 	let rtv;
 	if(a instanceof Array){ rtv=[]; for(let x=0,xs=a.length;x!==xs;++x) rtv[x]=f(a[x],b[x],r); }
 	else{
@@ -28394,7 +28399,7 @@ function f(info,tbl,spRoot,bmp){
 	spRoot.scale.x=this._mirror?-1:1;
 },
 DataManager.parseAnimationPictures.tbl[3].positionReference,
-],false,true).getP()._re_parsePercent=/[ \t]*([0-9]+)%[ \t]*/;
+],false,true).getP()._re_parsePercent=/[ \t]*([0-9]+(\.[0-9]+)?)%[ \t]*/;
 
 new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mirror, delay, rate){
 	const rtv=f.ori.apply(this,arguments);
@@ -28405,6 +28410,7 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 	if(!arr) return;
 	arr._bmp=new Map();
 	for(let x=0,xs=arr._imgs.length;x!==xs;++x) arr._bmp.set(arr._imgs[x],ImageManager.loadNormalBitmap(arr._imgs[x]));
+	this.setupDuration();
 }).add('findTimingData',function f(frameIndex){
 	const rtv=f.ori.apply(this,arguments);
 	this.findTimingData_pictures(frameIndex);
@@ -29282,7 +29288,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-03 2';
+var _agold404_version='2024-03-06 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
