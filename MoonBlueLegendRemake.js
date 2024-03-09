@@ -28729,6 +28729,27 @@ new cfc(Scene_Equip.prototype).add('createLayoutSlot',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 為甚麼 call 完 onAllActionsEnd 不把 charging state 清掉？ YEP 484 在搞？
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Battler.prototype).add('onAllActionsEnd',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this._atbCharging=false;
+	this._atbCharge=0;
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc edit save name ; load from file ; export a save to a file
  * @author agold404
  *
@@ -29085,6 +29106,7 @@ r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
 	console.log("MOG_Weather_EX.js is coded the worst I've ever seen.","So bad that you should directly edit it.");
 	if(Input.KeyMapperPKD){ console.log("PKD_SimpleQuestSystem.js 不懂鍵盤編碼嗎?"); for(let x='a'.charCodeAt(),last='z'.charCodeAt();x<=last;++x) delete Input.KeyMapperPKD[x]; }
+	console.log("Sq_ruulett.js 官方的範例在平行事件中換地圖，沒去擋玩家按下注區的事件 484 在搞");
 	return rtv;
 }).ori=r;
 p[k].tbl=[
@@ -29342,7 +29364,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-06 0';
+var _agold404_version='2024-03-10 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
