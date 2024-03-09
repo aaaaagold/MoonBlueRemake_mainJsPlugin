@@ -28387,7 +28387,7 @@ function f(info,tbl,spRoot,bmp){
 	//sp.position.set(loc[0],loc[1]); // set in updatePosition
 	sp.scale.set(!imgReflect&&this._mirror?-scale[0]:scale[0],scale[1]);
 	sp.alpha=alpha;
-	sp.rotate=rotate/180.0*Math.PI;
+	sp.rotation=rotate/180.0*Math.PI;
 	sp.skew.set(skew[0]/180.0*Math.PI,skew[1]/180.0*Math.PI);
 	if(!f.tbl) f.tbl=["center",];
 	if(!origin||origin===f.tbl[0]) sp.anchor.set(0.5);
@@ -28469,6 +28469,60 @@ function f(tbl,v,k){
 DataManager.parseAnimationPictures.tbl[3].positionReference,
 (v,k)=>v.destroy(),
 ],false,true);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc 動畫帶音效
+ * @author agold404
+ * @help external note of animation: <seAudios>
+[
+[frame_from_0,audio_file_path,pan,pitch,volume]
+]
+pan: 0 is balanced ; -1: left ; 1: right
+pitch: 1 is normal
+volume: 1 is normal
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(DataManager).add('parseAnimationSeAudios',function f(animation){
+	const meta=animation&&animation.meta;
+	if(!meta||!meta.seAudios) return;
+	let arr=animation.seAudios;
+	if(!arr){
+		arr=animation.seAudios=JSON.parse(meta.seAudios);
+		const xs=arr.length; if(!(0<xs)) return;
+		const byFrames=arr._byFrames=[];
+		for(let x=0;x!==xs;++x){
+			const info=arr[x];
+			const frmInfos=byFrames[info[0]]=byFrames[info[0]]||[];
+			frmInfos.push(info);
+		}
+		for(let x=0,frms=byFrames.length;x!==frms;++x) byFrames[x]=byFrames[x]||[];
+	}
+	return arr;
+});
+
+new cfc(Sprite_Animation.prototype).add('updateFrame',function f(){
+	this.updateFrame_seAudios();
+	return f.ori.apply(this,arguments);
+}).add('updateFrame_seAudios',function f(){
+	const seAudios=DataManager.parseAnimationSeAudios(this._animation); if(!seAudios) return;
+	const byFrames=seAudios._byFrames;
+	const infos=byFrames&&byFrames[this.currentFrameIndex()]; if(!infos) return;
+	for(let x=0,xs=infos.length;x!==xs;++x){
+		const info=infos[x];
+		const pan=info[2]*100||0;
+		const pitch=isNaN(info[3])?100:info[3]*100;
+		const volume=isNaN(info[4])?100:info[4]*100;
+		AudioManager.playSe({name:info[1],pan:pan,pitch:pitch,volume:volume});
+	}
+});
 
 })();
 
