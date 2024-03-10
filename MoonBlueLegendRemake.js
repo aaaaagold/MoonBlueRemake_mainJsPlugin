@@ -27949,18 +27949,22 @@ gbb[kwt_weapon_add],
 
 new cfc(Game_Interpreter.prototype).add('command125',function f(){
 	let value = this.operateValue(this._params[0], this._params[1], this._params[2]);
-	const v0=value;
-	for(let arr=$gameParty.members(),x=arr.length;x--;) value=Math.max(arr[x][f.tbl[0]](v0),value);
+	if(0<value){
+		const v0=value;
+		for(let arr=$gameParty.members(),x=arr.length;x--;) value=Math.max(arr[x][f.tbl[0]](v0),value);
+	}
 	$gameParty.gainGold(value|0);
 	return true;
 },[
 cal_kw_gold,
 ]).add('cmdCommon_gainThings',function f(dataobjv,cal_kw){
 	const dataobj=dataobjv[this._params[0]];
-	const v0=this.operateValue(this._params[1], this._params[2], this._params[3]);
-	let n=v0;
-	for(let arr=$gameParty.members(),x=arr.length;x--;) n=Math.max(arr[x][cal_kw](v0,dataobj),n);
-	$gameParty.gainItem(dataobj,n|0);
+	let n=this.operateValue(this._params[1], this._params[2], this._params[3]);
+	if(0<n){
+		const v0=n;
+		for(let arr=$gameParty.members(),x=arr.length;x--;) n=Math.max(arr[x][cal_kw](v0,dataobj),n);
+	}
+	$gameParty.gainItem(dataobj,n|0,this._params[4]);
 	return true;
 }).add('command126',function f(){
 	return this.cmdCommon_gainThings($dataItems,f.tbl[0]);
@@ -29364,7 +29368,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-10 0';
+var _agold404_version='2024-03-10 1';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
