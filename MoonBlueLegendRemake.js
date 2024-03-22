@@ -9689,6 +9689,10 @@ p.cpevt=function f(evtid,x,y){
 };
 }
 
+new cfc(Game_Event.prototype).add('update',function f(){
+	return this.event()&&f.ori.apply(this,arguments);
+});
+
 })();
 
 
@@ -29524,7 +29528,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-22 0';
+var _agold404_version='2024-03-22 1';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
