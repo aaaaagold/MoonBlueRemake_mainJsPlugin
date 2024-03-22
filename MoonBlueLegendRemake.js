@@ -23002,7 +23002,7 @@ new cfc(p).add('initialize',function f(){
 	}
 	//if(window._dbg) console.log(dx0,dy0,f.tbl[4](dx0,dy0),'',dx,dy,f.tbl[4](dx,dy)); // debug
 	const W=$dataMap.width<<1,dt=this._drawTimeoutMs,arr=[];
-	const ctr0=0<dt?1e2:Infinity;
+	const ctr0=0<dt?3e0|0:Infinity;
 	let timesup=false,tF=0;
 	do{
 		this._strtDy|=0; ++this._strtDy; this._strtDy%=dy;
@@ -28533,6 +28533,162 @@ new cfc(Sprite_Animation.prototype).add('updateFrame',function f(){
 
 ﻿"use strict";
 /*:
+ * @plugindesc \EVALTOSTR:"..."
+ * @author agold404
+ * @help .
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(Game_Message.prototype).add('add',function f(txt){
+	arguments[0]=(arguments[0]+'').replace(f.tbl[0],f.tbl[1]);
+	return f.ori.apply(this,arguments);
+},t=[
+/(?<!\\)((\\\\)*)\\EVALTOSTR:("((\\\\)*\\"|[^"\\]|\\[^"])*")/g,
+function(){ return arguments[1]+eval(JSON.parse(arguments[3])); },
+]);
+
+new cfc(Window_Base.prototype).add('drawTextEx',function f(text, x, y, _buf_for_idiotRMMV, _buf2, textState){
+	arguments[0]=(arguments[0]+'').replace(f.tbl[0],f.tbl[1]);
+	return f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
+ * @plugindesc SceneManager.集氣_gen
+ * @author agold404
+ * @help .
+ *
+SceneManager.集氣_gen(345,234,0.5,4,Graphics.boxWidth>>1,Graphics.boxHeight>>1,"img/pictures/3_石頭.png",[[1.0/2,"img/pictures/3_石頭.png"],[1.0/2,"img/pictures/3_布.png"],[1.0/2,"img/pictures/3_剪刀.png"]],64,16);
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t;
+
+new cfc(SceneManager).add('集氣_getCont',function f(){
+	let rtv=this._集氣; if(!rtv) rtv=this._集氣=[];
+	return rtv;
+}).add('集氣_gen',function f(totalFrames,newChildFrames,childrenPerFrame,finalScale,x0,y0,mainPicPath,otherPicPaths,fadeOutFrames,fadeInFrames,initScale,opt){
+	/*
+	mainPicPath: string
+	otherPicPaths: [[scale,string], ... ]
+	*/
+	const sc=this._scene; if(!sc) return -1;
+	
+	totalFrames|=0;
+	newChildFrames|=0;
+	childrenPerFrame-=0;
+	fadeOutFrames|=0;
+	fadeInFrames|=0;
+	if(!(totalFrames>=fadeOutFrames+fadeInFrames)||!(0<childrenPerFrame)||!otherPicPaths||!otherPicPaths.length) return -2;
+	opt=opt||{};
+	
+	const bmp=ImageManager.loadNormalBitmap(mainPicPath);
+	const info={
+		mainPicPath:mainPicPath,
+		otherPicPaths:otherPicPaths,
+		scene:sc,
+		currFrame:0,
+		totalFrames:totalFrames,
+		newChildFrames:newChildFrames,
+		fadeOutFrames:fadeOutFrames,
+		fadeInFrames:fadeInFrames,
+		initScale:initScale||0,
+		finalScale:finalScale,
+		childrenPerFrame_config:childrenPerFrame,
+		childrenPerFrame_curr:0,
+		x0:x0,
+		y0:y0,
+		childStartDist:opt.childStartDist||f.tbl[0].childStartDist,
+		childFrames_2:(opt.childFrames||f.tbl[0].childFrames)>>1,
+		childSpeed:opt.childSpeed||f.tbl[0].childSpeed,
+		childMaxAlpha:opt.childMaxAlpha||f.tbl[0].childMaxAlpha,
+		opt:opt,
+		sp:new Sprite(bmp),
+		root:new Sprite(),
+	};
+	bmp.addLoadListener(this.集氣_onload.bind(info.sp));
+	this.集氣_getCont().push(info);
+	info.sp.alpha=0;
+	info.root.position.set(x0,y0);
+	info.root.addChild(info.sp);
+	info.root.addChild(info.root._cs=new Sprite());
+	sc.addChild(info.root);
+	// TODO: rtv
+},[
+{
+childStartDist:[0.25,1.125],
+childFrames:64,
+childSpeed:[1.0/256,1.0/16],
+childMaxAlpha:[0.25,0.75],
+},
+]).add('集氣_update',function f(){
+	let i=0,j=0,arr=this.集氣_getCont();
+	for(const sc=this._scene,sz=arr.length,pi2=Math.PI*2;j!==sz;++j){ const info=arr[j];
+		const sp=info.sp;
+		const r=(++info.currFrame/info.totalFrames);
+		if(sc!==info.scene||!(1>=r)){ info.root.destroy(); continue; }
+		const fadingFrames=info.totalFrames-info.currFrame;
+		if(info.currFrame<info.fadeInFrames) info.sp.alpha=info.currFrame/info.fadeInFrames;
+		else if(fadingFrames<info.fadeOutFrames) info.sp.alpha=fadingFrames/info.fadeOutFrames;
+		else if(info.sp.alpha!==1) info.sp.alpha=1;
+		if(info.sp.bitmap.isReady()){
+			const distScale=info.finalScale-info.initScale;
+			const scale=info.initScale+r*distScale;
+			if(scale){ info.sp.visible=true; info.sp.scale.set(scale); }
+			else info.sp.visible=false;
+			const childFrames=info.childFrames_2<<1;
+			if(info.newChildFrames>=info.currFrame){ for(info.childrenPerFrame_curr+=info.childrenPerFrame_config;info.childrenPerFrame_curr>=0;--info.childrenPerFrame_curr){
+				const choice=info.otherPicPaths.rnd1();
+				const bmp=ImageManager.loadNormalBitmap(choice[1]);
+				const newsp=new Sprite(bmp);
+				bmp.addLoadListener(this.集氣_onload.bind(newsp));
+				newsp.scale.set(choice[0]);
+				const dist1=info.sp._r;
+				const d=(Math.random()*(info.childStartDist[1]-info.childStartDist[0])+info.childStartDist[0])*dist1*Math.max(scale,1);
+				const r=Math.random()*pi2;
+				const sin=Math.sin(r),cos=Math.cos(r);
+				newsp.position.set(sin*d,cos*d);
+				newsp._curr=childFrames;
+				let spd=(Math.random()*(info.childSpeed[1]-info.childSpeed[0])+info.childSpeed[0])*dist1;
+				if(d<spd*newsp._curr) spd=d/newsp._curr;
+				newsp._spdx=-sin*spd;
+				newsp._spdy=-cos*spd;
+				newsp._maxAlpha=Math.random()*(info.childMaxAlpha[1]-info.childMaxAlpha[0])+info.childMaxAlpha[0];
+				info.root._cs.addChild(newsp);
+			} }
+			// update children
+			const delList=[];
+			for(let x=0,cs=info.root._cs.children,xs=cs.length;x!==xs;++x){
+				const c=cs.getnth(x); if(!(0<--c._curr)){ delList.push(c); continue; }
+				c.position.set(c.x+c._spdx,c.y+c._spdy);
+				c.alpha=((info.childFrames_2-Math.abs(c._curr-info.childFrames_2))/info.childFrames_2)*c._maxAlpha;
+			}
+			for(let c;c=delList.pop();) c.destroy();
+		}
+		arr[i++]=info;
+	}
+	arr.length=i;
+}).add('集氣_onload',function f(bmp){
+	this.anchor.set(0.5);
+	this._r=Math.max(bmp.width,bmp.height);
+}).add('updateScene',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.集氣_update();
+	return rtv;
+});
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc 清單中的說明
  * @author agold404
  * @help 詳細說明
@@ -29368,7 +29524,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-10 1';
+var _agold404_version='2024-03-22 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
