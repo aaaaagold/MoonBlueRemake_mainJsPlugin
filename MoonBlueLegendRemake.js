@@ -20429,8 +20429,9 @@ alts:{
 	).ac(d.ce("br"));
 	const stack=err&&err.stack;
 	if(stack){
+		const sc=SceneManager._scene.constructor;
 		console.log(stack);
-		rtv.ac(d.ce("br")).ac(d.ce("div").sa("style",f.tbl[0][0]+"color:"+f.tbl[1][0]).atxt(f.tbl[0][2]||f.tbl[0][3]));
+		rtv.ac(d.ce("br")).ac(d.ce("div").sa("style",f.tbl[0][0]+"color:"+f.tbl[1][0]).atxt(f.tbl[0][2]||f.tbl[0][3]).ac(d.ce('br')).atxt(this.getDebugInfo_gameState()));
 		const elemsg=d.ce("div").sa("style",f.tbl[0][0]+"color:"+f.tbl[1][1]).sa("color",f.tbl[1][1]);
 		const idx=err._msgOri?stack.indexOf(err._msgOri):0;
 		(0<idx?stack.slice(idx+err._msgOri.length):stack).replace(f.tbl[2][0],f.tbl[2][1]).split(f.tbl[3]).map(f.tbl[4][0],f.tbl[4][1]).forEach(f.tbl[5][0],elemsg);
@@ -20464,7 +20465,14 @@ css_inline:{
 	return rtv;
 },[
 0.875,
-]);
+]).add('getDebugInfo_gameState',()=>{
+	const map=$gameMap,plyr=$gamePlayer,sc=SceneManager._scene;
+	return [
+		"map: "+(map&&map.mapId()),
+		plyr?("player@("+plyr.x+','+plyr.y+")"):"",
+		"scene: "+(sc&&sc.constructor.name),
+	].join(' ; ');
+});
 
 })();
 
@@ -29528,7 +29536,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-22 1';
+var _agold404_version='2024-03-22 2';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
