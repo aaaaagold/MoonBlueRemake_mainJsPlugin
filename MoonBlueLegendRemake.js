@@ -20467,7 +20467,9 @@ css_inline:{
 0.875,
 ]).add('getDebugInfo_gameState',()=>{
 	const map=$gameMap,plyr=$gamePlayer,sc=SceneManager._scene;
+	const ver=window._agold404_version;
 	return [
+		ver?("js ver.: "+ver):"",
 		"map: "+(map&&map.mapId()),
 		plyr?("player@("+plyr.x+','+plyr.y+")"):"",
 		"scene: "+(sc&&sc.constructor.name),
@@ -28621,6 +28623,7 @@ new cfc(SceneManager).add('集氣_getCont',function f(){
 		childFrames_2:(opt.childFrames||f.tbl[0].childFrames)>>1,
 		childSpeed:opt.childSpeed||f.tbl[0].childSpeed,
 		childMaxAlpha:opt.childMaxAlpha||f.tbl[0].childMaxAlpha,
+		follow:opt.follow,
 		opt:opt,
 		sp:new Sprite(bmp),
 		root:new Sprite(),
@@ -28633,6 +28636,7 @@ new cfc(SceneManager).add('集氣_getCont',function f(){
 	info.root.addChild(info.root._cs=new Sprite());
 	sc.addChild(info.root);
 	// TODO: rtv
+	return info;
 },[
 {
 childStartDist:[0.25,1.125],
@@ -28640,7 +28644,9 @@ childFrames:64,
 childSpeed:[1.0/256,1.0/16],
 childMaxAlpha:[0.25,0.75],
 },
-]).add('集氣_update',function f(){
+]).add('集氣_update_rootPosition',function f(info){
+	if(info.follow){ const xy=info.follow.getGlobalPosition(); info.root.position.set(info.x0+(xy.x||0),info.y0+(xy.y||0)); }
+}).add('集氣_update',function f(){
 	let i=0,j=0,arr=this.集氣_getCont();
 	for(const sc=this._scene,sz=arr.length,pi2=Math.PI*2;j!==sz;++j){ const info=arr[j];
 		const sp=info.sp;
@@ -28651,6 +28657,7 @@ childMaxAlpha:[0.25,0.75],
 		else if(fadingFrames<info.fadeOutFrames) info.sp.alpha=fadingFrames/info.fadeOutFrames;
 		else if(info.sp.alpha!==1) info.sp.alpha=1;
 		if(info.sp.bitmap.isReady()){
+			this.集氣_update_rootPosition(info);
 			const distScale=info.finalScale-info.initScale;
 			const scale=info.initScale+r*distScale;
 			if(scale){ info.sp.visible=true; info.sp.scale.set(scale); }
@@ -28694,7 +28701,45 @@ childMaxAlpha:[0.25,0.75],
 	const rtv=f.ori.apply(this,arguments);
 	this.集氣_update();
 	return rtv;
+}).add('gathering_gen',function f(
+	totalFrames,newChildFrames,childrenPerFrame,finalScale,
+	x0,y0,
+	mainPicPath,otherPicPaths,
+	fadeOutFrames,fadeInFrames,initScale,
+	opt,
+){
+	return this.集氣_gen.apply(this,arguments);
 });
+
+t=[]; t.length=2;
+new cfc(Sprite.prototype).add('集氣_gen',t[0]=function f(
+	totalFrames,newChildFrames,childrenPerFrame,finalScale,
+	x0,y0,
+	mainPicPath,otherPicPaths,
+	fadeOutFrames,fadeInFrames,initScale,
+	opt,
+){
+	const rtv=SceneManager.集氣_gen(
+		totalFrames,newChildFrames,childrenPerFrame,finalScale,
+		0,0,
+		mainPicPath,otherPicPaths,
+		fadeOutFrames,fadeInFrames,initScale,
+		opt,
+	);
+	rtv.follow=this;
+	return rtv;
+}).add('gathering_gen',t[1]=function f(
+	totalFrames,newChildFrames,childrenPerFrame,finalScale,
+	x0,y0,
+	mainPicPath,otherPicPaths,
+	fadeOutFrames,fadeInFrames,initScale,
+	opt,
+){
+	return this.集氣_gen.apply(this,arguments);
+});
+
+Window_Base.prototype.集氣_gen=t[0];
+Window_Base.prototype.gathering_gen=t[1];
 
 })();
 
@@ -29536,7 +29581,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-22 2';
+var _agold404_version='2024-03-24 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
