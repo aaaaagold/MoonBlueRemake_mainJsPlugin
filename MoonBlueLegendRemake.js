@@ -9689,9 +9689,13 @@ p.cpevt=function f(evtid,x,y){
 };
 }
 
+if(!Utils.isOptionValid('test')){
 new cfc(Game_Event.prototype).add('update',function f(){
 	return this.event()&&f.ori.apply(this,arguments);
+}).add('findProperPageIndex',function f(){
+	return this.event()?f.ori.apply(this,arguments):-1;
 });
+}
 
 })();
 
@@ -29581,7 +29585,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-24 0';
+var _agold404_version='2024-03-24 1';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
