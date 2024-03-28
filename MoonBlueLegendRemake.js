@@ -28239,6 +28239,7 @@ new cfc(Game_Action.prototype).add('isConfuseResisted',function f(){
 "alpha":[0,1],
 "rotate":[0,720],
 "skew":[[360,360],[330,300]],
+"dz":0.1,
 },
 {
 "id":"自訂辨識該圖的名稱，之後使用同樣名稱的話不會再產生新的圖片",
@@ -28256,6 +28257,7 @@ position: [ [0,0] ,...] // offset x and y
 scale: [ [1,1] ,...] // scale x and y
 rotate: [ 0 ,...] // rotate degree. 360 per cycle.
 skew: [ [360,360] ,...] // skew x and y. 360 per cycle.
+dz: [ 1 ,...] // z軸要比動畫多多少。預設1。<0表示在下面；>0表示在上面；0的話則戰鬥和地圖中會有不同。
  * 
  * This plugin can be renamed as you want.
  */
@@ -28286,6 +28288,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 			if(!info.alpha    ) info.alpha    =[f.tbl[0].alpha    ];
 			if(!info.rotate   ) info.rotate   =[f.tbl[0].rotate   ];
 			if(!info.skew     ) info.skew     =[f.tbl[0].skew     ];
+			if(!info.dz       ) info.dz       =[f.tbl[0].dz       ];
 			if( JSON.stringify(frms)!==JSON.stringify(frms.sort(f.tbl[1])) ) alert(f.tbl[2].replace("{}",x+''));
 			{ const tbl=f.tbl[3];
 			tbl._func(tbl,'endType',info);
@@ -28301,6 +28304,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 				if(null==info.alpha   [tp]) info.alpha   [tp]=info.alpha   [tp-1];
 				if(null==info.rotate  [tp]) info.rotate  [tp]=info.rotate  [tp-1];
 				if(null==info.skew    [tp]) info.skew    [tp]=info.skew    [tp-1];
+				if(null==info.dz      [tp]) info.dz      [tp]=info.dz      [tp-1];
 				for(let strtFrm=frms[tp-1]-0,endFrm=frms[tp]-0,widthFrm=endFrm-strtFrm,frm=strtFrm;frm!==endFrm;++frm){
 					const r=(frm-strtFrm)/widthFrm;
 					byFrames[frm].push({
@@ -28316,6 +28320,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 						alpha:f.tbl[4](info.alpha[tp-1],info.alpha[tp],r),
 						rotate:f.tbl[4](info.rotate[tp-1],info.rotate[tp],r),
 						skew:f.tbl[4](info.skew[tp-1],info.skew[tp],r),
+						dz:f.tbl[4](info.dz[tp-1],info.dz[tp],r),
 					});
 					const m=byFrames[frm]._ids;
 					if(m.get(info.id)!=="keep") m.set(info.id,info.endType);
@@ -28341,6 +28346,7 @@ scale:[1,1],
 alpha:1,
 rotate:0,
 skew:[0,0],
+dz:1,
 }, // 0: default value
 (a,b)=>a-b, // 1: cmp
 "WARNING: 從 0 開始數的第 {} 個動畫設定的 animationFrames 不是遞增\n這可能導致非預期的呈現結果", // 2: warning string
@@ -28452,7 +28458,7 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 		const bmp=sp.children[0].bitmap=this._pictureArr._bmp.get(info.imgPath); if(!bmp) continue;
 		DataManager.parseAnimationPictures_apply.call(this,sp,bmp,info);
 		sp._currInfo=info;
-		sp.z=this.z;
+		sp.z=this.z+info.dz;
 	}
 	this.updatePosition_pictures();
 },[
@@ -29585,7 +29591,7 @@ p.copyXhrPathLog=function(){
 
 })();
 
-var _agold404_version='2024-03-24 1';
+var _agold404_version='2024-03-28 0';
 
 /*:
  * @plugindesc 月藍要用的無參數免調整客製化插件全部都塞在這裡
