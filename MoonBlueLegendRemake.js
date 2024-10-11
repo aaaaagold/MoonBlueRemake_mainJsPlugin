@@ -25304,7 +25304,7 @@ new cfc(p).add('initialize',function f(){
 			else{
 				const item=f.tbl.dataArrByType[info[0]][info[1]];
 				$gameParty.gainItem(item,coef*info[2]);
-				self.refreshItemsEnabled();
+				self.refreshItemsEnabled&&self.refreshItemsEnabled();
 			}
 		}
 	}
