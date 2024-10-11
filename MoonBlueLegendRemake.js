@@ -11763,43 +11763,12 @@ p.frontPos=function(x,y){
 	y = $gameMap.roundYWithDirection(y, d);
 	return {x:x,y:y};
 };
-(p.rightPos=function f(x,y){
-	if(x===undefined) x=this.x;
-	if(y===undefined) y=this.y;
-	const d=f.tbl[0][this.direction()];
-	x = $gameMap.roundXWithDirection(x, d);
-	y = $gameMap.roundYWithDirection(y, d);
-	return {x:x,y:y};
-}).tbl=[
-({
-2:4,
-4:8,
-8:6,
-6:2,
-}),
-];
 p.jumpFront=function(dist){
 	let dx=0,dy=0;
 	if((dist|=0)){
 		const xy=this.frontPos();
 		dx+=(xy.x-this.x)*dist;
 		dy+=(xy.y-this.y)*dist;
-	}
-	this.jump(dx,dy);
-	return this;
-};
-p.jumpFacingRelative=function(leftRight,backFront){
-	// -+ , -+
-	let dx=0,dy=0;
-	if((leftRight|=0)){
-		const xy=this.rightPos();
-		dx+=(xy.x-this.x)*leftRight;
-		dy+=(xy.y-this.y)*leftRight;
-	}
-	if((backFront|=0)){
-		const xy=this.frontPos();
-		dx+=(xy.x-this.x)*backFront;
-		dy+=(xy.y-this.y)*backFront;
 	}
 	this.jump(dx,dy);
 	return this;
@@ -25225,9 +25194,7 @@ function f(info){
 	const rtv=f.tbl[0].refresh.apply(this,arguments);
 	this._drawTextEx_clearCache();
 	return rtv;
-},tbl,false,true).add('refreshItemsEnabled',function(){
-	for(let x=this.topIndex(),ende=Math.min(this.maxItems(),this.maxCols()*this.maxRows()+1+x);x<ende;++x) this.redrawItem(x);
-},undefined,true,true);
+},tbl,false,true);
 t[0].ori=undefined; t[0].tbl=properties;
 }
 
@@ -26674,40 +26641,6 @@ new cfc(Game_Map.prototype).add('moveCam',function f(evtId_or_chr,dx,dy,dur,isSm
 	this._moveCam=undefined;
 	this._displayX=info.dstX;
 	this._displayY=info.dstY;
-});
-
-})();
-
-
-﻿"use strict";
-/*:
- * @plugindesc 更改 actor 的 param 子項定義 + 個別設定 paramMax
- * @author agold404
- * @help base -> class + _paramPlus ; plus -> equip ;; <paramMax:json_key_is_paramId>
- * 
- * This plugin can be renamed as you want.
- */
-
-(()=>{ let k,r,t;
-
-new cfc(Scene_Boot.prototype).add('start',function f(){
-	$dataActors.forEach(f.tbl[0]);
-	return f.ori.apply(this,arguments);
-},[
-dataobj=>{
-	const meta=dataobj&&dataobj.meta; if(!meta) return;
-	if(meta.paramMax) dataobj.paramMax=JSON.parse(meta.paramMax);
-},
-]);
-
-new cfc(Game_Actor.prototype).add('paramBase',function f(){
-	return f.ori.apply(this,arguments) + Game_Battler.prototype.paramPlus.apply(this,arguments);
-}).add('paramPlus',function f(){
-	return f.ori.apply(this,arguments) - Game_Battler.prototype.paramPlus.apply(this,arguments);
-}).add('paramMax',function f(paramId){
-	const data=this.getData();
-	if(data && data.paramMax && paramId in data.paramMax) return data.paramMax[paramId];
-	return f.ori.apply(this,arguments);
 });
 
 })();
@@ -30434,7 +30367,7 @@ new cfc(Game_System.prototype).add('logXhrPath',function f(args){
 })();
 
 delete window._cfc;
-var _agold404_version_='2024-10-11 1';
+var _agold404_version_='2024-10-11 2';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
