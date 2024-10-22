@@ -4376,51 +4376,6 @@ r=p[k]; (p[k]=function f(){
 
 
 
-﻿"use strict";
-/*:
- * @plugindesc 修正要錢的 Irina_ActionCutins.js 插件在 canvas mode 的臉圖會超出邊界的問題
- * @author agold404
- *
- * @help 有瑕疵都能賺，是我人生選到高難度模式了嗎
- * 
- * This plugin can be renamed as you want.
- */
-
-(()=>{ let k,r; 
-if(typeof TilingSprite_ActionCutin!=='undefined'){ const p=TilingSprite_ActionCutin.prototype;
-TilingSprite_ActionCutin.prototype._tuneOutOfBound=function(){
-	if(Graphics.isWebGL()) return; // seems no problem
-	const face=this._faceSprite;
-	const ffrm=face._frame;
-	if(!ffrm.height) return; // not loaded
-	let tmp;
-	const fsy=face.scale.y;
-	const fy=face.y;
-	tmp=-(this.height*this.anchor.y)-fy;
-	const btop_o=tmp/fsy;
-	const btop=Math.floor(btop_o);
-	const bbtm=Math.ceil((tmp+this.height)/fsy);
-	if(ffrm.height>(tmp=bbtm-btop)){
-		const newH=tmp;
-		const fay=0.5; // face.anchor.y // directly suppose 0.5 due to overwritten
-		const ftop=-ffrm.height*fay;
-		const dytop=btop_o-ftop;
-		face.anchor.y=-btop/newH;
-		tmp=ffrm.y+dytop;
-		const newY=Math.floor(tmp);
-		face.setFrame(ffrm.x,newY,ffrm.width,newH);
-	}
-};
-k='updateFaceScale';
-r=p[k]; (p[k]=function f(){
-	f.ori.apply(this,arguments);
-	this._tuneOutOfBound();
-}).ori=r;
-}
-})();
-
-
-
 "use strict";
 /*:
  * @plugindesc 光圈效果
@@ -30367,7 +30322,7 @@ new cfc(Game_System.prototype).add('logXhrPath',function f(args){
 })();
 
 delete window._cfc;
-var _agold404_version_='2024-10-11 2';
+var _agold404_version_='2024-10-22 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
