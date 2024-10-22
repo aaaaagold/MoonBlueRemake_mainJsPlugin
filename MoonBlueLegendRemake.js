@@ -24016,7 +24016,7 @@ Input.keyMapper[keyCode], // buttonName
 0.25, // 3: min fTime
 keyCode, // 4
 function f(ab){
-	if(ab && !ab._isSpeedup){
+	if(ab && !ab._isSpeedup && $gameSystem && $gameSystem._frameFastForward_audio){
 		ab._isSpeedup=true;
 		const sn=ab._sourceNode;
 		if(ab.isReady() && ab.isPlaying() && sn){
@@ -30322,7 +30322,7 @@ new cfc(Game_System.prototype).add('logXhrPath',function f(args){
 })();
 
 delete window._cfc;
-var _agold404_version_='2024-10-22 0';
+var _agold404_version_='2024-10-22 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
