@@ -30206,7 +30206,7 @@ r=p[k]; (p[k]=function f(func,isAfter){
 })();
 
 // dump data/*.json when testing
-if(Utils.isOptionValid('test'))(()=>{ let k,r,t;
+if(Utils.isNwjs()&&Utils.isOptionValid('test'))(()=>{ let k,r,t;
 
 { const p=DataManager;
 k='onLoad';
@@ -30322,7 +30322,7 @@ new cfc(Game_System.prototype).add('logXhrPath',function f(args){
 })();
 
 delete window._cfc;
-var _agold404_version_='2024-10-22 1';
+var _agold404_version_='2024-10-23 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
