@@ -28048,6 +28048,7 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 "animationFrames":[0,123],
 "endType":"keep",
 "imgPath":"img/圖片路徑/圖片名稱.png",
+"isJsImgPath":false,
 "imgOrigin":"center",
 "imgReflect":true,
 "positionReference":"target",
@@ -28069,6 +28070,7 @@ animationFrames: 數字為動畫第幾格。第幾個數字對應到下面其他
 endType: "keep" or "remove", any unsupported value is treated as "remove"
 imgOrigin: "center" or "100,200" (x座標100,y座標200的地方) or "10%,20%" (圖片x座標10%,y座標20%的地方(左邊、上面是0%；右邊、下面是100%)). default "center"
 imgReflect: true or false, false-like or true-like will be accepted. default false.
+isJsImgPath: true or false, false-like or true-like will be accepted. default false.
 positionReference: "target" or "screen", any unsupported value is treated as "screen"
 imgFrame: [ [0,0,"100%","100%"] ,...] 或 [ [0,0,234,123] ,...]
 position: [ [0,0] ,...] // offset x and y
@@ -28087,6 +28089,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 	if(!meta||!meta.pictures) return;
 	let arr=animation.pictures;
 	if(!arr){
+		let hasJsImgPath=false;
 		arr=animation.pictures=JSON.parse(meta.pictures);
 		const xs=arr.length; if(!(0<xs)) return;
 		const imgs=arr._imgs=[];
@@ -28113,7 +28116,9 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 			tbl._func(tbl,'positionReference',info);
 			}
 			info.imgReflect=!!info.imgReflect;
-			imgs.uniquePush(info.imgPath);
+			const imgPath=info.isJsImgPath?f.tbl[6](info.imgPath,info,animation):info.imgPath;
+			if(info.isJsImgPath) hasJsImgPath=true;
+			imgs.uniquePush(imgPath);
 			frms.push(frms.back-0+1);
 			for(let tp=1;tp<=timePointCnt;++tp){
 				if(null==info.imgFrame[tp]) info.imgFrame[tp]=info.imgFrame[tp-1];
@@ -28128,7 +28133,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 					byFrames[frm].push({
 						id:info.id,
 						endType:info.endType,
-						imgPath:info.imgPath,
+						imgPath:imgPath,
 						imgOrigin:info.imgOrigin,
 						imgReflect:info.imgReflect,
 						positionReference:info.positionReference,
@@ -28154,6 +28159,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 			const m1=byFrames[frm]._ids;
 			m0.forEach(f.tbl[5].bind(f.tbl[3].endType,s,m1));
 		}
+		if(hasJsImgPath) delete animation.pictures;
 	}
 	return arr;
 },[
@@ -28196,6 +28202,7 @@ function f(a,b,r){ if(b==null) b=a;
 	return rtv;
 }, // 4: interpolate
 function f(s,m1,v,k){ if(v===this[1]&&!m1.has(k)) s.add(k); }, // 5: add it to set if it is "remove" and not presented in m1
+(s,infoSrc,aniSrc)=>{ let k,r,t,cfc; { return eval(s); } }, // 6: eval
 ],false,true).add('parseAnimationPictures_number',function f(bmp,x,y){
 	const rtv=[x,y];
 	rtv[0]=f.tbl[0](bmp.width,x);
@@ -30341,7 +30348,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2024-11-02 1';
+var _agold404_version_='2025-01-22 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
