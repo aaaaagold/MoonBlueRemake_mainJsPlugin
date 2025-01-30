@@ -28202,7 +28202,7 @@ function f(a,b,r){ if(b==null) b=a;
 	return rtv;
 }, // 4: interpolate
 function f(s,m1,v,k){ if(v===this[1]&&!m1.has(k)) s.add(k); }, // 5: add it to set if it is "remove" and not presented in m1
-(s,infoSrc,aniSrc)=>{ let k,r,t,cfc; { return eval(s); } }, // 6: eval
+(s,infoSrc,aniSrc)=>{ const oriS=s,ani=aniSrc,errMsg="getting undefined with non-empty string starting with non-'//' in animation "+ani.id; let k,r,t,cfc,rtv; { rtv=eval(s); } if(rtv===undefined&&oriS&&oriS.match&&!oriS.match(/^\/\//)) throw new Error(errMsg); return rtv; }, // 6: eval
 ],false,true).add('parseAnimationPictures_number',function f(bmp,x,y){
 	const rtv=[x,y];
 	rtv[0]=f.tbl[0](bmp.width,x);
@@ -30348,7 +30348,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-01-22 1';
+var _agold404_version_='2025-01-30 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
