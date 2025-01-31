@@ -3336,32 +3336,41 @@ const r=p[k];
 
 ﻿"use strict";
 /*:
- * @plugindesc This plugin extends YEP_BattleEngineCore so that one can write "eval: ..." in action list
+ * @plugindesc change comma-merging behaviour in YEP eval
  * @author agold404
  *
- * @help 身為一個 YEP_BattleEngineCore 竟然不能直接在action中寫 javascript ，有夠可惜。
- * 所以，本插件提供：增加 YEP_BattleEngineCore 之action指令，使其可以直接寫javascript。
+ * @help 不要亂把逗號加上空白再合併好ㄇ
+ * 不要相信豬隊友說沒有直接執行JS的功能
  * 
- * 指令：eval
- * 
- * 範例：
- * <target action>
- * eval: alert("hello world");
- * </target action>
  */
 
-// extend__YEP_BattleEngineCore__eval
+// refine YEP_BattleEngineCore actionEval
 
-(()=>{ const e=(self,t)=>eval(t);
-(()=>{ const p=BattleManager,k='processActionSequence';
-const r=p[k]; (p[k]=function f(k,arg){
+(()=>{
+new cfc(BattleManager).add('processActionSequence',function f(k,arg){
 	if(k==='EVAL'){
-		e(this._subject,arg.join(','));
+		this.processActionSequence_anotherEval(arg);
 		return true;
 	}
 	return f.ori.apply(this,arguments);
-}).ori=r;
-})();
+}).add('processActionSequence_anotherEval',function f(arg){
+	return f.tbl[0](this._subject,arg.join(','),this._targets,this._action);
+},[
+(self,t,bs,act)=>{
+	const a=self,user=a,subject=a;
+	const target=bs[0],targets=bs;
+	const action=act,gameItem=act._item,item=act.item();
+	const text=t,txt=t;
+	try{
+		return eval(t);
+	}catch(e){
+		console.warn(txt);
+		e.message+="\n\n EVAL:\n"+txt;
+		e.name+=" in action sequence of "+gameItem._dataClass+" "+gameItem._id;
+		throw e;
+	}
+}, // 0: eval
+]);
 })();
 
 
@@ -28202,7 +28211,14 @@ function f(a,b,r){ if(b==null) b=a;
 	return rtv;
 }, // 4: interpolate
 function f(s,m1,v,k){ if(v===this[1]&&!m1.has(k)) s.add(k); }, // 5: add it to set if it is "remove" and not presented in m1
-(s,infoSrc,aniSrc)=>{ const oriS=s,ani=aniSrc,errMsg="getting undefined with non-empty string starting with non-'//' in animation "+ani.id; let k,r,t,cfc,rtv; { rtv=eval(s); } if(rtv===undefined&&oriS&&oriS.match&&!oriS.match(/^\/\//)) throw new Error(errMsg); return rtv; }, // 6: eval
+(s,infoSrc,aniSrc)=>{
+	const oriS=s,ani=aniSrc,info=infoSrc;
+	const errMsg="getting undefined with non-empty string starting with non-'//' in:\n animation "+ani.id+", img id="+info.id;
+	let k,r,t,cfc,rtv;
+	{ rtv=eval(s); }
+	if(rtv===undefined&&oriS&&oriS.match&&!oriS.match(/^\/\//)) throw new Error(errMsg);
+	return rtv;
+}, // 6: eval
 ],false,true).add('parseAnimationPictures_number',function f(bmp,x,y){
 	const rtv=[x,y];
 	rtv[0]=f.tbl[0](bmp.width,x);
@@ -30348,7 +30364,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-01-30 0';
+var _agold404_version_='2025-01-31 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
