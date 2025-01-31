@@ -28068,6 +28068,7 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 "rotate":[0,720],
 "skew":[[360,360],[330,300]],
 "dz":0.1,
+"blendMode":0,
 },
 {
 "id":"自訂辨識該圖的名稱，之後使用同樣名稱的話不會再產生新的圖片",
@@ -28087,6 +28088,7 @@ scale: [ [1,1] ,...] // scale x and y
 rotate: [ 0 ,...] // rotate degree. 360 per cycle.
 skew: [ [360,360] ,...] // skew x and y. 360 per cycle.
 dz: [ 1 ,...] // z軸要比動畫多多少。預設1。<0表示在下面；>0表示在上面；0的話則戰鬥和地圖中會有不同。
+blendMode: 同動畫編輯器的 blendMode 。預設0。0:原色；1:add；2:multiply；3:screen(?)
  * 
  * This plugin can be renamed as you want.
  */
@@ -28119,6 +28121,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 			if(!info.rotate   ) info.rotate   =[f.tbl[0].rotate   ];
 			if(!info.skew     ) info.skew     =[f.tbl[0].skew     ];
 			if(!info.dz       ) info.dz       =[f.tbl[0].dz       ];
+			if(!info.blendMode) info.blendMode= f.tbl[0].blendMode;
 			if( JSON.stringify(frms)!==JSON.stringify(frms.sort(f.tbl[1])) ) alert(f.tbl[2].replace("{}",x+''));
 			{ const tbl=f.tbl[3];
 			tbl._func(tbl,'endType',info);
@@ -28128,6 +28131,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 			const imgPath=info.isJsImgPath?f.tbl[6](info.imgPath,info,animation):info.imgPath;
 			if(info.isJsImgPath) hasJsImgPath=true;
 			imgs.uniquePush(imgPath);
+			const blendMode=info.blendMode;
 			frms.push(frms.back-0+1);
 			for(let tp=1;tp<=timePointCnt;++tp){
 				if(null==info.imgFrame[tp]) info.imgFrame[tp]=info.imgFrame[tp-1];
@@ -28153,6 +28157,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 						rotate:f.tbl[4](info.rotate[tp-1],info.rotate[tp],r),
 						skew:f.tbl[4](info.skew[tp-1],info.skew[tp],r),
 						dz:f.tbl[4](info.dz[tp-1],info.dz[tp],r),
+						blendMode:blendMode,
 					});
 					const m=byFrames[frm]._ids;
 					if(m.get(info.id)!=="keep") m.set(info.id,info.endType);
@@ -28180,6 +28185,7 @@ alpha:1,
 rotate:0,
 skew:[0,0],
 dz:1,
+blendMode:0,
 }, // 0: default value
 (a,b)=>a-b, // 1: cmp
 "WARNING: 從 0 開始數的第 {} 個動畫設定的 animationFrames 不是遞增\n這可能導致非預期的呈現結果", // 2: warning string
@@ -28296,6 +28302,7 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 		const id=info.id;
 		let sp=this._pictures.get(id);
 		if(!sp){ this._pictures.set(id,sp=new Sprite()); this.parent.addChild(sp); sp.addChild(new Sprite()); }
+		sp.children[0].blendMode=info.blendMode-0||0;
 		const bmp=sp.children[0].bitmap=this._pictureArr._bmp.get(info.imgPath); if(!bmp) continue;
 		DataManager.parseAnimationPictures_apply.call(this,sp,bmp,info);
 		sp._currInfo=info;
@@ -30364,7 +30371,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-01-31 0';
+var _agold404_version_='2025-01-31 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
