@@ -28095,7 +28095,7 @@ blendMode: 同動畫編輯器的 blendMode 。預設0。0:原色；1:add；2:mul
 
 (()=>{ let k,r,t;
 
-new cfc(DataManager).add('parseAnimationPictures',function f(animation){
+new cfc(DataManager).add('parseAnimationPictures',function f(animation,effectBattler,spAni){
 	const meta=animation&&animation.meta;
 	if(!meta||!meta.pictures) return;
 	let arr=animation.pictures;
@@ -28128,7 +28128,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation){
 			tbl._func(tbl,'positionReference',info);
 			}
 			info.imgReflect=!!info.imgReflect;
-			const imgPath=info.isJsImgPath?f.tbl[6](info.imgPath,info,animation):info.imgPath;
+			const imgPath=info.isJsImgPath?f.tbl[6](info.imgPath,info,animation,effectBattler,spAni):info.imgPath;
 			if(info.isJsImgPath) hasJsImgPath=true;
 			imgs.uniquePush(imgPath);
 			const blendMode=info.blendMode;
@@ -28217,8 +28217,8 @@ function f(a,b,r){ if(b==null) b=a;
 	return rtv;
 }, // 4: interpolate
 function f(s,m1,v,k){ if(v===this[1]&&!m1.has(k)) s.add(k); }, // 5: add it to set if it is "remove" and not presented in m1
-(s,infoSrc,aniSrc)=>{
-	const oriS=s,ani=aniSrc,info=infoSrc;
+(s,info,ani,effectBattler,spAni)=>{
+	const oriS=s;
 	const errMsg="getting undefined with non-empty string starting with non-'//' in:\n animation "+ani.id+", img id="+info.id;
 	let k,r,t,cfc,rtv;
 	{ rtv=eval(s); }
@@ -28280,8 +28280,14 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 	const rtv=f.ori.apply(this,arguments);
 	this.setupPictures(animation);
 	return rtv;
+}).add('getEffectBattler',function f(){
+	let rtv=this._target;
+	const ori=rtv;
+	while(rtv && !(rtv instanceof Sprite_Battler)) rtv=rtv.parent;
+	if(!rtv) rtv=ori;
+	return rtv;
 }).add('setupPictures',function f(animation){
-	const arr=this._pictureArr=DataManager.parseAnimationPictures(animation);
+	const arr=this._pictureArr=DataManager.parseAnimationPictures(animation,this.getEffectBattler(),this);
 	if(!arr) return;
 	arr._bmp=new Map();
 	for(let x=0,xs=arr._imgs.length;x!==xs;++x) arr._bmp.set(arr._imgs[x],ImageManager.loadNormalBitmap(arr._imgs[x]));
@@ -30371,7 +30377,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-01-31 1';
+var _agold404_version_='2025-02-01 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
