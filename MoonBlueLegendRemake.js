@@ -28116,6 +28116,7 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation,effectBat
 	if(!meta||!meta.pictures) return;
 	let arr=animation.pictures;
 	if(!arr){
+		const isPrintDebug=Utils.isOptionValid('test');
 		let hasJsEval=false;
 		arr=animation.pictures=JSON.parse(meta.pictures);
 		const xs=arr.length; if(!(0<xs)) return;
@@ -28145,40 +28146,40 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation,effectBat
 			}
 			info.imgReflect=!!info.imgReflect;
 			info.positionNotReflect=!!info.positionNotReflect;
-			const imgPath=info.isJsImgPath?f.tbl[6](info.imgPath,info,animation,effectBattler,spAni):info.imgPath;
+			const imgPath=info.isJsImgPath?f.tbl[6](isPrintDebug,info.imgPath,info,animation,effectBattler,spAni):info.imgPath;
 			if(info.isJsImgPath) hasJsEval=true;
 			imgs.uniquePush(imgPath);
 			const isJsPosition=info.isJsPosition;
 			if(isJsPosition){ const t='position',curr=info[t][0];
-				curr[0]=f.tbl[7](curr[0],undefined,t,info,animation,effectBattler,spAni);
-				curr[1]=f.tbl[7](curr[1],undefined,t,info,animation,effectBattler,spAni);
+				curr[0]=f.tbl[7](isPrintDebug,curr[0],undefined,t,info,animation,effectBattler,spAni);
+				curr[1]=f.tbl[7](isPrintDebug,curr[1],undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsScale=info.isJsScale;
 			if(isJsScale){ const t='scale',curr=info[t][0];
-				curr[0]=f.tbl[7](curr[0],undefined,t,info,animation,effectBattler,spAni);
-				curr[1]=f.tbl[7](curr[1],undefined,t,info,animation,effectBattler,spAni);
+				curr[0]=f.tbl[7](isPrintDebug,curr[0],undefined,t,info,animation,effectBattler,spAni);
+				curr[1]=f.tbl[7](isPrintDebug,curr[1],undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsSkew=info.isJsSkew;
 			if(isJsSkew){ const t='skew',curr=info[t][0];
-				curr[0]=f.tbl[7](curr[0],undefined,t,info,animation,effectBattler,spAni);
-				curr[1]=f.tbl[7](curr[1],undefined,t,info,animation,effectBattler,spAni);
+				curr[0]=f.tbl[7](isPrintDebug,curr[0],undefined,t,info,animation,effectBattler,spAni);
+				curr[1]=f.tbl[7](isPrintDebug,curr[1],undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsRotate=info.isJsRotate;
 			if(isJsRotate){ const t='rotate',curr=info[t][0];
-				info[t][0]=f.tbl[7](curr,undefined,t,info,animation,effectBattler,spAni);
+				info[t][0]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsDz=info.isJsDz;
 			if(isJsDz){ const t='dz',curr=info[t][0];
-				info[t][0]=f.tbl[7](curr,undefined,t,info,animation,effectBattler,spAni);
+				info[t][0]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsAlpha=info.isJsAlpha;
 			if(isJsAlpha){ const t='alpha',curr=info[t][0];
-				info[t][0]=f.tbl[7](curr,undefined,t,info,animation,effectBattler,spAni);
+				info[t][0]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const blendMode=info.blendMode;
@@ -28192,25 +28193,25 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation,effectBat
 				if(null==info.skew    [tp]) info.skew    [tp]=info.skew    [tp-1];
 				if(null==info.dz      [tp]) info.dz      [tp]=info.dz      [tp-1];
 				if(isJsPosition){ const t='position',curr=info[t][tp],pre=info[t][tp-1];
-					curr[0]=f.tbl[7](curr[0],pre[0],t,info,animation,effectBattler,spAni);
-					curr[1]=f.tbl[7](curr[1],pre[1],t,info,animation,effectBattler,spAni);
+					curr[0]=f.tbl[7](isPrintDebug,curr[0],pre[0],t,info,animation,effectBattler,spAni);
+					curr[1]=f.tbl[7](isPrintDebug,curr[1],pre[1],t,info,animation,effectBattler,spAni);
 				}
 				if(isJsScale){ const t='scale',curr=info[t][tp],pre=info[t][tp-1];
-					curr[0]=f.tbl[7](curr[0],pre[0],t,info,animation,effectBattler,spAni);
-					curr[1]=f.tbl[7](curr[1],pre[1],t,info,animation,effectBattler,spAni);
+					curr[0]=f.tbl[7](isPrintDebug,curr[0],pre[0],t,info,animation,effectBattler,spAni);
+					curr[1]=f.tbl[7](isPrintDebug,curr[1],pre[1],t,info,animation,effectBattler,spAni);
 				}
 				if(isJsSkew){ const t='skew',curr=info[t][tp],pre=info[t][tp-1];
-					curr[0]=f.tbl[7](curr[0],pre[0],t,info,animation,effectBattler,spAni);
-					curr[1]=f.tbl[7](curr[1],pre[1],t,info,animation,effectBattler,spAni);
+					curr[0]=f.tbl[7](isPrintDebug,curr[0],pre[0],t,info,animation,effectBattler,spAni);
+					curr[1]=f.tbl[7](isPrintDebug,curr[1],pre[1],t,info,animation,effectBattler,spAni);
 				}
 				if(isJsRotate){ const t='rotate',pos=info[t][tp],pre=info[t][tp-1];
-					info[t][tp]=f.tbl[7](pos,pre,t,info,animation,effectBattler,spAni);
+					info[t][tp]=f.tbl[7](isPrintDebug,pos,pre,t,info,animation,effectBattler,spAni);
 				}
 				if(isJsDz){ const t='dz',pos=info[t][tp],pre=info[t][tp-1];
-					info[t][tp]=f.tbl[7](pos,pre,t,info,animation,effectBattler,spAni);
+					info[t][tp]=f.tbl[7](isPrintDebug,pos,pre,t,info,animation,effectBattler,spAni);
 				}
 				if(isJsAlpha){ const t='alpha',pos=info[t][tp],pre=info[t][tp-1];
-					info[t][tp]=f.tbl[7](pos,pre,t,info,animation,effectBattler,spAni);
+					info[t][tp]=f.tbl[7](isPrintDebug,pos,pre,t,info,animation,effectBattler,spAni);
 				}
 				for(let strtFrm=frms[tp-1]-0,endFrm=frms[tp]-0,widthFrm=endFrm-strtFrm,frm=strtFrm;frm!==endFrm;++frm){
 					const r=(frm-strtFrm)/widthFrm;
@@ -28289,17 +28290,16 @@ function f(a,b,r){ if(b==null) b=a;
 	return rtv;
 }, // 4: interpolate
 function f(s,m1,v,k){ if(v===this[1]&&!m1.has(k)) s.add(k); }, // 5: add it to set if it is "remove" and not presented in m1
-(s,info,ani,effectBattler,spAni)=>{
+(isPrintDebug,s,info,ani,effectBattler,spAni)=>{
 	const oriS=s;
-	const errMsg="getting undefined with non-empty string starting with non-'//' in 'imgPath' in:\n animation "+ani.id+", img id="+info.id;
+	const errMsg=isPrintDebug?"getting undefined with non-empty string starting with non-'//' in 'imgPath' in:\n animation "+ani.id+", img id="+info.id+"\n code:\n"+s:s;
 	let k,r,t,cfc,rtv;
 	{ rtv=eval(s); }
 	if(rtv===undefined&&oriS&&oriS.match&&!oriS.match(/^\/\//)) throw new Error(errMsg);
 	return rtv;
 }, // 6: eval imgPath
-(s,pre,type_,info,ani,effectBattler,spAni)=>{
-	const oriS=s;
-	const errMsg="getting the evaluated value is not a number in '"+type_+"' in:\n animation "+ani.id+", img id="+info.id;
+(isPrintDebug,s,pre,type_,info,ani,effectBattler,spAni)=>{
+	const errMsg=isPrintDebug?"getting the evaluated value is not a number in '"+type_+"' in:\n animation "+ani.id+", img id="+info.id+"\n code:\n"+s:s;
 	let k,r,t,cfc,rtv;
 	{ rtv=eval(s)-0; }
 	if(isNaN(rtv)) throw new Error(errMsg);
@@ -30458,7 +30458,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-02-02 0';
+var _agold404_version_='2025-02-02 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
