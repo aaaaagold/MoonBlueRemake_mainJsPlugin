@@ -28085,24 +28085,42 @@ new cfc(Sprite_Animation.prototype).add('setup',function f(target, animation, mi
 }
 ]
 animationFrames: 數字為動畫第幾格。第幾個數字對應到下面其他陣列ㄉ欄位第幾個。線性變化。
+ // the timing anchor points.
 endType: "keep" or "remove", any unsupported value is treated as "remove"
+ // what to do if an img meets its end.
 imgOrigin: "center" or "100,200" (x座標100,y座標200的地方) or "10%,20%" (圖片x座標10%,y座標20%的地方(左邊、上面是0%；右邊、下面是100%)). default "center"
+ // where's the reference point in the img.
 imgReflect: true or false, false-like or true-like will be accepted. default false.
+ // wheather reflect or not this image if the animation is mirrored.
 positionNotReflect: true or false, false-like or true-like will be accepted. default false.
+ // wheather reflect or not the position if the animation is mirrored.
 isJsImgPath: true or false, false-like or true-like will be accepted. default false.
+ // the imgPath is eval()-ed.
 isJsPosition: true or false, false-like or true-like will be accepted. default false.
+ // the position values of x and y are eval()-ed respectively.
 isJsScale: true or false, false-like or true-like will be accepted. default false.
+ // the scale values of x and y are eval()-ed respectively.
 isJsSkew: true or false, false-like or true-like will be accepted. default false.
+ // the skew values of x and y are eval()-ed respectively.
 isJsRotate: true or false, false-like or true-like will be accepted. default false.
+ // the rotate values are eval()-ed respectively.
 isJsDz: true or false, false-like or true-like will be accepted. default false.
+ // the delta Z values are eval()-ed respectively.
 isJsAlpha: true or false, false-like or true-like will be accepted. default false.
+ // the alpha values are eval()-ed respectively.
 isJsBlendMode: true or false, false-like or true-like will be accepted. default false.
 positionReference: "target" or "screen", any unsupported value is treated as "screen"
+ // positioning referencing of target or the screen.
 imgFrame: [ [0,0,"100%","100%"] ,...] 或 [ [0,0,234,123] ,...]
+ // positioning the image, anchored by each point in animationFrame.
 position: [ [0,0] ,...] // offset x and y
+ // positioning the image, anchored by each point in animationFrame.
 scale: [ [1,1] ,...] // scale x and y
+ // scaling the image, anchored by each point in animationFrame.
 rotate: [ 0 ,...] // rotate degree. 360 per cycle.
+ // rotating the image, anchored by each point in animationFrame.
 skew: [ [360,360] ,...] // skew x and y. 360 per cycle.
+ // skewing the image, anchored by each point in animationFrame.
 dz: [ 1 ,...] // z軸要比動畫多多少。預設1。<0表示在下面；>0表示在上面；0的話則戰鬥和地圖中會有不同。
 blendMode: 同動畫編輯器的 blendMode 。預設0。0:原色；1:add；2:multiply；3:screen(?)
  * 
@@ -28150,36 +28168,48 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation,effectBat
 			if(info.isJsImgPath) hasJsEval=true;
 			imgs.uniquePush(imgPath);
 			const isJsPosition=info.isJsPosition;
-			if(isJsPosition){ const t='position',curr=info[t][0];
+			if(isJsPosition){ const t='position';
+				const curr=info[t][0];
 				curr[0]=f.tbl[7](isPrintDebug,curr[0],undefined,t,info,animation,effectBattler,spAni);
 				curr[1]=f.tbl[7](isPrintDebug,curr[1],undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsScale=info.isJsScale;
-			if(isJsScale){ const t='scale',curr=info[t][0];
+			if(isJsScale){ const t='scale';
+				const curr=info[t][0];
 				curr[0]=f.tbl[7](isPrintDebug,curr[0],undefined,t,info,animation,effectBattler,spAni);
 				curr[1]=f.tbl[7](isPrintDebug,curr[1],undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsSkew=info.isJsSkew;
-			if(isJsSkew){ const t='skew',curr=info[t][0];
+			if(isJsSkew){ const t='skew';
+				const curr=info[t][0];
 				curr[0]=f.tbl[7](isPrintDebug,curr[0],undefined,t,info,animation,effectBattler,spAni);
 				curr[1]=f.tbl[7](isPrintDebug,curr[1],undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsRotate=info.isJsRotate;
-			if(isJsRotate){ const t='rotate',curr=info[t][0];
+			if(isJsRotate){ const t='rotate';
+				const curr=info[t][0];
 				info[t][0]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsDz=info.isJsDz;
-			if(isJsDz){ const t='dz',curr=info[t][0];
+			if(isJsDz){ const t='dz';
+				const curr=info[t][0];
 				info[t][0]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const isJsAlpha=info.isJsAlpha;
-			if(isJsAlpha){ const t='alpha',curr=info[t][0];
+			if(isJsAlpha){ const t='alpha';
+				const curr=info[t][0];
 				info[t][0]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
+				hasJsEval=true;
+			}
+			const isJsBlendMode=info.isJsBlendMode;
+			if(isJsBlendMode){ const t='blendMode';
+				const curr=info[t];
+				info[t]=f.tbl[7](isPrintDebug,curr,undefined,t,info,animation,effectBattler,spAni);
 				hasJsEval=true;
 			}
 			const blendMode=info.blendMode;
@@ -28192,26 +28222,32 @@ new cfc(DataManager).add('parseAnimationPictures',function f(animation,effectBat
 				if(null==info.rotate  [tp]) info.rotate  [tp]=info.rotate  [tp-1];
 				if(null==info.skew    [tp]) info.skew    [tp]=info.skew    [tp-1];
 				if(null==info.dz      [tp]) info.dz      [tp]=info.dz      [tp-1];
-				if(isJsPosition){ const t='position',curr=info[t][tp],pre=info[t][tp-1];
+				if(isJsPosition){ const t='position';
+					const curr=info[t][tp],pre=info[t][tp-1];
 					curr[0]=f.tbl[7](isPrintDebug,curr[0],pre[0],t,info,animation,effectBattler,spAni);
 					curr[1]=f.tbl[7](isPrintDebug,curr[1],pre[1],t,info,animation,effectBattler,spAni);
 				}
-				if(isJsScale){ const t='scale',curr=info[t][tp],pre=info[t][tp-1];
+				if(isJsScale){ const t='scale'
+					const curr=info[t][tp],pre=info[t][tp-1];
 					curr[0]=f.tbl[7](isPrintDebug,curr[0],pre[0],t,info,animation,effectBattler,spAni);
 					curr[1]=f.tbl[7](isPrintDebug,curr[1],pre[1],t,info,animation,effectBattler,spAni);
 				}
-				if(isJsSkew){ const t='skew',curr=info[t][tp],pre=info[t][tp-1];
+				if(isJsSkew){ const t='skew';
+					const curr=info[t][tp],pre=info[t][tp-1];
 					curr[0]=f.tbl[7](isPrintDebug,curr[0],pre[0],t,info,animation,effectBattler,spAni);
 					curr[1]=f.tbl[7](isPrintDebug,curr[1],pre[1],t,info,animation,effectBattler,spAni);
 				}
-				if(isJsRotate){ const t='rotate',pos=info[t][tp],pre=info[t][tp-1];
-					info[t][tp]=f.tbl[7](isPrintDebug,pos,pre,t,info,animation,effectBattler,spAni);
+				if(isJsRotate){ const t='rotate';
+					const curr=info[t][tp],pre=info[t][tp-1];
+					info[t][tp]=f.tbl[7](isPrintDebug,curr,pre,t,info,animation,effectBattler,spAni);
 				}
-				if(isJsDz){ const t='dz',pos=info[t][tp],pre=info[t][tp-1];
-					info[t][tp]=f.tbl[7](isPrintDebug,pos,pre,t,info,animation,effectBattler,spAni);
+				if(isJsDz){ const t='dz';
+					const curr=info[t][tp],pre=info[t][tp-1];
+					info[t][tp]=f.tbl[7](isPrintDebug,curr,pre,t,info,animation,effectBattler,spAni);
 				}
-				if(isJsAlpha){ const t='alpha',pos=info[t][tp],pre=info[t][tp-1];
-					info[t][tp]=f.tbl[7](isPrintDebug,pos,pre,t,info,animation,effectBattler,spAni);
+				if(isJsAlpha){ const t='alpha';
+					const curr=info[t][tp],pre=info[t][tp-1];
+					info[t][tp]=f.tbl[7](isPrintDebug,curr,pre,t,info,animation,effectBattler,spAni);
 				}
 				for(let strtFrm=frms[tp-1]-0,endFrm=frms[tp]-0,widthFrm=endFrm-strtFrm,frm=strtFrm;frm!==endFrm;++frm){
 					const r=(frm-strtFrm)/widthFrm;
@@ -28299,6 +28335,7 @@ function f(s,m1,v,k){ if(v===this[1]&&!m1.has(k)) s.add(k); }, // 5: add it to s
 	return rtv;
 }, // 6: eval imgPath
 (isPrintDebug,s,pre,type_,info,ani,effectBattler,spAni)=>{
+	if(s==null||!isNaN(s-0)) return s-0;
 	const errMsg=isPrintDebug?"getting the evaluated value is not a number in '"+type_+"' in:\n animation "+ani.id+", img id="+info.id+"\n code:\n"+s:s;
 	let k,r,t,cfc,rtv;
 	{ rtv=eval(s)-0; }
@@ -30458,7 +30495,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-02-02 1';
+var _agold404_version_='2025-02-02 2';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
