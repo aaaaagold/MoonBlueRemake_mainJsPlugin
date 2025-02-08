@@ -16222,7 +16222,7 @@ new cfc(Game_Temp.prototype).add('popupMsg',function f(msg,opt){
 	msg+='';
 	const lines=msg.split('\n');
 	const wnd=new Window_PopupMsg(lines.length,opt);
-	wnd.width=root._maxWidth;
+	wnd.width=isNaN(opt.width)?root._maxWidth:opt.width-0;
 	wnd.setText(msg);
 	root.addChild(wnd);
 },[
@@ -30495,7 +30495,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-02-02 2';
+var _agold404_version_='2025-02-09 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
