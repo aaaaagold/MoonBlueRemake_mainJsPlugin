@@ -26478,7 +26478,7 @@ kw,
 const dt=new Date();
 const m=dt.getMonth(); // 0-base
 const d=dt.getDate(); // 1-base
-const cond=(m===2&&d===31)||(m===3&&d<9);
+const cond=(m===2&&d===31)||(m===3&&d<9)||Utils.isOptionValid('aprilfools');
 if(!cond) return;
 
 t=[
@@ -26500,6 +26500,13 @@ t=[
 		}
 	},
 ],
+undefined, // 5: triggered:modified
+undefined, // 6: triggered:printMsg
+// 7: msg
+[
+"\\C[6]特殊節日！！！\n\\C[0]倒下的隊員的經驗值倍率\n大幅提升！！！", // 7-0: msg str
+undefined, // 7-1: msg opt
+],
 ];
 
 new cfc(Scene_Boot.prototype).add('start',function f(){
@@ -26511,8 +26518,25 @@ new cfc(Scene_Boot.prototype).add('start',function f(){
 	$dataItems[f.tbl[2]]=f.tbl[3];
 	f.tbl[3].id=f.tbl[2];
 	$dataItems[f.tbl[2]].effects[0].dataId=[f.tbl[0]];
-	if(!Utils.isOptionValid('test')) $dataStates.forEach(f.tbl[4][0],this);
+	if(!Utils.isOptionValid('test')){
+		$dataStates.forEach(f.tbl[4][0],this);
+		f.tbl[5]=true; // checked in Scene_Title.prototype.start
+	}
 },t);
+
+new cfc(Scene_Title.prototype).
+add('start',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	this.start_aprilFools_printMsg();
+	return rtv;
+}).
+add('start_aprilFools_printMsg',function f(){
+	if(f.tbl[6]) return;
+	f.tbl[6]=true;
+	if(!f.tbl[5]) return;
+	$gameTemp.popupMsg(f.tbl[7][0],f.tbl[7][1]);
+},t).
+getP;
 
 new cfc(SceneManager).add('update',function f(){
 	this.update_aprilFools();
@@ -30495,7 +30519,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-02-09 0';
+var _agold404_version_='2025-04-12 3';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
