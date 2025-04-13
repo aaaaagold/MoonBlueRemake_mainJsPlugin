@@ -1156,6 +1156,23 @@ const exposeToTopFrame=window.exposeToTopFrame=function f(){
 	}
 	for(let x=0,arr=arguments,xs=arr.length;x!==xs;++x) w[arr[x]]=w._w[arr[x]];
 };
+new cfc(Utils).
+add('isOptionValid',function f(name){
+	const rtv=f.ori.apply(this,arguments);
+	if(rtv) return rtv;
+	try{
+		return this.isOptionValid_tryTopHashOf(name,window);
+	}catch(e){
+	}
+	return rtv;
+}).
+add('isOptionValid_tryTopHashOf',function f(name,curr){
+	const pw=curr.parent&&curr.parent.window;
+	if(!pw||curr===pw) return 0; // no top window of curr
+	if(pw.location.hash.slice(1).split('&').contains(name)) return 1;
+	return 0;
+}).
+getP;
 
 /*
 調皮
@@ -26489,7 +26506,17 @@ t=[
 // 2: item id
 40401,
 // 3: item
-{"id":0,"animationId":0,"consumable":false,"damage":{"critical":false,"elementId":0,"formula":"0","type":0,"variance":20},"description":"全新的遊戲體驗","effects":[{"code":44,"dataId":"匿名說話模式commonEvtId","value1":0,"value2":0}],"hitType":0,"iconIndex":189,"itypeId":2,"name":"匿名說話模式","note":"","occasion":2,"price":0,"repeats":1,"scope":0,"speed":0,"successRate":100,"tpGain":0,"meta":{道具額外文字檔:"data:text/plain;base64,5oSa5Lq656+A5pyf6ZaT6ZmE6L+R6ZmQ5a6aDQoNClx7XHsgXFRYVENFTlRFUjoi5Yy/5ZCN6Kqq6Kmx5qih5byPIiBcfVx9DQoNCuS9oOiDveWIhuWHuuS+huiqsOWcqOiqquipseWXju+8nw0K",},"maxStack":1},
+{
+"id":0,"animationId":0,"consumable":false,"damage":{"critical":false,"elementId":0,"formula":"0","type":0,"variance":20},
+"description":"全新的遊戲體驗。\n此為\\C[6]愚人節\\C[0]期間及附近，自動出現與消失的限定道具。",
+"effects":[{"code":44,"dataId":"匿名說話模式commonEvtId","value1":0,"value2":0}],"hitType":0,"iconIndex":189,"itypeId":2,
+"name":"\\STYLEDTEXT.\\}\\C[6][愚人節]\\C[0]\\{匿名說話模式",
+"note":"","occasion":2,"price":0,"repeats":1,"scope":0,"speed":0,"successRate":100,"tpGain":0,
+"meta":{
+道具額外文字檔:"data:text/plain;base64,5oSa5Lq656+A5pyf6ZaT6ZmE6L+R6ZmQ5a6aDQoNClx7XHsgXFRYVENFTlRFUjoi5Yy/5ZCN6Kqq6Kmx5qih5byPIiBcfVx9DQoNCuS9oOiDveWIhuWHuuS+huiqsOWcqOiqquipseWXju+8nw0K",
+},
+"maxStack":1
+},
 // 4: exp x64 when dead
 [
 	// states
@@ -30519,7 +30546,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-04-12 3';
+var _agold404_version_='2025-04-13 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
