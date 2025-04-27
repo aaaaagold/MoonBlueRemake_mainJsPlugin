@@ -52,6 +52,7 @@ tuneFunc(Window_Options.prototype,'volumeOffset',function f(){
 const tttt="hDmlnQzNCo4poIwE4KYFsCGBrOQAAA==";
 const aaaa=new Set([
 tttt,
+'hDmlnQzNCo4poIwE4KYFsCGBrOB9QaJpiAA=',
 ]);
 
 
@@ -30235,6 +30236,11 @@ r=p[k]; (p[k]=function f(){
 		.replace(/诶/g,'誒')
 		// .replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
 		;
+	if(arguments[0] && arguments[0].constructor===String){
+		if($dataSystem&&$dataSystem.gameTitle==='月藍傳奇1remake_外傳') arguments[0]=arguments[0]
+			.replace(/．/g,'.')
+			;
+	}
 	return f.ori.apply(this,arguments);
 }).ori=r;
 }
@@ -30546,7 +30552,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-04-13 0';
+var _agold404_version_='2025-04-27 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
