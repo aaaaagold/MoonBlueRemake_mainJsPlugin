@@ -1375,10 +1375,78 @@ function(stat){
 
 (()=>{ let k,r,t;
 
+
 new cfc(Sprite_Enemy.prototype).add('updateScale',function(){
 	this.scale.x=this._enemy.spriteScaleX();
 	this.scale.y=this._enemy.spriteScaleY();
 },undefined,true,true);
+
+
+new cfc(Game_Battler.prototype).
+add('atbTurnRate',function(){
+	let value=0;
+	const states=this.states(),sz=states.length;
+	for (let i=0;i<sz;++i){
+		const state=states[i];
+		if(state){ let i,states;
+			value+=state.atbTurnRate;
+			eval(state.atbTurnRateEval);
+		}
+	}
+	return value;
+},undefined,true,true).
+add('atbTurnFlat',function(currentActionItem){
+	let value=0;
+	const states=this.states(),sz=states.length;
+	for (let i=0;i<sz;++i){
+		const state=states[i];
+		if(state){ let i,states;
+			value+=state.atbTurnFlat;
+			eval(state.atbTurnFlatEval);
+		}
+	}
+	return value;
+},undefined,true,true).
+add('setEndActionATBSpeed',function() {
+	this._atbSpeed=0;
+	const action=this.currentAction();
+	if(!action) return;
+	const item=action.item();
+	if(item){
+		if(item.afterATBFlat!==undefined) this.setATBSpeed(item.afterATBFlat);
+		if(item.afterATBRate!==undefined) this.setATBSpeed(item.afterATBRate * BattleManager.atbTarget());
+	}
+	this._atbSpeed+=BattleManager.atbTarget()*this.atbTurnRate();
+	this._atbSpeed+=this.atbTurnFlat(item);
+	if(item) this.afterATBEval(item);
+},undefined,true,true).
+getP;
+
+new cfc(Game_Actor.prototype).
+add('atbTurnRate',function() {
+	let value=Game_Battler.prototype.atbTurnRate.apply(this,arguments);
+	value+=this.actor().atbTurnRate;
+	value+=this.currentClass().atbTurnRate;
+	const equips=this.equips(),sz=equips.length;
+	for(let i=0;i<sz;++i){
+		const equip=equips[i];
+		if(equip && equip.atbTurnRate) value+=equip.atbTurnRate;
+	}
+	return value;
+},undefined,true,true).
+add('atbTurnFlat',function(currentActionItem){
+	let value=Game_Battler.prototype.atbTurnFlat.apply(this,arguments);
+	value+=this.actor().atbTurnFlat;
+	value+=this.currentClass().atbTurnFlat;
+	const equips=this.equips(),sz=equips.length;
+	for(let i=0;i<sz;++i){
+		const equip=equips[i];
+		if(equip && equip.atbTurnFlat) value+=equip.atbTurnFlat;
+	}
+	return value;
+},undefined,true,true).
+getP;
+
 
 })();
 
@@ -30555,7 +30623,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-07-23 0';
+var _agold404_version_='2025-07-23 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
