@@ -13657,10 +13657,13 @@ r=p[k]; (p[k]=function f(index){
 		const en=this.isEnabled(item);
 		this.changePaintOpacity(en);
 		
-		const txtw=f.tbl.txtw||(f.tbl.txtw=this.textWidth('[]'));
+		const txtw=this.textWidth('[]');
 		
 		let x=rect.x;
-		const namew=this.drawItemName(item, x, yb, xe-x-txtw-Window_Base._iconWidth-f.tbl.iconPad2);
+		const namew=this.drawItemName(item, x, yb, xe-x-
+			txtw-
+			(SceneManager._scene instanceof Scene_Depository?0:Window_Base._iconWidth)-
+		f.tbl.iconPad2);
 		if(0<namew) x+=namew;
 		
 		rtv=[item,rect,en,txtw>>1,x,yb,xe,yb+rect.height];
@@ -30552,7 +30555,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-04-27 0';
+var _agold404_version_='2025-07-23 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
