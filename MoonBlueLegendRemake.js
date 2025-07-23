@@ -1383,13 +1383,13 @@ new cfc(Sprite_Enemy.prototype).add('updateScale',function(){
 
 
 new cfc(Game_Battler.prototype).
-add('atbTurnRate',function(){
+add('atbTurnRate',function(currentActionItem){
 	let value=0;
 	const states=this.states(),sz=states.length;
 	for (let i=0;i<sz;++i){
 		const state=states[i];
 		if(state){ let i,states;
-			value+=state.atbTurnRate;
+			value+=state.atbTurnRate-0||0;
 			eval(state.atbTurnRateEval);
 		}
 	}
@@ -1401,13 +1401,13 @@ add('atbTurnFlat',function(currentActionItem){
 	for (let i=0;i<sz;++i){
 		const state=states[i];
 		if(state){ let i,states;
-			value+=state.atbTurnFlat;
+			value+=state.atbTurnFlat-0||0;
 			eval(state.atbTurnFlatEval);
 		}
 	}
 	return value;
 },undefined,true,true).
-add('setEndActionATBSpeed',function() {
+add('setEndActionATBSpeed',function(){
 	this._atbSpeed=0;
 	const action=this.currentAction();
 	if(!action) return;
@@ -1423,14 +1423,17 @@ add('setEndActionATBSpeed',function() {
 getP;
 
 new cfc(Game_Actor.prototype).
-add('atbTurnRate',function() {
+add('atbTurnRate',function(currentActionItem){
 	let value=Game_Battler.prototype.atbTurnRate.apply(this,arguments);
 	value+=this.actor().atbTurnRate;
 	value+=this.currentClass().atbTurnRate;
 	const equips=this.equips(),sz=equips.length;
 	for(let i=0;i<sz;++i){
 		const equip=equips[i];
-		if(equip && equip.atbTurnRate) value+=equip.atbTurnRate;
+		if(equip){ let i,equips;
+			value+=equip.atbTurnRate-0||0;
+			eval(equip.atbTurnRateEval);
+		}
 	}
 	return value;
 },undefined,true,true).
@@ -1441,7 +1444,10 @@ add('atbTurnFlat',function(currentActionItem){
 	const equips=this.equips(),sz=equips.length;
 	for(let i=0;i<sz;++i){
 		const equip=equips[i];
-		if(equip && equip.atbTurnFlat) value+=equip.atbTurnFlat;
+		if(equip){ let i,equips;
+			value+=equip.atbTurnFlat;
+			eval(equip.atbTurnFlatEval);
+		}
 	}
 	return value;
 },undefined,true,true).
@@ -30623,7 +30629,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-07-23 1';
+var _agold404_version_='2025-07-23 2';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
