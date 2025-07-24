@@ -1390,7 +1390,7 @@ add('atbTurnRate',function(currentActionItem){
 		const state=states[i];
 		if(state){ let i,states;
 			value+=state.atbTurnRate-0||0;
-			eval(state.atbTurnRateEval);
+			eval(state.meta.atbTurnRateEval);
 		}
 	}
 	return value;
@@ -1402,7 +1402,7 @@ add('atbTurnFlat',function(currentActionItem){
 		const state=states[i];
 		if(state){ let i,states;
 			value+=state.atbTurnFlat-0||0;
-			eval(state.atbTurnFlatEval);
+			eval(state.meta.atbTurnFlatEval);
 		}
 	}
 	return value;
@@ -1432,7 +1432,7 @@ add('atbTurnRate',function(currentActionItem){
 		const equip=equips[i];
 		if(equip){ let i,equips;
 			value+=equip.atbTurnRate-0||0;
-			eval(equip.atbTurnRateEval);
+			eval(equip.meta.atbTurnRateEval);
 		}
 	}
 	return value;
@@ -1446,7 +1446,7 @@ add('atbTurnFlat',function(currentActionItem){
 		const equip=equips[i];
 		if(equip){ let i,equips;
 			value+=equip.atbTurnFlat;
-			eval(equip.atbTurnFlatEval);
+			eval(equip.meta.atbTurnFlatEval);
 		}
 	}
 	return value;
@@ -30629,7 +30629,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-07-23 2';
+var _agold404_version_='2025-07-24 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
