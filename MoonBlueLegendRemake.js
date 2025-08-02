@@ -25048,7 +25048,7 @@ head:"head",
 tail:"tail",
 };
 const itemListWidth=256;
-const descriptionsHeight=128;
+const descriptionsHeight=96;
 const descriptionsLineNum=3;
 const putDataArrByType=tbl=>{
 	if(!tbl.dataArrByType) tbl.dataArrByType={
@@ -25282,12 +25282,12 @@ info=>info&&(properties.key in info), // 4-1
 new Set([
 	'cancel',
 ]), // 4-3
-"持有數量/需求數量", // 4-4
+"持有數量/獲得數量", // 4-4
 "製作成功：", // 4-5
 "\\TXTCENTER:\"未知\"", // 4-6
 ], // 4
 properties, // 5
-['gain','cost',], // 6
+['cost','gain',], // 6
 [1,], // 7: iconPadding,
 [
 function f(){
@@ -25408,7 +25408,8 @@ new cfc(p).add('initialize',function f(){
 					x+=Window_Base._iconWidth+f.tbl[7][0];
 				}
 				const beRed=!($gameParty.gold()>=info[1]-0);
-				this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+info[1]+' \\G'+('\\TXTCOLOR"'+f.tbl[12][0]+'"'),x,y,undefined,undefined,res);
+				const signedNumInfo1='gain'===keys[z]?(info[2]<0?info[2]:"+"+info[2]):(info[1]<0?"+"+info[1]:'-'+info[1]); // cost
+				this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.gold()+' \\G'+' / '+signedNumInfo1+' \\G'+('\\TXTCOLOR"'+f.tbl[12][0]+'"'),x,y,undefined,undefined,res);
 				if(usingGoldIcon){
 					x-=Window_Base._iconWidth+f.tbl[7][0];
 				}
@@ -25420,8 +25421,9 @@ new cfc(p).add('initialize',function f(){
 					this.drawIcon(item.iconIndex,x,y);
 					x+=Window_Base._iconWidth+f.tbl[7][0];
 				}
-				const beRed=!($gameParty.numItems(item)>=info[2]-0);
-				this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][0]+'"')+item.name+' '+('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.numItems(item)+'/'+info[2]+('\\TXTCOLOR"'+f.tbl[12][0]+'"'),x,y,undefined,undefined,res);
+				const beRed=!('gain'===keys[z]||$gameParty.numItems(item)>=info[2]-0);
+				const signedNumInfo2='gain'===keys[z]?(info[2]<0?info[2]:"+"+info[2]):(info[2]<0?"+"+(-info[2]):'-'+info[2]); // cost
+				this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][0]+'"')+item.name+' '+('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.numItems(item)+'/'+signedNumInfo2+('\\TXTCOLOR"'+f.tbl[12][0]+'"'),x,y,undefined,undefined,res);
 				if(item.iconIndex){
 					x-=Window_Base._iconWidth+f.tbl[7][0];
 				}
@@ -25438,6 +25440,8 @@ new cfc(p).add('initialize',function f(){
 	if(info[f.tbl[5].tail]){ this.drawTextEx(info[f.tbl[5].tail],x,y,undefined,undefined,res); y=res.y+lh; }
 },t).add('createWindow_descriptionsWindow',function f(){
 	const sp=this._descriptionsWindow=new Window_Help();
+	const fsz0=sp.standardFontSize(),fsz=(fsz0>>1)+(fsz0>>3),LH0=(fsz*3),LH125=LH0>>1; sp.changeFontSize(fsz); sp.standardFontSize=()=>fsz; sp.lineHeight=()=>LH125;
+	sp.height=sp.fittingHeight(f.tbl[3].descriptions.lineNum);
 	const conf=f.tbl[3].descriptions; conf.y=f.tbl[3].requirements.h; conf.w=f.tbl[3].requirements.w;
 	sp.positioning(conf,this._requirementsWindow);
 	this.getRoot().addChild(sp);
@@ -30629,7 +30633,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-07-24 0';
+var _agold404_version_='2025-08-03 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
