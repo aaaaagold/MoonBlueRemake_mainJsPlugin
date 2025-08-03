@@ -25288,7 +25288,7 @@ new Set([
 ], // 4
 properties, // 5
 ['cost','gain',], // 6
-[1,], // 7: iconPadding,
+[2,], // 7: iconPadding,
 [
 function f(){
 	const ori=Window_Base.prototype.standardFontSize.apply(this,arguments);
@@ -25403,27 +25403,64 @@ new cfc(p).add('initialize',function f(){
 			const info=arr[i];
 			if('g'===info[0]){
 				const usingGoldIcon=this.usingGoldIcon&&this.usingGoldIcon(TextManager.currencyUnit);
+				const beRed=!($gameParty.gold()>=info[1]-0);
+				const signedNumInfo1='gain'===keys[z]?(info[2]<0?info[2]:"+"+info[2]):(info[1]<0?"+"+info[1]:'-'+info[1]); // cost
+				const s=('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.gold()+' \\G'+' / '+signedNumInfo1+' \\G'+('\\TXTCOLOR"'+f.tbl[12][0]+'"');
+				if(x>=cw2){
+					// detect auto newLine
+					if(usingGoldIcon) x+=Window_Base._iconWidth+f.tbl[7][0];
+					const mockRes=Object.assign({},res);
+					this._is_戰鬥介面選單文字消失=true;
+					this.drawTextEx(' ',x,y,undefined,undefined,mockRes);
+					const standardY=mockRes.y;
+					Object.assign(mockRes,res);
+					this.drawTextEx(s,x,y,undefined,undefined,mockRes);
+					const resY=mockRes.y;
+					this._is_戰鬥介面選單文字消失=false;
+					if(standardY!==resY){
+						x=x0;
+						y=res.y+lh;
+					}else if(usingGoldIcon) x-=Window_Base._iconWidth+f.tbl[7][0];
+				}
 				if(usingGoldIcon){
 					this.drawIcon(Yanfly.Icon.Gold, x, y);
 					x+=Window_Base._iconWidth+f.tbl[7][0];
 				}
-				const beRed=!($gameParty.gold()>=info[1]-0);
-				const signedNumInfo1='gain'===keys[z]?(info[2]<0?info[2]:"+"+info[2]):(info[1]<0?"+"+info[1]:'-'+info[1]); // cost
-				this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.gold()+' \\G'+' / '+signedNumInfo1+' \\G'+('\\TXTCOLOR"'+f.tbl[12][0]+'"'),x,y,undefined,undefined,res);
+				this.drawTextEx(s,x,y,undefined,undefined,res);
 				if(usingGoldIcon){
 					x-=Window_Base._iconWidth+f.tbl[7][0];
 				}
 			}else if('j'===info[0]){
-				if(info[2]) this.drawTextEx(info[2],x,y,undefined,undefined,res);
+				if(info[2]){
+					const beRed='cost'===keys[z]&&!f.tbl[8][2](info[1],this);
+					this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+info[2],x,y,undefined,undefined,res);
+				}
 			}else{
 				const item=f.tbl.dataArrByType[info[0]][info[1]];
+				const beRed=!('gain'===keys[z]||$gameParty.numItems(item)>=info[2]-0);
+				const signedNumInfo2='gain'===keys[z]?(info[2]<0?info[2]:"+"+info[2]):(info[2]<0?"+"+(-info[2]):'-'+info[2]); // cost
+				const s=('\\TXTCOLOR"'+f.tbl[12][0]+'"')+item.name+' '+('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.numItems(item)+'/'+signedNumInfo2+('\\TXTCOLOR"'+f.tbl[12][0]+'"');
+				if(x>=cw2){
+					// detect auto newLine
+					if(item.iconIndex) x+=Window_Base._iconWidth+f.tbl[7][0];
+					const mockRes=Object.assign({},res);
+					this._is_戰鬥介面選單文字消失=true;
+					this.drawTextEx(' ',x,y,undefined,undefined,mockRes);
+					const standardY=mockRes.y;
+					Object.assign(mockRes,res);
+					this.drawTextEx(s,x,y,undefined,undefined,mockRes);
+					const resY=mockRes.y;
+					this._is_戰鬥介面選單文字消失=false;
+					if(standardY!==resY){
+						x=x0;
+						y=res.y+lh;
+					}else if(item.iconIndex) x-=Window_Base._iconWidth+f.tbl[7][0];
+				}
 				if(item.iconIndex){
 					this.drawIcon(item.iconIndex,x,y);
 					x+=Window_Base._iconWidth+f.tbl[7][0];
 				}
-				const beRed=!('gain'===keys[z]||$gameParty.numItems(item)>=info[2]-0);
-				const signedNumInfo2='gain'===keys[z]?(info[2]<0?info[2]:"+"+info[2]):(info[2]<0?"+"+(-info[2]):'-'+info[2]); // cost
-				this.drawTextEx(('\\TXTCOLOR"'+f.tbl[12][0]+'"')+item.name+' '+('\\TXTCOLOR"'+f.tbl[12][beRed|0]+'"')+$gameParty.numItems(item)+'/'+signedNumInfo2+('\\TXTCOLOR"'+f.tbl[12][0]+'"'),x,y,undefined,undefined,res);
+				this.drawTextEx(s,x,y,undefined,undefined,res);
 				if(item.iconIndex){
 					x-=Window_Base._iconWidth+f.tbl[7][0];
 				}
@@ -30633,7 +30670,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 
 delete window._cfc;
-var _agold404_version_='2025-08-03 0';
+var _agold404_version_='2025-08-03 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
