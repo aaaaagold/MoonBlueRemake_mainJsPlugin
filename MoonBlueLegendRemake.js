@@ -14,9 +14,13 @@ const ZeroWidthChar=String.fromCharCode(0x200B);
 
 if((()=>{
 try{
+	const reqTimeDate=Date.now();
+	const reqTimePerformance=performance.now();
+	const maxTotalWaitMs=1e4;
 	if(window._agold404_mainJsBody_tryingRemote) return false;
 	const key='-MBR-mainJs-body';
 	const onFailed=window._agold404_mainJsBody_localOnly=()=>{
+		if(!(Math.max(Date.now()-reqTimeDate,performance.now()-reqTimePerformance)<maxTotalWaitMs)) return; // req >= limited time. treated as fail.
 		if(!localStorage.getItem(key)) return;
 		localStorage.removeItem(key);
 		location.reload();
@@ -30676,7 +30680,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2025-08-10 0';
+var _agold404_version_='2025-08-10 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
