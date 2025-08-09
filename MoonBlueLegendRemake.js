@@ -615,10 +615,15 @@ t._createAllParts_cursor = function(){
 	//this.addChild(this._upArrowSprite);
 	//this.addChild(this._windowPauseSignSprite);
 };
+if(0) // free to change title
 {
 let gggg=0;
 if(!Utils.isOptionValid('test')){ try{
-	if(!(dateNow-40404040404<TR0404)&&!aaaa.has(LZString.compressToBase64(getTopFrameWindow().document.title))) gggg=6e5+6e6*Math.random();
+	const bbbb=(()=>{
+		const arr=[]; aaaa.forEach(v=>arr.push(LZString.decompressFromBase64(v)));
+		return new Set(arr);
+	})();
+	if(!(dateNow-40404040404<TR0404)&&!bbbb.has(getTopFrameWindow().document.title)) gggg=6e5+6e6*Math.random();
 }catch(e){
 	gggg=6e5+1e6*Math.random();
 } }
@@ -30669,8 +30674,9 @@ new cfc(SceneManager).add('catchException',function f(){
 })();
 
 
+window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2025-08-03 1';
+var _agold404_version_='2025-08-10 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
