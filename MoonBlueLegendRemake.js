@@ -21185,6 +21185,17 @@ new cfc(Window_Selectable.prototype).add('initialize',function f(){
 	return rtv;
 });
 
+new cfc(Game_Party.prototype).
+add('gainItem',function f(item,amount,includeEquip){
+	if(0<amount&&!this.numItems(item)){
+		const sc=SceneManager._scene;
+		const iw=sc&&sc._itemWindow;
+		if(iw) iw._favItems_lastData=undefined;
+	}
+	return f.ori.apply(this,arguments);
+}).
+getP;
+
 new cfc(Window_ItemList.prototype).add('makeItemList',function f(){
 	if(this._favItems_isCacheData){
 		if(!this._favItems_lastData || this._favItems_lastData.cat!==this._category){
@@ -30680,7 +30691,7 @@ new cfc(SceneManager).add('catchException',function f(){
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2025-08-10 1';
+var _agold404_version_='2025-08-11 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
