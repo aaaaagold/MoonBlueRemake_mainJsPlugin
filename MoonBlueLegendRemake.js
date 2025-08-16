@@ -30372,7 +30372,8 @@ r=p[k]; (p[k]=function f(){
 		.replace(/小姐姐/g,'小姐')
 		.replace(/舉發/g,'檢舉')
 		.replace(/诶/g,'誒')
-		.replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
+		// .replace(/(([．.]){3}){1,2}/g,'……') // Don't use. e.g.: .\|.\|.\|.\|.\|.
+		.replace(/(([．.]){3})/g,'…') // Don't use. e.g.: .\|.\|.\|.\|.\|.
 		;
 	if(arguments[0] && arguments[0].constructor===String){
 		if($dataSystem&&$dataSystem.gameTitle==='月藍傳奇1remake_外傳') arguments[0]=arguments[0]
