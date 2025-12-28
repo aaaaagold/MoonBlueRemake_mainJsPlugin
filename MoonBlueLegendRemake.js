@@ -19585,6 +19585,69 @@ new cfc(Game_Battler.prototype).add('onDamage',function f(val,subject){
 
 ﻿"use strict";
 /*:
+ * @plugindesc 受HP攻擊(>0)時，上自己狀態
+ * @author agold404
+ * @help 有trait的東西的note <反擊上自己狀態:[狀態id,...]>
+ * 
+ * This plugin can be renamed as you want.
+ */
+
+(()=>{ let k,r,t,a,p; const gbb=Game_BattlerBase;
+
+const kwtxt='反擊上自己狀態';
+const kwbase=kwtxt;
+const kwtrait="TRAIT_"+kwbase;
+const kwget="get_"+kwbase;
+
+gbb.addEnum(kwtrait);
+
+t=[kwbase,kwtxt,kwtrait,gbb[kwtrait],function(v,k){
+	const r=this.stateRate(k);
+	for(let x=0;x<v;++x) if(Math.random()<r) this.addState(k);
+},];
+
+cf(Scene_Boot.prototype,'start',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	$dataSkills  .forEach(f.tbl[0]);
+	$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+	return f.ori.apply(this,arguments);
+},[
+dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
+	const ts=dataobj.traits; if(!ts||!meta[kwbase]) return;
+	const arr=JSON.parse(meta[kwbase]),id2idx=new Map();
+	for(let x=0;x!==arr.length;++x){ if(arr[x]){
+		const idx=id2idx.get(arr[x]);
+		if(idx>=0) ++ts[idx].value;
+		else{
+			id2idx.set(arr[x],ts.length);
+			ts.push({code:gbb[kwtrait],dataId:arr[x],value:1,});
+		}
+	} }
+},
+]);
+
+new cfc(gbb.prototype).add(t[0],function f(){
+	// Map([id,count])
+	return this.traitsMap_sum(f.tbl[3]);
+},t);
+
+new cfc(Game_Battler.prototype).add('onDamage',function f(val,subject){
+	const revStatesMap=this[f.tbl[0]]();
+	if(revStatesMap.size) revStatesMap.forEach(f.tbl[4].bind(this));
+	return f.ori.apply(this,arguments);
+},t);
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc Sprite_Actor ㄉㄨㄞ ㄉㄨㄞ
  * @author agold404
  * @help .
@@ -30722,7 +30785,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2025-09-28 1';
+var _agold404_version_='2025-12-28 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
