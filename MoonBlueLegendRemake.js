@@ -17491,7 +17491,7 @@ p[k].tbl=[
 dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
 	const ts=meta[kw]&&dataobj.traits; if(!ts) return;
 	const m=JSON.parse(meta[kw]);
-	for(let i in m) if(i) for(let x=0,arr=m[i];x!==arr.length;++x) if(arr[x]) ts.push({code:gbb[kw],dataId:i,value:arr[x]});
+	for(let i in m) if(i) for(let x=0,arr=m[i];x!==arr.length;++x) if(arr[x]) ts.push({code:gbb[kw],dataId:isNaN(i)?i:i-0,value:arr[x]});
 },
 dataobj=>{ const meta=dataobj&&dataobj.meta; if(!meta) return;
 	dataobj[kw]=meta[kw]?JSON.parse(meta[kw]):undefined;
@@ -30785,7 +30785,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2025-12-28 1';
+var _agold404_version_='2026-01-03 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
