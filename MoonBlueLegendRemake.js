@@ -17525,7 +17525,12 @@ cf(cf(cf(Game_BattlerBase.prototype,kw_main,function f(id){
 			acts.push(act);
 		} }
 	}
-	if(acts.length && !s._actions.length){
+	while(acts.length && !s._actions.length){
+		const subject=acts[0].subject();
+		if(!subject.canPaySkillCost(acts[0].item())){
+			acts.pop();
+			continue;
+		}
 		s._actions.push(acts[0]);
 		acts.pop();
 		return true;
@@ -30785,7 +30790,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-03 0';
+var _agold404_version_='2026-01-04 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
