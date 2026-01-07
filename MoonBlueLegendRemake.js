@@ -101,6 +101,11 @@ window._cfc=cfc;
 /*
 短到不想變成插件的東西們
 */
+try{
+	const arr=ResourceHandler._defaultRetryInterval;
+	arr.length=1;
+}catch(e){
+}
 { const p=Array.prototype;
 Object.defineProperties(p,{
 back:{
@@ -19783,7 +19788,58 @@ new cfc(Game_Player.prototype).add('canMove',function f(){
  * This plugin can be renamed as you want.
  */
 
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+Game_Troop.prototype.partyAbility=function(abilityId) {
+	return this.members().some(function(btlr) {
+		return btlr.partyAbility(abilityId);
+	});
+};
+
+
 (()=>{ let k,r,t;
+
+{
+const gbb=Game_BattlerBase,gp=Game_Party;
+
+const kwtxt='showMpTpOpponents';
+const kwtrait="ABILITY_"+kwtxt;
+
+if(!gp._enumMax) gp._enumMax=404;
+if(!gp.addEnum) gp.addEnum=window.addEnum;
+gp.addEnum(kwtrait);
+gp.addEnum('__END__');
+
+new cfc(Scene_Boot.prototype).
+add('start',function f(){
+	this.applyShowAtbBarTraits();
+	return f.ori.apply(this,arguments);
+}).
+add('applyShowAtbBarTraits',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	//$dataSkills  .forEach(f.tbl[0]);
+	//$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+},[
+dataobj=>{
+	const meta=dataobj&&dataobj.meta; if(!meta) return;
+	if(!meta[kwtxt]) return;
+	let ts=dataobj.traits; if(!ts) ts=dataobj.traits=[];
+	ts.push({code:Game_BattlerBase.TRAIT_PARTY_ABILITY,dataId:gp[kwtrait],});
+},
+]).
+getP;
+}
 
 // mp有改色需求
 
@@ -19811,7 +19867,10 @@ function(sp){ sp.visible=this; },
 new cfc(HPGaugeSprite.prototype).add('shouldShowMpTp',function f(){
 	if(this.type===0) return false;
 	const btlr=this.battler();
-	return btlr && btlr.constructor===Game_Enemy && btlr.getData().meta[f.tbl[2]];
+	return btlr && btlr.constructor===Game_Enemy && (
+		btlr.getData().meta[f.tbl[2]] ||
+		btlr.opponentsUnit().partyAbility(Game_Party.ABILITY_showMpTpOpponents) ||
+	false);
 },t).add('loadBitmaps',function f(){
 	const rtv=f.ori.apply(this,arguments);
 	this.loadBitmaps_mptp();
@@ -29682,18 +29741,73 @@ new cfc(Sprite_Battler.prototype).add('switchToBmp_updateFrame',function f(info)
 
 ﻿"use strict";
 /*:
- * @plugindesc showAtbBar
+ * @plugindesc showAtbBar showAtbBarOpponent
  * @author agold404
  * @help note in skill or enemy or actor
+ * 
+ * showAtbBarOpponent: traits items
  * 
  * <showAtbBar>
  * skill: show charge bar
  * enemy or actor: show speed bar
  * 
+ * <showAtbBarOpponent>
+ * traits items: show emenies' speed bars
+ * 
  * This plugin can be renamed as you want.
  */
 
+if(!window.addEnum) window.addEnum=function(key){
+	if(this[key]) return;
+	this._enumMax|=0;
+	this[key]=++this._enumMax;
+	return this;
+};
+
+Game_Troop.prototype.partyAbility=function(abilityId) {
+	return this.members().some(function(btlr) {
+		return btlr.partyAbility(abilityId);
+	});
+};
+
 if((typeof Battle_Hud)!=='undefined')(()=>{ let k,r,t;
+
+
+const gbb=Game_BattlerBase,gp=Game_Party;
+
+const kwtxt='showAtbBarOpponents';
+const kwtrait="ABILITY_"+kwtxt;
+
+if(!gp._enumMax) gp._enumMax=404;
+if(!gp.addEnum) gp.addEnum=window.addEnum;
+gp.addEnum(kwtrait);
+gp.addEnum('__END__');
+
+new cfc(Scene_Boot.prototype).
+add('start',function f(){
+	this.applyShowAtbBarTraits();
+	return f.ori.apply(this,arguments);
+}).
+add('applyShowAtbBarTraits',function f(){
+	$dataActors  .forEach(f.tbl[0]);
+	$dataClasses .forEach(f.tbl[0]);
+	//$dataSkills  .forEach(f.tbl[0]);
+	//$dataItems   .forEach(f.tbl[0]);
+	$dataWeapons .forEach(f.tbl[0]);
+	$dataArmors  .forEach(f.tbl[0]);
+	$dataEnemies .forEach(f.tbl[0]);
+	$dataTroops  .forEach(f.tbl[0]);
+	$dataStates  .forEach(f.tbl[0]);
+},[
+dataobj=>{
+	const meta=dataobj&&dataobj.meta; if(!meta) return;
+	if(!meta[kwtxt]) return;
+	let ts=dataobj.traits; if(!ts) ts=dataobj.traits=[];
+	ts.push({code:Game_BattlerBase.TRAIT_PARTY_ABILITY,dataId:gp[kwtrait],});
+},
+]).
+getP;
+
 
 for(let x=0,arr=[Sprite_Actor,Sprite_Enemy,];x!==arr.length;++x){ new cfc(arr[x].prototype).add('update',function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -29816,6 +29930,7 @@ function f(div,bmp){
 SceneManager.shouldShowAtbBar_commonTrue=btlr=>{
 	if(btlr.isActor()) return false;
 	if(SceneManager._shouldShowAtbBar_battleTest) return true;
+	if(btlr.opponentsUnit().partyAbility(Game_Party.ABILITY_showAtbBarOpponents)) return true;
 	const mapId=$gameMap.mapId();
 	return mapId>=500&&mapId<600;
 };
@@ -30790,7 +30905,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-04 0';
+var _agold404_version_='2026-01-07 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
