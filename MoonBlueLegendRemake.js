@@ -4427,6 +4427,22 @@ p.setCurrentLoopAniOff=function(){
 
 const none=()=>{};
 { const p=Sprite_Battler.prototype;
+new cfc(p).
+add('update_loopAni',function f(){
+	if(!this._battler) return;
+	if(!this._loopAnis) this._loopAnis=new Map();
+	const states=this._battler.states().filter(f.tbl[1]);
+	
+},[
+function f(){
+	
+},
+dataobj=>{
+	const meta=dataobj&&dataobj.meta;
+	return meta&&meta.loopAni;
+},
+]).
+getP;
 k='update';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
@@ -19817,10 +19833,10 @@ gp.addEnum('__END__');
 
 new cfc(Scene_Boot.prototype).
 add('start',function f(){
-	this.applyShowAtbBarTraits();
+	this.applyShowMpTpOpponentsTraits();
 	return f.ori.apply(this,arguments);
 }).
-add('applyShowAtbBarTraits',function f(){
+add('applyShowMpTpOpponentsTraits',function f(){
 	$dataActors  .forEach(f.tbl[0]);
 	$dataClasses .forEach(f.tbl[0]);
 	//$dataSkills  .forEach(f.tbl[0]);
@@ -29785,10 +29801,10 @@ gp.addEnum('__END__');
 
 new cfc(Scene_Boot.prototype).
 add('start',function f(){
-	this.applyShowAtbBarTraits();
+	this.applyShowAtbBarOpponentsTraits();
 	return f.ori.apply(this,arguments);
 }).
-add('applyShowAtbBarTraits',function f(){
+add('applyShowAtbBarOpponentsTraits',function f(){
 	$dataActors  .forEach(f.tbl[0]);
 	$dataClasses .forEach(f.tbl[0]);
 	//$dataSkills  .forEach(f.tbl[0]);
@@ -30905,7 +30921,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-07 1';
+var _agold404_version_='2026-01-10 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
