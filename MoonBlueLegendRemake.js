@@ -4430,59 +4430,73 @@ const none=()=>{};
 new cfc(p).
 add('update_loopAni',function f(){
 	if(!this._battler) return;
+	const strs=new Set(this._battler.states().map(f.tbl[0]).filter(f.tbl[1]));
 	if(!this._loopAnis) this._loopAnis=new Map();
-	const states=this._battler.states().filter(f.tbl[1]);
-	
+	const lastXy=new Map();
+	{ const delList=[];
+	this._loopAnis.forEach((aniSp,k)=>{
+		const info=k.split(',');
+		const disappear=info[2];
+		if(aniSp.isPlaying()){
+			aniSp.alpha=disappear?this.alpha:1;
+		}else{
+			lastXy.set(k,[aniSp._setx,aniSp._sety,]);
+			aniSp.parent.removeChild(aniSp);
+			delList.push(k);
+		}
+	});
+	delList.forEach(k=>this._loopAnis.delete(k));
+	}
+	strs.forEach(k=>{
+		const info=k.split(',');
+		const aniId=info[0];
+		const reflected=info[1];
+		const disappear=info[2];
+		const fixed=info[3];
+		const ani=$dataAnimations[aniId]; if(!ani) return;
+		const aniSp=this._loopAnis.get(k); if(aniSp) return;
+		this.startAnimation(ani,reflected,0);
+		const arr=this._animationSprites;
+		const sp=arr.pop();
+		sp.z=this.z-1;
+		this._loopAnis.set(k,sp);
+		if(fixed){
+			let xy=lastXy.get(k),x,y;
+			if(xy){
+				x=xy[0];
+				y=xy[1];
+			}
+			if(x!==undefined){
+				sp._setx=sp.x=x; sp._sety=sp.y=y;
+			}else{
+				sp.updatePosition();
+				sp._setx=sp.x; sp._sety=sp.y;
+			}
+			sp.updatePosition=none;
+		}
+	});
 },[
-function f(){
-	
-},
 dataobj=>{
 	const meta=dataobj&&dataobj.meta;
-	return meta&&meta.loopAni;
+	const info=meta&&meta.loopAni.split(',');
+	info[0]-=0;
+	const reflected=info[0]<0;
+	info[0]=Math.abs(info[0]);
+	if(!$dataStates[info[0]]) return;
+	const disappear=!(info.indexOf("appear",1)+1)||info.indexOf("disappear",1)+1,fixed=info.indexOf("fixed",1)+1;
+	info.length=1;
+	info.push(0|!!reflected);
+	info.push(0|!!disappear);
+	info.push(0|!!fixed);
+	return info.join(',');
 },
+info=>info,
 ]).
 getP;
 k='update';
 r=p[k]; (p[k]=function f(){
 	const rtv=f.ori.apply(this,arguments);
-	if( this._battler){
-		if(!this._loopAnis) this._loopAnis=new Map();
-		if(!BattleManager.isLoopAniOff(this._battler)) this._battler.states().forEach(stat=>{
-			if(stat.meta.loopAni===undefined) return;
-			const sp=stat.meta.loopAni.split(',');
-			const idx_o=Number(sp[0]),disappear=!(sp.indexOf("appear",1)+1)||sp.indexOf("disappear",1)+1,fixed=sp.indexOf("fixed",1)+1;
-			const ani=$dataAnimations[idx_o<0?-idx_o:idx_o];
-			if(ani){
-				let oldAni=this._loopAnis.get(idx_o),x,y;
-				if(oldAni){
-					if(oldAni.isPlaying()){
-						oldAni.alpha=disappear?this.alpha:1;
-					}else{
-						x=oldAni._setx; y=oldAni._sety;
-						oldAni.parent.removeChild(oldAni);
-						oldAni=undefined;
-					}
-				}
-				if(!oldAni){
-					this.startAnimation(ani,idx_o<0,0);
-					const arr=this._animationSprites;
-					const sp=arr.pop();
-					sp.z=this.z-1;
-					this._loopAnis.set(idx_o,sp);
-					if(fixed){
-						if(x!==undefined){
-							sp._setx=sp.x=x; sp._sety=sp.y=y;
-						}else{
-							sp.updatePosition();
-							sp._setx=sp.x; sp._sety=sp.y;
-						}
-						sp.updatePosition=none;
-					}
-				}
-			}
-		});
-	}
+	this.update_loopAni.apply(this,arguments);
 	return rtv;
 }).ori=r;
 p[k].forEach=x=>$dataStates.tbl.has(x);
@@ -30921,7 +30935,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-10 0';
+var _agold404_version_='2026-01-10 1';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
