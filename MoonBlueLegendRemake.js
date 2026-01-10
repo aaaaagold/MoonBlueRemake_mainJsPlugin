@@ -4483,7 +4483,7 @@ dataobj=>{
 	info[0]-=0;
 	const reflected=info[0]<0;
 	info[0]=Math.abs(info[0]);
-	if(!$dataStates[info[0]]) return;
+	if(!$dataAnimations[info[0]]) return;
 	const disappear=!(info.indexOf("appear",1)+1)||info.indexOf("disappear",1)+1,fixed=info.indexOf("fixed",1)+1;
 	info.length=1;
 	info.push(0|!!reflected);
@@ -30936,7 +30936,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-10 2';
+var _agold404_version_='2026-01-10 3';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
