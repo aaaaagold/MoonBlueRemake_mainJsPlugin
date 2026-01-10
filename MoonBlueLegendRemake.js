@@ -4478,7 +4478,8 @@ add('update_loopAni',function f(){
 },[
 dataobj=>{
 	const meta=dataobj&&dataobj.meta;
-	const info=meta&&meta.loopAni.split(',');
+	const info=meta&&meta.loopAni&&meta.loopAni.split&&meta.loopAni.split(',');
+	if(!info) return;
 	info[0]-=0;
 	const reflected=info[0]<0;
 	info[0]=Math.abs(info[0]);
@@ -30935,7 +30936,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-10 1';
+var _agold404_version_='2026-01-10 2';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
