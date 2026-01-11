@@ -4436,7 +4436,7 @@ add('update_loopAni',function f(){
 	{ const delList=[];
 	this._loopAnis.forEach((aniSp,k)=>{
 		const info=k.split(',');
-		const disappear=info[2];
+		const disappear=info[2]-0;
 		if(aniSp.isPlaying()){
 			aniSp.alpha=disappear?this.alpha:1;
 		}else{
@@ -4449,10 +4449,10 @@ add('update_loopAni',function f(){
 	}
 	strs.forEach(k=>{
 		const info=k.split(',');
-		const aniId=info[0];
-		const reflected=info[1];
-		const disappear=info[2];
-		const fixed=info[3];
+		const aniId=info[0]-0;
+		const reflected=info[1]-0;
+		const disappear=info[2]-0;
+		const fixed=info[3]-0;
 		const ani=$dataAnimations[aniId]; if(!ani) return;
 		const aniSp=this._loopAnis.get(k); if(aniSp) return;
 		this.startAnimation(ani,reflected,0);
@@ -20003,7 +20003,7 @@ new cfc(HPGaugeSprite.prototype).add('shouldShowMpTp',function f(){
 		if(!m0refreshed){ m0refreshed=true; this.refreshMeter(meter[0],meter[0].value1,m,1); }
 	}
 	if(meter&&$gameTemp._hpGauge[0]&&( (btlr._etpgauge && btlr._etpgauge[4]) || meter[1].value1!==c || meter[1].value2!==m )){
-		btlr._empgauge[4]=false;
+		if(btlr._etpgauge) btlr._empgauge[4]=false;
 		meter[1].value1=c;
 		meter[1].value2=m;
 		if(!m0refreshed){ m0refreshed=true; this.refreshMeter(meter[0],meter[0].value1,m,1); }
@@ -30937,7 +30937,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-11 0';
+var _agold404_version_='2026-01-12 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
