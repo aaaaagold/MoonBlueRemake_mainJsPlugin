@@ -30241,6 +30241,38 @@ new cfc(Scene_Equip.prototype).add('createLayoutSlot',function f(){
 
 ﻿"use strict";
 /*:
+ * sortingKey
+ */
+
+
+(()=>{
+
+new cfc(Game_Party.prototype).
+add('weapons',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	DataManager.sortDataObjList(rtv);
+	return rtv;
+}).
+add('armors',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	DataManager.sortDataObjList(rtv);
+	return rtv;
+}).
+getP;
+
+new cfc(Game_Actor.prototype).
+add('skills',function f(){
+	const rtv=f.ori.apply(this,arguments);
+	DataManager.sortDataObjList(rtv);
+	return rtv;
+}).
+getP;
+
+})();
+
+
+﻿"use strict";
+/*:
  * @plugindesc edit save name ; load from file ; export a save to a file
  * @author agold404
  *
@@ -30937,7 +30969,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-12 0';
+var _agold404_version_='2026-01-17 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
