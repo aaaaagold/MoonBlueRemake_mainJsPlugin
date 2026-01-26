@@ -17553,10 +17553,10 @@ cf(cf(cf(Game_BattlerBase.prototype,kw_main,function f(id){
 		const lastIsForAll=lastAct.isForAll();
 		if(!lastAct[f.tbl[3]]()){ for(let x=0,arr=additionalSkills;x!==arr.length;++x){
 			const id=arr[x]==="普攻"?this.attackSkillId():arr[x];
-			if(!$dataSkills[arr[x]]) continue;
+			if(!$dataSkills[id]) continue;
 			const act=new Game_Action(s);
 			act[f.tbl[2]]=true;
-			act.setSkill(arr[x]);
+			act.setSkill(id);
 			if(lastIsForFriend===act.isForFriend()) act._targetIndex=lastAct._targetIndex;
 			acts.push(act);
 		} }
@@ -30969,7 +30969,7 @@ const r=SceneManager.run;
 
 window.cfc=window._cfc;
 delete window._cfc;
-var _agold404_version_='2026-01-17 0';
+var _agold404_version_='2026-01-26 0';
 var _agold404_version=window._agold404_version||_agold404_version_;
 window._agold404_version=_agold404_version;
 if(_agold404_version<_agold404_version_ && window._agold404_mainJsBody_tryingRemote){
